@@ -12,6 +12,24 @@ In Eesen, end-to-end ASR is enabled by the following 3 key components
 # Highlights
 
 * An open-sourced toolkit with Apache License Version 2.0
-* GPU implementation of LSTM model training and CTC learning
+* GPU implementation of LSTM model training and CTC learning; processes multiple utterances at a time in parallel
 * Inherits Kaldi's programming style and reuses Kaldi's functionalities such as (feature processing and WFST wrappers). 
-* Fully-fledged example setups
+* Fully-fledged [example setups](https://github.com/yajiemiao/eesen/tree/master/asr_egs)
+
+# Experimental Results
+
+Refer to RESULTS under each example setup.
+
+# To-Do List (short-term)
+
+* Create TIMIT and Switchboard example setups.
+* Add lattice-based decoding to example setups.
+* Add Wiki pages, especially on training and decoding commands.
+
+# To-Do List (long-term)
+
+* Further improve Eesen's ASR accuracy from various aspects; make it comparable to and eventually better than the existing hybrid DNN ASR system
+* Apply the framework to more languages and speech conditions (noisy, far-field); investigate how Eesen works under these conditions.
+* Speed up training by adopting better learning techniques or multi-GPU distributed learning.
+
+

@@ -32,4 +32,7 @@ Refer to RESULTS under each example setup.
 * Apply the framework to more languages and speech conditions (noisy, far-field); investigate how Eesen works under these conditions.
 * Speed up training by adopting better learning techniques or multi-GPU distributed learning.
 
+# Contact
+
+Email [Yajie Miao](mailto:yajiemiao@gmail.com) if you have any questions or suggestions.
 

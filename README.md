@@ -7,7 +7,7 @@ Eesen is a framework and open-source toolkit to build end-to-end speech recognit
 In Eesen, end-to-end ASR is enabled by the following 3 key components
 * *Acoustic Model* -- Deep RNNs with LSTM units. We apply bi-directional LSTM networks as acoustic models.
 * *Training*       -- [Connectionist temporal classification (CTC)](http://www.machinelearning.org/proceedings/icml2006/047_Connectionist_Tempor.pdf) as the training objective.
-* Decoding       -- A principled decoding approach based on Weighted Finite-State Transducers (WFST). Achieves effective and efficient incorporation of language models (LMs) and lexicons during decoding. 
+* *Decoding*       -- A principled decoding approach based on Weighted Finite-State Transducers (WFST). Achieves effective and efficient incorporation of language models (LMs) and lexicons during decoding. 
 
 # Highlights
 
@@ -24,7 +24,7 @@ Refer to RESULTS under each example setup.
 
 * Create TIMIT and Switchboard example setups.
 * Add lattice-based decoding to example setups.
-* Add Wiki pages, especially on training and decoding commands.
+* Add Wiki pages, especially about training and decoding commands.
 
 # To-Do List (long-term)
 

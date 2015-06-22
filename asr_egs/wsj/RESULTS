@@ -1,0 +1,38 @@
+#!/bin/bash
+
+for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+exit 0
+
+# CTC Phoneme
+%WER 11.39 [ 938 / 8234, 119 ins, 127 del, 692 sub ] exp/train_phn_l4_c320/decode_dev93_tgpr/wer_0.8
+%WER 7.87 [ 444 / 5643, 77 ins, 29 del, 338 sub ] exp/train_phn_l4_c320/decode_eval92_tgpr/wer_0.9
+
+%WER 10.87 [ 895 / 8234, 126 ins, 115 del, 654 sub ] exp/train_phn_l4_c320/decode_dev93_tg/wer_0.8
+%WER 7.28 [ 411 / 5643, 58 ins, 38 del, 315 sub ] exp/train_phn_l4_c320/decode_eval92_tg/wer_0.7
+
+# CTC Character - Basic Vocabulary
+%WER 14.23 [ 1172 / 8234, 151 ins, 138 del, 883 sub ] exp/train_char_l4_c320/decode_dev93_tgpr/wer_0.6
+%WER 9.07 [ 512 / 5643, 73 ins, 37 del, 402 sub ] exp/train_char_l4_c320/decode_eval92_tgpr/wer_0.6
+
+%WER 13.59 [ 1119 / 8234, 128 ins, 157 del, 834 sub ] exp/train_char_l4_c320/decode_dev93_tg/wer_0.5
+%WER 8.49 [ 479 / 5643, 63 ins, 34 del, 382 sub ] exp/train_char_l4_c320/decode_eval92_tg/wer_0.6
+
+# CTC Character - Expanded Vocabulary 
+%WER 12.12 [ 998 / 8234, 89 ins, 138 del, 771 sub ] exp/train_char_l4_c320/decode_dev93_tgpr_larger/wer_0.6
+%WER 7.34 [ 414 / 5643, 44 ins, 31 del, 339 sub ] exp/train_char_l4_c320/decode_eval92_tgpr_larger/wer_0.6
+
+%WER 10.98 [ 904 / 8234, 82 ins, 122 del, 700 sub ] exp/train_char_l4_c320/decode_dev93_tg_larger/wer_0.6
+%WER 6.70 [ 378 / 5643, 38 ins, 30 del, 310 sub ] exp/train_char_l4_c320/decode_eval92_tg_larger/wer_0.6
+
+
+# Results of hybrid DNN models for comparisons.
+# Note that it is not fair to compare these CTC results with the Kaldi released hybrid systems because: 
+# 1) the Kaldi models use FMLLR features, whereas our CTC models use FBANK features
+# 2) the Kaldi DNN numbers are reported over an expanded dictionary, while our models use the original dict.
+# To rule out all these variances, we train a hybrid DNN model using the FBANK features, and decode the model
+# with the original dict. DNN input features are 11 frames of 40-dim FBANKs.  
+# DNN model has 6 hidden layers, each has 1024 units. Pre-trained with RBM. This hybrid DNN has approximately
+# the same number of parameters (9.2 million) as our CTC models (8.5 million). 
+%WER 9.91 [ 816 / 8234, 160 ins, 80 del, 576 sub ] exp/dnn4_pretrain-dbn-fbank_dnn_V2/decode_tgpr_dev93/wer_11
+%WER 7.14 [ 403 / 5643, 100 ins, 17 del, 286 sub ] exp/dnn4_pretrain-dbn-fbank_dnn_V2/decode_tgpr_eval92/wer_10
+

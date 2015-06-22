@@ -1,0 +1,15 @@
+K 10
+svn:ignore
+V 53
+*.slo
+*.lo
+*.o
+*~
+*.so
+*.dylib
+*.lai
+*.la
+*.a
+*.dSYM
+
+END

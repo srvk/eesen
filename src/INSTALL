@@ -1,0 +1,28 @@
+
+These instructions are valid for UNIX-like systems. Installation on Windows is not supported currently.
+
+1. Requirements:
+
+A. You must first have completed the installation of Kaldi dependencies (OpenFST, ATLAS, etc.). Go to
+   your EESEN root dir.
+   
+   - If you have installed Kaldi, simply link (or copy) /path/to/kaldi/tools here. No additional packages are needed.
+
+   - Otherwise, check out Kaldi's tools dir and install the dependencies:
+     > svn co https://svn.code.sf.net/p/kaldi/code/trunk/tools tools
+     > cd tools
+     > make
+     In case you don't have ATLAS installed, then installation can be done:
+     > ./install_atlas.sh
+
+B. Model training in EESEN only supports GPU currently. Therefore, you must have an GPU card and
+   have installed NVIDIA cuda driver. You need to specify the path to the CUDA library for ./configure
+
+
+
+2. Installation
+
+./configure --use-cuda=yes --cudatk-dir=/path/to/cuda_library
+make depend
+make
+

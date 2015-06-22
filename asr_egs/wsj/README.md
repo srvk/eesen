@@ -7,6 +7,6 @@ numbers are LDC93S6B and LDC94S13B.
 
 There are two recipes, demonstrating different types of CTC labels
 
-run_ctc_phn.sh   - phonemes as CTC labels 
+run_ctc_phn.sh   - phonemes as CTC labels   
 run_ctc_char.sh  - characters (letters) as CTC labels
 

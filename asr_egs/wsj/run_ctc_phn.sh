@@ -3,12 +3,8 @@
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 
-#wsj0=/path/to/LDC93S6B
-#wsj1=/path/to/LDC94S13B
-
-# On CMU Rocks
-wsj0=/data/ASR5/babel/ymiao/Install/LDC/LDC93S6B
-wsj1=/data/ASR5/babel/ymiao/Install/LDC/LDC94S13B
+wsj0=/path/to/LDC93S6B
+wsj1=/path/to/LDC94S13B
 
 echo =====================================================================
 echo "             Data Preparation and FST Construction                 "

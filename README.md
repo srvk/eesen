@@ -23,6 +23,7 @@ Refer to RESULTS under each example setup.
 # To-Do List (short-term)
 
 * Create TIMIT and Switchboard example setups.
+* Add CPU-based training
 * Add lattice-based decoding to example setups.
 * Add Wiki pages, especially about training and decoding commands.
 

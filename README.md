@@ -1,9 +1,9 @@
 # Eesen
 
-**Eesen** is a toolkit to build speech recognition (ASR) systems in a **completely end-to-end fashion**. The goal of Eesen is to **simplify** the existing complicated, expertise-intensive ASR pipeline into a straightforward learning problem. Acoustic modeling in Eesen involves training **a single recurrent neural network** (RNN) which models the sequence-to-sequence mapping from speech to transcripts. Therefore, Eesen **discards the following elements** required by the existing ASR pipeline:
+**Eesen** is a toolkit to build speech recognition (ASR) systems in a **completely end-to-end fashion**. The goal of Eesen is to **simplify** the existing complicated, expertise-intensive ASR pipeline into a straightforward learning problem. Acoustic modeling in Eesen involves training **a single recurrent neural network** (RNN) which models the sequence-to-sequence mapping from speech to transcripts. Eesen **discards the following elements** required by the existing ASR pipeline:
 
 * Hidden Markov models (HMMs)
-* Training of Gaussian mixture models (GMMs)
+* Gaussian mixture models (GMMs)
 * Decision trees and phonetic questions
 * Dictionary, if characters are used as the modeling units
 * **...**

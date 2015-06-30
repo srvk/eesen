@@ -16,16 +16,16 @@ Eesen is released as **an open-source project** under the highly non-restrictive
 # Key Components
 
 Eesen contains 3 key components to enable end-to-end ASR:
-* **Acoustic Model** -- Bi-directional RNNs with LSTM units
+* **Acoustic Model** -- Bi-directional RNNs with LSTM units.
 * **Training**       -- [Connectionist temporal classification (CTC)](http://www.machinelearning.org/proceedings/icml2006/047_Connectionist_Tempor.pdf) as the training objective.
-* **Decoding**       -- A principled decoding approach based on Weighted Finite-State Transducers (WFST).  
+* **Decoding**       -- A principled decoding approach based on Weighted Finite-State Transducers (WFSTs).  
 
 # Highlights of Eesen
 
 * The WFST-based decoding approach can incorporate lexicons and language models into CTC decoding in an effective and efficient way. 
 * GPU implementation of RNN model training and CTC learning.
 * Multiple utterances are processed in parallel for training speed-up.
-* Inherites Kaldi's programming stype. Very convenient to implement new modules. 
+* Inherits Kaldi's programming stype. Convenient to implement new modules. 
 * Eesen's close connection with Kaldi makes the end-to-end systems directly comparable to Kaldi's hybrid HMM/DNN systems.
 * Fully-fledged [example setups](https://github.com/yajiemiao/eesen/tree/master/asr_egs) to demonstrate end-to-end system building, with both phonemes and characters as labels.
 
@@ -36,7 +36,7 @@ Refer to RESULTS under each example setup.
 # To-Do List (short-term)
 
 * Create TIMIT and Switchboard example setups.
-* Add CPU-based training
+* Add CPU-based training.
 * Add lattice-based decoding to example setups.
 * More Wiki pages/documentation, especially about training and decoding commands.
 

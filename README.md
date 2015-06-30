@@ -10,8 +10,7 @@
 
 Eesen is developed on the basis of the popular [Kaldi](http://kaldi.sourceforge.net/) toolkit. However, Eesen is fully self-contained, requiring no dependencies from Kaldi to funciton. 
 
-Eesen is released as an open-source project under the highly non-restrictive Apache License Version 2.0. We welcome participation and contribution from the community.
-
+Eesen is released as an open-source project under the highly non-restrictive **Apache License Version 2.0**. We welcome community participation and contribution.
 
 
 # Key Components
@@ -26,8 +25,8 @@ Eesen contains 3 key components to enable end-to-end ASR:
 * The WFST-based decoding approach can incorporate lexicons and language models into CTC decoding in an effective and efficient way. 
 * GPU implementation of RNN model training and CTC learning.
 * Multiple utterances are processed in parallel for training speed-up.
-* Inherites Kaldi's programming stype. Implementing new modules becomes very convenient. 
-* The close connection with Kaldi makes Eesen systems directly comparable to the Kaldi hybrid HMM/DNN systems.
+* Inherites Kaldi's programming stype. Very convenient to implement new modules. 
+* Eesen's close connection with Kaldi makes the end-to-end systems directly comparable to Kaldi's hybrid HMM/DNN systems.
 * Fully-fledged [example setups](https://github.com/yajiemiao/eesen/tree/master/asr_egs) to demonstrate end-to-end system building, with both phonemes and characters as labels.
 
 # Experimental Results

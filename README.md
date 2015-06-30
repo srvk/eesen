@@ -1,20 +1,34 @@
 # Eesen
 
-Eesen is a framework and open-source toolkit to build end-to-end speech recognition (ASR) systems. The goal of Eesen is to simplify the existing complicated ASR pipeline into a sequence-to-sequence learning problem. Eesen is a spin-off of the popular [Kaldi](http://kaldi.sourceforge.net/) toolkit. However, it is fully self-contained, requiring no dependencies from Kaldi to funciton. Eesen has been developed by [Yajie Miao](http://www.cs.cmu.edu/~ymiao) from Carnegie Mellon University. 
+**Eesen** is a toolkit to build speech recognition (ASR) systems in a **completely end-to-end fashion**. The goal of Eesen is to **simplify** the existing complicated, expertise-intensive ASR pipeline into a straightforward learning problem. Acoustic modeling in Eesen involves training a single recurrent neural network (RNN) which models the sequence-to-sequence mapping from speech to transcripts. Therefore, Eesen **discards the following elements** required by the existing ASR pipeline:
+
+* Hidden Markov models (HMMs)
+* Training of Gaussian mixture models (GMMs)
+* Decision trees and phonetic questions
+* Dictionary, if characters are used as the modeling units
+* ...
+
+Eesen is developed on the basis of the popular [Kaldi](http://kaldi.sourceforge.net/) toolkit. However, Eesen is fully self-contained, requiring no dependencies from Kaldi to funciton. 
+
+Eesen is released as an open-source project under the highly non-restrictive Apache License Version 2.0. We welcome participation and contribution from the community.
+
+
 
 # Key Components
 
-In Eesen, end-to-end ASR is enabled by the following 3 key components
-* *Acoustic Model* -- Deep RNNs with LSTM units. We apply bi-directional LSTM networks as acoustic models.
-* *Training*       -- [Connectionist temporal classification (CTC)](http://www.machinelearning.org/proceedings/icml2006/047_Connectionist_Tempor.pdf) as the training objective.
-* *Decoding*       -- A principled decoding approach based on Weighted Finite-State Transducers (WFST). Achieves effective and efficient incorporation of language models (LMs) and lexicons during decoding. 
+Eesen contains 3 key components to enable end-to-end ASR:
+* **Acoustic Model** -- Bi-directional RNNs with LSTM units
+* **Training**       -- [Connectionist temporal classification (CTC)](http://www.machinelearning.org/proceedings/icml2006/047_Connectionist_Tempor.pdf) as the training objective.
+* **Decoding**       -- A principled decoding approach based on Weighted Finite-State Transducers (WFST).  
 
-# Highlights
+# Highlights of Eesen
 
-* An open-sourced toolkit with Apache License Version 2.0
-* GPU implementation of LSTM model training and CTC learning; processes multiple utterances at a time in parallel
-* Inherits Kaldi's programming style and reuses Kaldi's functionalities such as (feature processing and WFST wrappers). 
-* Fully-fledged [example setups](https://github.com/yajiemiao/eesen/tree/master/asr_egs)
+* The WFST-based decoding approach can incorporate lexicons and language models into CTC decoding in an effective and efficient way. 
+* GPU implementation of RNN model training and CTC learning.
+* Multiple utterances are processed in parallel for training speed-up.
+* Inherites Kaldi's programming stype. Implementing new modules becomes very convenient. 
+* The close connection with Kaldi makes Eesen systems directly comparable to the Kaldi hybrid HMM/DNN systems.
+* Fully-fledged [example setups](https://github.com/yajiemiao/eesen/tree/master/asr_egs) to demonstrate end-to-end system building, with both phonemes and characters as labels.
 
 # Experimental Results
 
@@ -25,13 +39,13 @@ Refer to RESULTS under each example setup.
 * Create TIMIT and Switchboard example setups.
 * Add CPU-based training
 * Add lattice-based decoding to example setups.
-* Add Wiki pages, especially about training and decoding commands.
+* More Wiki pages/documentation, especially about training and decoding commands.
 
 # To-Do List (long-term)
 
-* Further improve Eesen's ASR accuracy from various aspects; make it eventually better than the existing hybrid DNN ASR system
-* Apply the framework to more languages and speech conditions (noisy, far-field); investigate how Eesen works under these conditions.
-* Speed up training by adopting better learning techniques or multi-GPU distributed learning.
+* Further improve Eesen's ASR accuracy from various aspects, to make it eventually better than the state-of-the-art hybrid HMM/DNN pipeline.
+* Investigate the advantages and disadvantages of Eesen on different languages and speech conditions (noisy, far-field, etc.).
+* Accelerate model training by adopting better learning techniques or multi-GPU distributed learning.
 
 # Contact
 

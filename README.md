@@ -1,6 +1,6 @@
 # Eesen
 
-**Eesen** is a toolkit to build speech recognition (ASR) systems in a **completely end-to-end fashion**. The goal of Eesen is to **simplify** the existing complicated, expertise-intensive ASR pipeline into a straightforward learning problem. Acoustic modeling in Eesen involves training a single recurrent neural network (RNN) which models the sequence-to-sequence mapping from speech to transcripts. Therefore, Eesen **discards the following elements** required by the existing ASR pipeline:
+**Eesen** is a toolkit to build speech recognition (ASR) systems in a **completely end-to-end fashion**. The goal of Eesen is to **simplify** the existing complicated, expertise-intensive ASR pipeline into a straightforward learning problem. Acoustic modeling in Eesen involves training **a single recurrent neural network** (RNN) which models the sequence-to-sequence mapping from speech to transcripts. Therefore, Eesen **discards the following elements** required by the existing ASR pipeline:
 
 * Hidden Markov models (HMMs)
 * Training of Gaussian mixture models (GMMs)
@@ -10,7 +10,7 @@
 
 Eesen is developed on the basis of the popular [Kaldi](http://kaldi.sourceforge.net/) toolkit. However, Eesen is fully self-contained, requiring no dependencies from Kaldi to funciton. 
 
-Eesen is released as an open-source project under the highly non-restrictive **Apache License Version 2.0**. We welcome community participation and contribution.
+Eesen is released as **an open-source project** under the highly non-restrictive **Apache License Version 2.0**. We welcome community participation and contribution.
 
 
 # Key Components

@@ -6,7 +6,7 @@
 * Training of Gaussian mixture models (GMMs)
 * Decision trees and phonetic questions
 * Dictionary, if characters are used as the modeling units
-* ...
+* **...**
 
 Eesen is developed on the basis of the popular [Kaldi](http://kaldi.sourceforge.net/) toolkit. However, Eesen is fully self-contained, requiring no dependencies from Kaldi to funciton. 
 

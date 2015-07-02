@@ -22,7 +22,6 @@
 #include "nnet/nnet-activation.h"
 #include "nnet/nnet-affine-transform.h"
 #include "nnet/nnet-various.h"
-#include "nnet/nnet-lstm.h"
 #include "nnet/nnet-bilstm.h"
 #include "nnet/nnet-bilstm-parallel.h"
 

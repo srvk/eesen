@@ -51,7 +51,6 @@ class Component {
      
     kUpdatableComponent = 0x0100, 
     kAffineTransform,
-    kLstm,
     kBiLstm,
     kBiLstmParallel,
 

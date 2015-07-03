@@ -32,7 +32,6 @@ namespace nnet1 {
 
 const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kAffineTransform,"<AffineTransform>" },
-  { Component::kLstm,"<Lstm>"},
   { Component::kBiLstm,"<BiLstm>"},
   { Component::kBiLstmParallel,"<BiLstmParallel>"},
   { Component::kSoftmax,"<Softmax>" },
@@ -69,9 +68,6 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
   switch (comp_type) {
     case Component::kAffineTransform :
       ans = new AffineTransform(input_dim, output_dim); 
-      break;
-    case Component::kLstm :
-      ans = new Lstm(input_dim, output_dim);
       break;
     case Component::kBiLstm :
       ans = new BiLstm(input_dim, output_dim);

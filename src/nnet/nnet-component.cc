@@ -34,6 +34,8 @@ const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kAffineTransform,"<AffineTransform>" },
   { Component::kBiLstm,"<BiLstm>"},
   { Component::kBiLstmParallel,"<BiLstmParallel>"},
+  { Component::kLstm,"<Lstm>"},
+  { Component::kLstmParallel,"<LstmParallel>"},
   { Component::kSoftmax,"<Softmax>" },
 };
 
@@ -74,6 +76,12 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
       break;
     case Component::kBiLstmParallel :
       ans = new BiLstmParallel(input_dim, output_dim);
+      break;
+    case Component::kLstm :
+      ans = new Lstm(input_dim, output_dim);
+      break;
+    case Component::kLstmParallel :
+      ans = new LstmParallel(input_dim, output_dim);
       break;
     case Component::kSoftmax :
       ans = new Softmax(input_dim, output_dim);

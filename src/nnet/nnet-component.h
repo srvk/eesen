@@ -53,6 +53,8 @@ class Component {
     kAffineTransform,
     kBiLstm,
     kBiLstmParallel,
+    kLstm,
+    kLstmParallel,
 
     kActivationFunction = 0x0200, 
     kSoftmax, 

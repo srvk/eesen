@@ -518,17 +518,44 @@ public:
     }
 
     int32 NumParams() const {
-      /* return 2 * ( wei_gifo_x_fw_.NumRows() * wei_gifo_x_fw_.NumCols() +
+      return 2 * ( wei_gifo_x_fw_.NumRows() * wei_gifo_x_fw_.NumCols() +
                    wei_gifo_m_fw_.NumRows() * wei_gifo_m_fw_.NumCols() +
                    bias_fw_.Dim() +
                    phole_i_c_fw_.Dim() +
                    phole_f_c_fw_.Dim() +
-                   phole_o_c_fw_.Dim() ); */
-      return 0;
+                   phole_o_c_fw_.Dim() );
     }
 
     void GetParams(Vector<BaseFloat>* wei_copy) const {
-      return;
+      wei_copy->Resize(NumParams());
+      int32 offset = 0, size;
+      // copy parameters of the forward sub-layer
+      size = wei_gifo_x_fw_.NumRows() * wei_gifo_x_fw_.NumCols();
+      wei_copy->Range(offset, size).CopyRowsFromMat(wei_gifo_x_fw_); offset += size;
+      size = wei_gifo_m_fw_.NumRows() * wei_gifo_m_fw_.NumCols();
+      wei_copy->Range(offset, size).CopyRowsFromMat(wei_gifo_m_fw_); offset += size;
+      size = bias_fw_.Dim();
+      wei_copy->Range(offset, size).CopyFromVec(bias_fw_); offset += size;
+      size = phole_i_c_fw_.Dim();
+      wei_copy->Range(offset, size).CopyFromVec(phole_i_c_fw_); offset += size;
+      size = phole_f_c_fw_.Dim();
+      wei_copy->Range(offset, size).CopyFromVec(phole_f_c_fw_); offset += size;
+      size = phole_o_c_fw_.Dim();
+      wei_copy->Range(offset, size).CopyFromVec(phole_o_c_fw_); offset += size;
+      
+      // copy parameters of the backward sub-layer
+      size = wei_gifo_x_bw_.NumRows() * wei_gifo_x_bw_.NumCols();
+      wei_copy->Range(offset, size).CopyRowsFromMat(wei_gifo_x_bw_); offset += size;
+      size = wei_gifo_m_bw_.NumRows() * wei_gifo_m_bw_.NumCols();
+      wei_copy->Range(offset, size).CopyRowsFromMat(wei_gifo_m_bw_); offset += size;
+      size = bias_bw_.Dim();
+      wei_copy->Range(offset, size).CopyFromVec(bias_bw_); offset += size;
+      size = phole_i_c_bw_.Dim();
+      wei_copy->Range(offset, size).CopyFromVec(phole_i_c_bw_); offset += size;
+      size = phole_f_c_bw_.Dim();
+      wei_copy->Range(offset, size).CopyFromVec(phole_f_c_bw_); offset += size;
+      size = phole_o_c_bw_.Dim();
+      wei_copy->Range(offset, size).CopyFromVec(phole_o_c_bw_); offset += size;
     }
 
 //private:

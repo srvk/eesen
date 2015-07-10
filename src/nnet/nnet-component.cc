@@ -1,6 +1,7 @@
 // nnet/nnet-component.cc
 
 // Copyright 2011-2013  Brno University of Technology (Author: Karel Vesely)
+//                2015  Yajie Miao
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -24,6 +25,8 @@
 #include "nnet/nnet-various.h"
 #include "nnet/nnet-bilstm.h"
 #include "nnet/nnet-bilstm-parallel.h"
+#include "nnet/nnet-lstm.h"
+#include "nnet/nnet-lstm-parallel.h"
 
 #include <sstream>
 

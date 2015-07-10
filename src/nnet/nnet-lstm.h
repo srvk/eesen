@@ -28,7 +28,7 @@ class Lstm : public UpdatableComponent {
 public:
     Lstm(int32 input_dim, int32 output_dim) :
         UpdatableComponent(input_dim, output_dim),
-        cell_dim_(output_dim/2),
+        cell_dim_(output_dim),
         learn_rate_coef_(1.0), bias_learn_rate_coef_(1.0), max_grad_(0.0)
     { }
 

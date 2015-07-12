@@ -8,7 +8,7 @@ cmd=run.pl
 stage=0
 min_acwt=5
 max_acwt=10
-acwt_scale=0.1   # the scaling factor for the acoustic scale. The scaling factor for acoustic likelihoods
+acwt_factor=0.1   # the scaling factor for the acoustic scale. The scaling factor for acoustic likelihoods
                  # needs to be 0.5 ~1.0. However, the job submission script can only take integers as the
                  # job marker. That's why we set the acwt to be integers (5 ~ 10), but scale them with 0.1
                  # when they are actually used.
@@ -41,13 +41,15 @@ mkdir -p $dir/scoring/log
 cat $data/text | sed 's:<UNK>::g' | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' > $dir/scoring/test_filt.txt
 
 $cmd ACWT=$min_acwt:$max_acwt $dir/scoring/log/best_path.ACWT.log \
-  lattice-scale --acoustic-scale=ACWT --ascale-factor=$acwt_scale  "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+  lattice-scale --acoustic-scale=ACWT --ascale-factor=$acwt_factor  "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
   lattice-best-path --word-symbol-table=$symtab ark:- ark,t:$dir/scoring/ACWT.tra || exit 1;
 
 cat $data/text | sed 's:<UNK>::g' | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' > $dir/scoring/text_filt
-$cmd ACWT=$min_acwt:$max_acwt $dir/scoring/log/score.ACWT.log \
-   cat $dir/scoring/ACWT.tra | utils/int2sym.pl -f 2- $symtab | \
-   sed 's:<UNK>::g' | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' | \
-   compute-wer --text --mode=present ark:$dir/scoring/text_filt  ark,p:-  >& $dir/wer_ACWT || exit 1;
+
+for acwt in `seq $min_acwt $max_acwt`; do
+  cat $dir/scoring/${acwt}.tra | utils/int2sym.pl -f 2- $symtab | \
+    sed 's:<UNK>::g' | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' | \
+    compute-wer --text --mode=present ark:$dir/scoring/text_filt  ark,p:-  >& $dir/wer_$acwt || exit 1;
+done
 
 exit 0;

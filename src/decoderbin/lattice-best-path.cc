@@ -44,11 +44,9 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
     BaseFloat lm_scale = 1.0;
-    BaseFloat ascale_factor = 1.0;
 
     std::string word_syms_filename;
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
-    po.Register("ascale-factor", &ascale_factor, "Scaling factor for acoustic_scale.");
     po.Register("lm-scale", &lm_scale, "Scaling factor for LM probabilities. "
                 "Note: the ratio acoustic-scale/lm-scale is all that matters.");
     po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
@@ -59,8 +57,6 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
-
-    acoustic_scale *= ascale_factor;    
 
     std::string lats_rspecifier = po.GetArg(1),
         transcriptions_wspecifier = po.GetOptArg(2),

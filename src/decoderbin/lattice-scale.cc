@@ -40,12 +40,14 @@ int main(int argc, char *argv[]) {
       
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
+    BaseFloat ascale_factor = 1.0;
     BaseFloat inv_acoustic_scale = 1.0;
     BaseFloat lm_scale = 1.0;
     BaseFloat acoustic2lm_scale = 0.0;
     BaseFloat lm2acoustic_scale = 0.0;
     
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
+    po.Register("ascale-factor", &ascale_factor, "Scaling factor for acoustic_scale.");
     po.Register("inv-acoustic-scale", &inv_acoustic_scale, "An alternative way "
                 "of setting the acoustic scale: you can set its inverse.");
     po.Register("lm-scale", &lm_scale, "Scaling factor for graph/lm costs");
@@ -58,7 +60,9 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
-
+    
+    acoustic_scale *= ascale_factor;
+    
     std::string lats_rspecifier = po.GetArg(1),
         lats_wspecifier = po.GetArg(2);
 

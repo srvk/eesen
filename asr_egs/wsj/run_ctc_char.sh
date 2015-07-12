@@ -93,16 +93,24 @@ echo "                            Decoding                               "
 echo =====================================================================
 # Decoding with the basic vocabulary (from the CMU dict)
 for lm_suffix in tgpr tg; do
-  steps/decode_ctc.sh --cmd "$decode_cmd" --nj 10 --beam 30.0 --max-active 5000 --acoustic-scales "0.5 0.6 0.7" \
+#  steps/decode_ctc.sh --cmd "$decode_cmd" --nj 10 --beam 30.0 --max-active 5000 --acoustic-scales "0.5 0.6 0.7" \
+#    data/lang_char_test_${lm_suffix} data/test_dev93 $dir/decode_dev93_${lm_suffix} || exit 1;
+#  steps/decode_ctc.sh --cmd "$decode_cmd" --nj 8 --beam 30.0 --max-active 5000 --acoustic-scales "0.5 0.6 0.7" \
+#    data/lang_char_test_${lm_suffix} data/test_eval92 $dir/decode_eval92_${lm_suffix} || exit 1;
+  steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 10 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.9 \
     data/lang_char_test_${lm_suffix} data/test_dev93 $dir/decode_dev93_${lm_suffix} || exit 1;
-  steps/decode_ctc.sh --cmd "$decode_cmd" --nj 8 --beam 30.0 --max-active 5000 --acoustic-scales "0.5 0.6 0.7" \
+  steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 8 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.9 \
     data/lang_char_test_${lm_suffix} data/test_eval92 $dir/decode_eval92_${lm_suffix} || exit 1;
 done
 
 # Decoding with the expanded vocabulary
 for lm_suffix in tgpr tg; do
-  steps/decode_ctc.sh --cmd "$decode_cmd" --nj 10 --beam 30.0 --max-active 5000 --acoustic-scales "0.5 0.6 0.7" \
+#  steps/decode_ctc.sh --cmd "$decode_cmd" --nj 10 --beam 30.0 --max-active 5000 --acoustic-scales "0.5 0.6 0.7" \
+#    data/lang_char_larger_test_${lm_suffix} data/test_dev93 $dir/decode_dev93_${lm_suffix}_larger || exit 1;
+#  steps/decode_ctc.sh --cmd "$decode_cmd" --nj 8 --beam 30.0 --max-active 5000 --acoustic-scales "0.5 0.6 0.7" \
+#    data/lang_char_larger_test_${lm_suffix} data/test_eval92 $dir/decode_eval92_${lm_suffix}_larger || exit 1;
+  steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 10 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.9 \
     data/lang_char_larger_test_${lm_suffix} data/test_dev93 $dir/decode_dev93_${lm_suffix}_larger || exit 1;
-  steps/decode_ctc.sh --cmd "$decode_cmd" --nj 8 --beam 30.0 --max-active 5000 --acoustic-scales "0.5 0.6 0.7" \
+  steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 8 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.9 \
     data/lang_char_larger_test_${lm_suffix} data/test_eval92 $dir/decode_eval92_${lm_suffix}_larger || exit 1;
 done

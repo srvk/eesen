@@ -80,8 +80,13 @@ $cmd JOB=1:$nj $dir/log/decode.JOB.log \
 
 # Scoring
 if ! $skip_scoring ; then
-  [ ! -x local/score.sh ] && echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-  local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir || exit 1;
+  if [ -f $data/stm ]; then # use sclite scoring.
+    [ ! -x local/score_sclite.sh ] && echo "Not scoring because local/score_sclite.sh does not exist or not executable." && exit 1;
+    local/score_sclite.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir || exit 1;
+  else
+    [ ! -x local/score.sh ] && echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+    local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir || exit 1;
+  fi
 fi
 
 exit 0;

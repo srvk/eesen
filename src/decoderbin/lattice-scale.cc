@@ -1,4 +1,4 @@
-// latbin/lattice-scale.cc
+// decoderbin/lattice-scale.cc
 
 // Copyright 2009-2013  Microsoft Corporation
 //                      Johns Hopkins University (author: Daniel Povey)

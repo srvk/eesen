@@ -40,7 +40,7 @@ mkdir -p $dir $tmpdir
 
 [ -f path.sh ] && . ./path.sh
 
-cp $srcdir/lexicon_numbers.txt $dir
+cp $srcdir/{lexicon_numbers.txt,units.txt} $dir
 
 # Add probabilities to lexicon entries. There is in fact no point of doing this here since all the entries have 1.0.
 # But utils/make_lexicon_fst.pl requires a probabilistic version, so we just leave it as it is. 

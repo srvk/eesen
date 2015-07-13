@@ -1,7 +1,7 @@
 
 This dir contains recipes to build Eesen systems on Switchboard.
 
-At the minimum, you need to obtain the following LDC datasets:
+At the minimum, you need to obtain 3 LDC datasets:
 
 LDC97S62  LDC2002S09   LDC2002T43
 

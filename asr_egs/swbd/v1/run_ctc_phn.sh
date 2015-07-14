@@ -41,12 +41,12 @@ fbankdir=fbank
 
 # Generate the fbank features; by default 40-dimensional fbanks on each frame
 steps/make_fbank.sh --cmd "$train_cmd" --nj 32 data/train exp/make_fbank/train $fbankdir || exit 1;
-steps/compute_cmvn_stats.sh data/train exp/make_fbank/train $fbankdir || exit 1;
 utils/fix_data_dir.sh data/train || exit;
+steps/compute_cmvn_stats.sh data/train exp/make_fbank/train $fbankdir || exit 1;
 
 steps/make_fbank.sh --cmd "$train_cmd" --nj 10 data/eval2000 exp/make_fbank/eval2000 $fbankdir || exit 1;
-steps/compute_cmvn_stats.sh data/eval2000 exp/make_fbank/eval2000 $fbankdir || exit 1;
 utils/fix_data_dir.sh data/eval2000 || exit;
+steps/compute_cmvn_stats.sh data/eval2000 exp/make_fbank/eval2000 $fbankdir || exit 1;
 
 # Use the first 4k sentences as dev set, around 5 hours
 utils/subset_data_dir.sh --first data/train 4000 data/train_dev

@@ -29,15 +29,18 @@ Eesen contains 3 key components to enable end-to-end ASR:
 * Eesen's close connection with Kaldi makes the end-to-end systems directly comparable to Kaldi's hybrid HMM/DNN systems.
 * Fully-fledged [example setups](https://github.com/yajiemiao/eesen/tree/master/asr_egs) to demonstrate end-to-end system building, with both phonemes and characters as labels.
 
+# Updates
+
+Refer to [here](https://github.com/yajiemiao/eesen/wiki/Updates) for a list of recent updates.
+
 # Experimental Results
 
 Refer to RESULTS under each example setup.
 
 # To-Do List (short-term)
 
-* Create TIMIT and Switchboard example setups.
+* Create TIMIT example setups.
 * Add CPU-based training.
-* Add lattice-based decoding to example setups.
 * More Wiki pages/documentation, especially about training and decoding commands.
 
 # To-Do List (long-term)

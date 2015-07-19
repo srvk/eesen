@@ -32,6 +32,10 @@ dir=$3
 
 symtab=$lang_or_graph/words.txt
 
+hubscr=$KALDI_ROOT/tools/sctk/bin/hubscr.pl
+[ ! -f $hubscr ] && echo "Cannot find scoring program at $hubscr" && exit 1;
+hubdir=`dirname $hubscr`
+
 for f in $data/stm $data/glm $symtab $dir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done

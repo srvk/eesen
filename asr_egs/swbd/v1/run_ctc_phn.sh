@@ -83,7 +83,7 @@ utils/prep_ctc_trans.py data/lang_phn/lexicon_numbers.txt data/train_dev/text "<
 
 # Train the network with CTC. Refer to the script for details about the arguments
 steps/train_ctc_parallel.sh --add-deltas true --num-sequence 10 --frame-num-limit 25000 \
-    --learn-rate 0.00004 --report-step 1000 --halving-after-epoch 8 \
+    --learn-rate 0.00004 --report-step 1000 --halving-after-epoch 12 \
     data/train_100k_nodup data/train_dev $dir || exit 1;
 
 echo =====================================================================
@@ -91,7 +91,7 @@ echo "                   Decoding with the 110-Hour Set                  "
 echo =====================================================================
 # decoding
 for lm_suffix in sw1_tg sw1_fsh_tgpr; do
-  steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 20 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.9 \
+  steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 20 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.6 \
     data/lang_phn_${lm_suffix} data/eval2000 $dir/decode_eval2000_${lm_suffix} || exit 1;
 done
 
@@ -125,6 +125,6 @@ echo "                   Decoding with the 110-Hour Set                  "
 echo =====================================================================
 # decoding
 for lm_suffix in sw1_tg sw1_fsh_tgpr; do
-  steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 20 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.9 \
+  steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 20 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.6 \
     data/lang_phn_${lm_suffix} data/eval2000 $dir/decode_eval2000_${lm_suffix} || exit 1;
 done

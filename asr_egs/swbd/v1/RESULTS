@@ -1,0 +1,14 @@
+#!/bin/bash
+
+for x in exp_110h/*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null
+exit 0
+
+# CTC Phonemes on the 110-Hour set 
+%WER 21.4 | 1831 21395 | 82.1 14.1 3.9 3.5 21.4 59.4 | exp_110h/train_phn_l4_c320/decode_eval2000_sw1_tg/score_6/eval2000.ctm.swbd.filt.sys
+%WER 28.3 | 4459 42989 | 76.0 18.7 5.3 4.3 28.3 65.7 | exp_110h/train_phn_l4_c320/decode_eval2000_sw1_tg/score_6/eval2000.ctm.filt.sys
+%WER 35.0 | 2628 21594 | 70.1 23.2 6.7 5.1 35.0 70.1 | exp_110h/train_phn_l4_c320/decode_eval2000_sw1_tg/score_6/eval2000.ctm.callhm.filt.sys
+
+%WER 20.7 | 1831 21395 | 82.2 13.4 4.4 2.9 20.7 58.9 | exp_110h/train_phn_l4_c320/decode_eval2000_sw1_fsh_tgpr/score_5/eval2000.ctm.swbd.filt.sys
+%WER 27.2 | 4459 42989 | 76.4 17.6 6.1 3.5 27.2 64.9 | exp_110h/train_phn_l4_c320/decode_eval2000_sw1_fsh_tgpr/score_5/eval2000.ctm.filt.sys
+%WER 33.5 | 2628 21594 | 71.3 21.9 6.7 4.8 33.5 68.7 | exp_110h/train_phn_l4_c320/decode_eval2000_sw1_fsh_tgpr/score_6/eval2000.ctm.callhm.filt.sys
+

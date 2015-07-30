@@ -42,6 +42,10 @@ add_deltas=true          # whether to add deltas
 copy_feats=true          # whether to copy features into a local dir (on the GPU machine)
 feats_tmpdir=            # the tmp dir to save the copied features, when copy_feats=true
 
+# status of learning rate schedule; useful when training is resumed from a break point
+cvacc=0
+halving=0
+
 ## End configuration section
 
 echo "$0 $@"  # Print the command line for logging
@@ -65,6 +69,12 @@ mkdir -p $dir/log $dir/nnet
 for f in $data_tr/feats.scp $data_cv/feats.scp $dir/labels.tr.gz $dir/labels.cv.gz $dir/nnet.proto; do
   [ ! -f $f ] && echo "decode.sh: no such file $f" && exit 1;
 done
+
+## Read the training status for resuming
+[ -f $dir/.epoch ] && start_epoch_num=`cat $dir/.epoch 2>/dev/null`
+[ -f $dir/.cvacc ] && cvacc=`cat $dir/.cvacc 2>/dev/null`
+[ -f $dir/.halving ] && halving=`cat $dir/.halving 2>/dev/null`
+[ -f $dir/.lrate ] && learn_rate=`cat $dir/.lrate 2>/dev/null`
 
 ## Setup up features
 echo $norm_vars > $dir/norm_vars  # output feature configs which will be used in decoding
@@ -117,9 +127,7 @@ fi
 
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
 echo "TRAINING STARTS [$cur_time]"
-echo "[NOTE] TokenAcc refers to token accuracy, i.e., (1.0 - token_error_rate)."
-cvacc=0
-halving=0
+echo "[NOTE] TOKEN_ACCURACY refers to token accuracy, i.e., (1.0 - token_error_rate)."
 for iter in $(seq $start_epoch_num $max_iters); do
     cvacc_prev=$cvacc
     echo -n "EPOCH $iter RUNNING ... "
@@ -129,7 +137,7 @@ for iter in $(seq $start_epoch_num $max_iters); do
         --learn-rate=$learn_rate --momentum=$momentum \
         --verbose=$verbose \
         "$feats_tr" "$labels_tr" $dir/nnet/nnet.iter$[iter-1] $dir/nnet/nnet.iter${iter} \
-        >& $dir/log/tr.iter$iter.log
+        >& $dir/log/tr.iter$iter.log || exit 1;
 
     end_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
     echo -n "ENDS [$end_time]: "
@@ -144,7 +152,7 @@ for iter in $(seq $start_epoch_num $max_iters); do
         --momentum=$momentum \
         --verbose=$verbose \
         "$feats_cv" "$labels_cv" $dir/nnet/nnet.iter${iter} \
-        >& $dir/log/cv.iter$iter.log
+        >& $dir/log/cv.iter$iter.log || exit 1;
 
     cvacc=$(cat $dir/log/cv.iter${iter}.log | grep "TOKEN_ACCURACY" | tail -n 1 | awk '{ acc=$3; gsub("%","",acc); print acc; }')
     echo "VALID ACCURACY $(printf "%.4f" $cvacc)%"
@@ -173,9 +181,14 @@ for iter in $(seq $start_epoch_num $max_iters); do
     if [ 1 == $halving ]; then
       learn_rate=$(awk "BEGIN{print($learn_rate*$halving_factor)}")
     fi
+    # save the status 
+    echo $[$iter+1] > $dir/.epoch    # +1 because we save the epoch to start from
+    echo $cvacc > $dir/.cvacc
+    echo $halving > $dir/.halving
+    echo $learn_rate > $dir/.lrate
 done
 
 # Convert the model marker from "<BiLstmParallel>" to "<BiLstm>"
-nnet-format-to-nonparal $dir/nnet/nnet.iter${iter} $dir/final.nnet >& $dir/log/model_to_nonparal.log
+nnet-format-to-nonparal $dir/nnet/nnet.iter${iter} $dir/final.nnet >& $dir/log/model_to_nonparal.log || exit 1;
 
 echo "Training succeeded. The final model $dir/final.nnet"

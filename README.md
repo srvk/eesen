@@ -12,7 +12,10 @@ Eesen is developed on the basis of the popular [Kaldi](http://kaldi.sourceforge.
 
 Eesen is released as **an open-source project** under the highly non-restrictive **Apache License Version 2.0**. We welcome community participation and contribution.
 
+# References
+
 For **more informaiton**, please refer to our manuscript:
+
 [EESEN: End-to-End Speech Recognition using Deep RNN Models and WFST-based Decoding](http://arxiv.org/abs/1507.08240). 
 
 # Key Components

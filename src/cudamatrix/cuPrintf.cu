@@ -53,7 +53,7 @@
 
 #include "cuPrintf.cuh"
 #if __CUDA_ARCH__ > 100      // Atomics only used with > sm_10 architecture
-#include <sm_11_atomic_functions.h>
+#include <sm_35_atomic_functions.h>     /* Shixiong: check your directory here: /usr/local/cuda/include/sm_*_atomic_functions.h  */
 #endif
 
 // This is the smallest amount of memory, per-thread, which is allowed.

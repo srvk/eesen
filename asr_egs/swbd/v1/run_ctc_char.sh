@@ -79,8 +79,10 @@ utils/model_topo.py --input-feat-dim $input_feat_dim --lstm-layer-num $lstm_laye
   --lstm-cell-dim $lstm_cell_dim --target-num $target_num > $dir/nnet.proto || exit 1;
 
 # Label sequences; simply convert words into their label indices
-utils/prep_ctc_trans.py data/lang_char/lexicon_numbers.txt data/train_100k_nodup/text "<unk>" | gzip -c - > $dir/labels.tr.gz
-utils/prep_ctc_trans.py data/lang_char/lexicon_numbers.txt data/train_dev/text "<unk>" | gzip -c - > $dir/labels.cv.gz
+utils/prep_ctc_trans.py data/lang_char/lexicon_numbers.txt data/train_100k_nodup/text \
+  "<unk>" "<space>" | gzip -c - > $dir/labels.tr.gz
+utils/prep_ctc_trans.py data/lang_char/lexicon_numbers.txt data/train_dev/text \
+  "<unk>" "<space>" | gzip -c - > $dir/labels.cv.gz
 
 # Train the network with CTC. Refer to the script for details about the arguments
 steps/train_ctc_parallel.sh --add-deltas true --num-sequence 10 --frame-num-limit 25000 \
@@ -113,8 +115,10 @@ utils/model_topo.py --input-feat-dim $input_feat_dim --lstm-layer-num $lstm_laye
   --lstm-cell-dim $lstm_cell_dim --target-num $target_num > $dir/nnet.proto || exit 1;
 
 # Label sequences; simply convert words into their label indices
-utils/prep_ctc_trans.py data/lang_char/lexicon_numbers.txt data/train_nodup/text "<unk>" | gzip -c - > $dir/labels.tr.gz
-utils/prep_ctc_trans.py data/lang_char/lexicon_numbers.txt data/train_dev/text "<unk>" | gzip -c - > $dir/labels.cv.gz
+utils/prep_ctc_trans.py data/lang_char/lexicon_numbers.txt data/train_nodup/text \
+  "<unk>" "<space>" | gzip -c - > $dir/labels.tr.gz
+utils/prep_ctc_trans.py data/lang_char/lexicon_numbers.txt data/train_dev/text \
+  "<unk>" "<space>" | gzip -c - > $dir/labels.cv.gz
 
 # Train the network with CTC. Refer to the script for details about the arguments
 steps/train_ctc_parallel.sh --add-deltas true --num-sequence 10 --frame-num-limit 25000 \

@@ -75,7 +75,8 @@ target_num=`cat data/lang_phn/units.txt | wc -l`; target_num=$[$target_num+1]; #
 
 # Output the network topology
 utils/model_topo.py --input-feat-dim $input_feat_dim --lstm-layer-num $lstm_layer_num \
-  --lstm-cell-dim $lstm_cell_dim --target-num $target_num > $dir/nnet.proto || exit 1;
+  --lstm-cell-dim $lstm_cell_dim --target-num $target_num \
+  --fgate-bias-init 1.0 > $dir/nnet.proto || exit 1;
 
 # Label sequences; simply convert words into their label indices
 utils/prep_ctc_trans.py data/lang_phn/lexicon_numbers.txt data/train_100k_nodup/text "<unk>" | gzip -c - > $dir/labels.tr.gz
@@ -87,7 +88,7 @@ steps/train_ctc_parallel.sh --add-deltas true --num-sequence 10 --frame-num-limi
     data/train_100k_nodup data/train_dev $dir || exit 1;
 
 echo =====================================================================
-echo "                   Decoding with the 110-Hour Set                  "
+echo "                            Decoding                               "
 echo =====================================================================
 # decoding
 for lm_suffix in sw1_tg sw1_fsh_tgpr; do
@@ -100,7 +101,7 @@ echo "                  Network Training with the Full Set               "
 echo =====================================================================
 input_feat_dim=120   # dimension of the input features; we will use 40-dimensional fbanks with deltas and double deltas
 lstm_layer_num=5     # number of LSTM layers
-lstm_cell_dim=512    # number of memory cells in every LSTM layer
+lstm_cell_dim=320    # number of memory cells in every LSTM layer
 
 dir=exp/train_phn_l${lstm_layer_num}_c${lstm_cell_dim}
 mkdir -p $dir
@@ -109,7 +110,8 @@ target_num=`cat data/lang_phn/units.txt | wc -l`; target_num=$[$target_num+1]; #
 
 # Output the network topology
 utils/model_topo.py --input-feat-dim $input_feat_dim --lstm-layer-num $lstm_layer_num \
-  --lstm-cell-dim $lstm_cell_dim --target-num $target_num > $dir/nnet.proto || exit 1;
+  --lstm-cell-dim $lstm_cell_dim --target-num $target_num \
+  --fgate-bias-init 1.0 > $dir/nnet.proto || exit 1;
 
 # Label sequences; simply convert words into their label indices
 utils/prep_ctc_trans.py data/lang_phn/lexicon_numbers.txt data/train_nodup/text "<unk>" | gzip -c - > $dir/labels.tr.gz
@@ -121,7 +123,7 @@ steps/train_ctc_parallel.sh --add-deltas true --num-sequence 10 --frame-num-limi
     data/train_nodup data/train_dev $dir || exit 1;
 
 echo =====================================================================
-echo "                   Decoding with the 110-Hour Set                  "
+echo "                            Decoding                               "
 echo =====================================================================
 # decoding
 for lm_suffix in sw1_tg sw1_fsh_tgpr; do

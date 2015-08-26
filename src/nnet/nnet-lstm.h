@@ -43,6 +43,7 @@ public:
       // define options
       float param_range = 0.02, max_grad = 0.0;
       float learn_rate_coef = 1.0, bias_learn_rate_coef = 1.0;
+      float fgate_bias_init = 0.0;   // the initial value for the bias of the forget gates
       // parse config
       std::string token;
       while (!is.eof()) {
@@ -51,6 +52,7 @@ public:
         else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef);
         else if (token == "<BiasLearnRateCoef>") ReadBasicType(is, false, &bias_learn_rate_coef);
         else if (token == "<MaxGrad>") ReadBasicType(is, false, &max_grad);
+        else if (token == "<FgateBias>") ReadBasicType(is, false, &fgate_bias_init);
         else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                        << " (ParamRange|LearnRateCoef|BiasLearnRateCoef|MaxGrad)";
         is >> std::ws; // eat-up whitespace
@@ -62,6 +64,9 @@ public:
       wei_gifo_m_.Resize(4 * cell_dim_, cell_dim_);  wei_gifo_m_.InitRandUniform(param_range);
       // the bias for the units/gates
       bias_.Resize(4 * cell_dim_); bias_.InitRandUniform(param_range);
+      if (fgate_bias_init != 0.0) {   // reset the bias of the forget gates
+        bias_.Range(2 * cell_dim_, cell_dim_).Set(fgate_bias_init);
+      }
       // peephole connections for i, f, and o, with diagonal matrices (vectors)
       phole_i_c_.Resize(cell_dim_); phole_i_c_.InitRandUniform(param_range);
       phole_f_c_.Resize(cell_dim_); phole_f_c_.InitRandUniform(param_range);

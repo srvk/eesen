@@ -12,7 +12,7 @@ Eesen is developed on the basis of the popular [Kaldi](http://kaldi.sourceforge.
 
 Eesen is released as **an open-source project** under the highly non-restrictive **Apache License Version 2.0**. We **welcome community contribution**.
 
-Eesen was created and has been maintained by [Yajie Miao](http://www.cs.cmu.edu/~ymiao/) from Carnegie Mellon University.
+Eesen was created and has been maintained by [Yajie Miao](http://www.cs.cmu.edu/~ymiao/) from Carnegie Mellon University. Email [Yajie Miao](mailto:yajiemiao@gmail.com) if you have any questions or suggestions. 
 
 # References
 
@@ -45,11 +45,9 @@ Refer to RESULTS under each [example setup](https://github.com/yajiemiao/eesen/t
 
 # To-Do List
 
+* Example setups on more datasets.
 * More Wiki documentation.
-* Investigate the advantages and disadvantages of Eesen on different languages and conditions (noisy, far-field, etc.).
-* Accelerate model training by adopting better learning techniques or multi-GPU distributed learning.
+* Investigate Eesen's performance on different languages and conditions (noisy, far-field, etc.).
+* Accelerate model training using better learning techniques or multi-GPU distributed learning.
 * **...**
 
-# Contact
-
-Email [Yajie Miao](mailto:yajiemiao@gmail.com) if you have any questions.

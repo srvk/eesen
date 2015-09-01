@@ -33,7 +33,6 @@ Eesen contains 3 key components to enable end-to-end ASR:
 * GPU implementation of RNN model training and CTC learning.
 * Multiple utterances are processed in parallel for training speed-up.
 * Inherits Kaldi's programming stype. Convenient to implement new modules. 
-* Eesen's close connection with Kaldi makes the end-to-end systems directly comparable to Kaldi's hybrid HMM/DNN systems.
 * Fully-fledged [example setups](https://github.com/yajiemiao/eesen/tree/master/asr_egs) to demonstrate end-to-end system building, with both phonemes and characters as labels.
 
 # Updates
@@ -49,6 +48,7 @@ Refer to RESULTS under each example setup.
 * More Wiki documentation.
 * Investigate the advantages and disadvantages of Eesen on different languages and conditions (noisy, far-field, etc.).
 * Accelerate model training by adopting better learning techniques or multi-GPU distributed learning.
+* **...**
 
 # Contact
 

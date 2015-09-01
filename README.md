@@ -41,7 +41,7 @@ Refer to [here](https://github.com/yajiemiao/eesen/wiki/Updates) for a list of r
 
 # Experimental Results
 
-Refer to RESULTS under each example setup.
+Refer to RESULTS under each [example setups](https://github.com/yajiemiao/eesen/tree/master/asr_egs).
 
 # To-Do List
 

@@ -10,7 +10,9 @@
 
 Eesen is developed on the basis of the popular [Kaldi](http://kaldi.sourceforge.net/) toolkit. However, Eesen is fully self-contained, requiring no dependencies from Kaldi to funciton. 
 
-Eesen is released as **an open-source project** under the highly non-restrictive **Apache License Version 2.0**. We welcome community participation and contribution.
+Eesen is released as **an open-source project** under the highly non-restrictive **Apache License Version 2.0**. We **welcome community contribution**.
+
+Eesen was created and has been maintained by [Yajie Miao](http://www.cs.cmu.edu/~ymiao/) from Carnegie Mellon University.
 
 # References
 
@@ -42,18 +44,12 @@ Refer to [here](https://github.com/yajiemiao/eesen/wiki/Updates) for a list of r
 
 Refer to RESULTS under each example setup.
 
-# To-Do List (short-term)
+# To-Do List
 
-* Create TIMIT example setups.
-* Add CPU-based training.
-* More Wiki pages/documentation, especially about training and decoding commands.
-
-# To-Do List (long-term)
-
-* Further improve Eesen's ASR accuracy from various aspects, to make it eventually better than the state-of-the-art hybrid HMM/DNN pipeline.
-* Investigate the advantages and disadvantages of Eesen on different languages and speech conditions (noisy, far-field, etc.).
+* More Wiki documentation.
+* Investigate the advantages and disadvantages of Eesen on different languages and conditions (noisy, far-field, etc.).
 * Accelerate model training by adopting better learning techniques or multi-GPU distributed learning.
 
 # Contact
 
-Email [Yajie Miao](mailto:yajiemiao@gmail.com) if you have any questions or suggestions.
+Email [Yajie Miao](mailto:yajiemiao@gmail.com) if you have any questions.

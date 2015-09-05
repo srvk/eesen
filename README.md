@@ -14,6 +14,13 @@ Eesen is released as **an open-source project** under the highly non-restrictive
 
 Eesen was created and has been maintained by [Yajie Miao](http://www.cs.cmu.edu/~ymiao/) from Carnegie Mellon University. Email [Yajie Miao](mailto:yajiemiao@gmail.com) if you have any questions or suggestions. 
 
+# Recent Updates/News
+
+* By directly modeling **Madarin characters**, Eesen gets the **CER% of 35.47%** on the HKUST Mandarin Telephone Speech corpus. This is a better number than reported by [the Kaldi systems](https://github.com/kaldi-asr/kaldi/blob/master/egs/hkust/s5/RESULTS). [[recipe](https://github.com/yajiemiao/eesen/tree/master/asr_egs/hkust/v1)]
+* On **Switchboard**, Eesen gets the **WER% of 15.7% on Hub5'00-SWBD**, and 28.0% on Hub5'00. [[recipe](https://github.com/yajiemiao/eesen/tree/master/asr_egs/swbd/v1)] 
+
+Refer to [here](https://github.com/yajiemiao/eesen/wiki/Updates) for the full list of updates.
+
 # References
 
 For **more informaiton**, please refer to our manuscript:
@@ -34,10 +41,6 @@ Eesen contains 3 key components to enable end-to-end ASR:
 * Multiple utterances are processed in parallel for training speed-up.
 * Inherits Kaldi's programming stype. Convenient to implement new modules. 
 * Fully-fledged [example setups](https://github.com/yajiemiao/eesen/tree/master/asr_egs) to demonstrate end-to-end system building, with both phonemes and characters as labels.
-
-# Updates
-
-Refer to [here](https://github.com/yajiemiao/eesen/wiki/Updates) for a list of recent updates.
 
 # Experimental Results
 

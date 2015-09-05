@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Character Error Rate (CER)
+
+for x in exp/*/decode*; do [ -d $x ] && grep WER $x/cer_* | utils/best_wer.sh; done
+exit 0
+
+# CTC Characters
+%WER 35.47 [ 59574 / 167942, 11449 ins, 6253 del, 41872 sub ] exp/train_char_l5_c320/decode_dev/cer_8
+

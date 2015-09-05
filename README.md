@@ -19,7 +19,7 @@ Eesen was created and has been maintained by [Yajie Miao](http://www.cs.cmu.edu/
 * By directly modeling **Madarin characters**, Eesen gets the **CER% of 35.47%** on the HKUST Mandarin Telephone Speech corpus. This is a better number than reported by [the Kaldi systems](https://github.com/kaldi-asr/kaldi/blob/master/egs/hkust/s5/RESULTS). [[recipe](https://github.com/yajiemiao/eesen/tree/master/asr_egs/hkust/v1)]
 * On **Switchboard**, Eesen gets the **WER% of 15.7% on Hub5'00-SWBD**, and 28.0% on Hub5'00. [[recipe](https://github.com/yajiemiao/eesen/tree/master/asr_egs/swbd/v1)] 
 
-Refer to [here](https://github.com/yajiemiao/eesen/wiki/Updates) for the full list of updates.
+<!-- Refer to [here](https://github.com/yajiemiao/eesen/wiki/Updates) for the full list of updates. -->
 
 # References
 

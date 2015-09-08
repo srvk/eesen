@@ -78,7 +78,7 @@ utils/prep_ctc_trans.py data/lang_phn/lexicon_numbers.txt data/train_dev/text \
   "<UNK>" "<space>" | gzip -c - > $dir/labels.cv.gz
 
 # Train the network with CTC. Refer to the script for details about the arguments
-steps/train_ctc_parallel.sh --add-deltas true --num-sequence 10 \
+steps/train_ctc_parallel.sh --add-deltas true --num-sequence 10 --frame-num-limit 20000 \
     --learn-rate 0.00004 --report-step 1000 --halving-after-epoch 12 \
     --feats-tmpdir $dir/XXXXX \
     data/train_nodev data/train_dev $dir || exit 1;

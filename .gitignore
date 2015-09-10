@@ -1,0 +1,18 @@
+# Compiled extensionless executable files in /src/*/
+/src/*/*
+!/src/*/*.*
+!/src/doc/*
+!/src/*/Makefile
+!/src/*/README
+
+# Compiled Object files
+*.o
+
+# Compiled Static libraries
+*.a
+
+# Make dependencies
+.depend.mk
+
+# /src/
+/src/kaldi.mk

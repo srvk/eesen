@@ -12,10 +12,6 @@ Eesen is developed on the basis of the popular [Kaldi](http://kaldi.sourceforge.
 
 Eesen is released as **an open-source project** under the highly non-restrictive **Apache License Version 2.0**. We **welcome community contribution**.
 
-# Contact Us
-
-Post to [Issues](https://github.com/yajiemiao/eesen/issues) if you have questions. Or you may also email [Yajie Miao](mailto:yajiemiao@gmail.com). 
-
 <!-- Refer to [here](https://github.com/yajiemiao/eesen/wiki/Updates) for the full list of updates. -->
 
 # References
@@ -43,10 +39,6 @@ Eesen contains 3 key components to enable end-to-end ASR:
 
 Refer to RESULTS under each [example setup](https://github.com/yajiemiao/eesen/tree/master/asr_egs).
 
-# To-Do List
+# Contact
 
-* Example setups on more datasets.
-* More Wiki documentation.
-* Investigate Eesen's performance on different languages and conditions (noisy, far-field, etc.).
-* Multi-GPU model training.
-* **...**
+If you **have questions**, please post to [Issues](https://github.com/yajiemiao/eesen/issues) or [email us](mailto:yajiemiao@gmail.com).

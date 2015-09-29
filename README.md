@@ -12,12 +12,9 @@ Eesen is developed on the basis of the popular [Kaldi](http://kaldi.sourceforge.
 
 Eesen is released as **an open-source project** under the highly non-restrictive **Apache License Version 2.0**. We **welcome community contribution**.
 
-Eesen was created and has been maintained by [Yajie Miao](http://www.cs.cmu.edu/~ymiao/) from Carnegie Mellon University. Email [Yajie Miao](mailto:yajiemiao@gmail.com) if you have any questions or suggestions. 
+# Contact Us
 
-# Recent Updates/News
-
-* On **Switchboard**, Eesen gets the **WER% of 15.1% on Hub5'00-SWBD**, and 27.4% on Hub5'00. [[recipe](https://github.com/yajiemiao/eesen/tree/master/asr_egs/swbd/v1)]
-* By directly modeling **Madarin characters**, Eesen gets the **CER% of 35.47%** on the HKUST Mandarin Telephone Speech corpus. This is a better number than reported by [the Kaldi systems](https://github.com/kaldi-asr/kaldi/blob/master/egs/hkust/s5/RESULTS). [[recipe](https://github.com/yajiemiao/eesen/tree/master/asr_egs/hkust/v1)]
+Post to [Issues](https://github.com/yajiemiao/eesen/issues) if you have questions. Or you may also email [Yajie Miao](mailto:yajiemiao@gmail.com). 
 
 <!-- Refer to [here](https://github.com/yajiemiao/eesen/wiki/Updates) for the full list of updates. -->
 
@@ -51,6 +48,5 @@ Refer to RESULTS under each [example setup](https://github.com/yajiemiao/eesen/t
 * Example setups on more datasets.
 * More Wiki documentation.
 * Investigate Eesen's performance on different languages and conditions (noisy, far-field, etc.).
-* Accelerate model training using better learning techniques or multi-GPU distributed learning.
+* Multi-GPU model training.
 * **...**
-

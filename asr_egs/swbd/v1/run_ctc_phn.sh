@@ -119,7 +119,7 @@ utils/prep_ctc_trans.py data/lang_phn/lexicon_numbers.txt data/train_dev/text "<
 
 # Train the network with CTC. Refer to the script for details about the arguments
 steps/train_ctc_parallel.sh --add-deltas true --num-sequence 10 --frame-num-limit 25000 \
-    --learn-rate 0.00004 --report-step 1000 --halving-after-epoch 8 \
+    --learn-rate 0.00004 --report-step 1000 --halving-after-epoch 12 \
     data/train_nodup data/train_dev $dir || exit 1;
 
 echo =====================================================================

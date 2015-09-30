@@ -5,6 +5,8 @@
 for x in exp/*/decode*; do [ -d $x ] && grep WER $x/cer_* | utils/best_wer.sh; done
 exit 0
 
-# CTC Characters
-%WER 35.47 [ 59574 / 167942, 11449 ins, 6253 del, 41872 sub ] exp/train_char_l5_c320/decode_dev/cer_8
+# CTC Characters, with FBank features
+%WER 39.70 [ 22295 / 56154, 4074 ins, 1926 del, 16295 sub ] exp/train_char_l5_c320/decode_dev/cer_8
+# CTC Characters, with FBank+Pitch features
+%WER 38.67 [ 21714 / 56154, 3849 ins, 1974 del, 15891 sub ] exp/train_char_l5_c320_pitch/decode_dev/cer_8
 

@@ -95,7 +95,7 @@ echo "                           Decoding                                "
 echo =====================================================================
 # decoding
 for lm_suffix in sw1_tg sw1_fsh_tgpr; do
-  steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 20 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.6 \
+  steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 20 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.9 \
     data/lang_char_${lm_suffix} data/eval2000 $dir/decode_eval2000_${lm_suffix} || exit 1;
 done
 
@@ -132,6 +132,6 @@ echo "                           Decoding                                "
 echo =====================================================================
 # decoding
 for lm_suffix in sw1_tg sw1_fsh_tgpr; do
-  steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 20 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.6 \
+  steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 20 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.9 \
     data/lang_char_${lm_suffix} data/eval2000 $dir/decode_eval2000_${lm_suffix} || exit 1;
 done

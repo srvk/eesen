@@ -55,9 +55,19 @@ class Component {
     kBiLstmParallel,
     kLstm,
     kLstmParallel,
+    kConvolutionalComponent,
 
     kActivationFunction = 0x0200, 
-    kSoftmax, 
+    kSoftmax,
+    kNormalize,
+    kSigmoid,
+
+    kSplice = 0x0400,
+    kCopy,
+    kAddShift,
+    kRescale,
+    
+    kMaxPoolingComponent = 0x0800
   } ComponentType;
   /// A pair of type and marker 
   struct key_value {

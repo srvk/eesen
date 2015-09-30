@@ -27,6 +27,9 @@
 #include "nnet/nnet-bilstm-parallel.h"
 #include "nnet/nnet-lstm.h"
 #include "nnet/nnet-lstm-parallel.h"
+#include "nnet/nnet-convolutional-component.h"
+#include "nnet/nnet-max-pooling-component.h"
+#include "nnet/nnet-various-components.h"
 
 #include <sstream>
 
@@ -39,7 +42,15 @@ const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kBiLstmParallel,"<BiLstmParallel>"},
   { Component::kLstm,"<Lstm>"},
   { Component::kLstmParallel,"<LstmParallel>"},
+  { Component::kConvolutionalComponent, "<ConvolutionalComponent>"},
+  { Component::kMaxPoolingComponent, "<MaxPoolingComponent>"},
   { Component::kSoftmax,"<Softmax>" },
+  { Component::kNormalize,"<Normalize>"},
+  { Component::kSigmoid,"<Sigmoid>"},
+  { Component::kSplice,"<Splice>"},
+  { Component::kCopy,"<Copy>"},
+  { Component::kAddShift,"<AddShift>"},
+  { Component::kRescale,"<Rescale>"}
 };
 
 
@@ -88,6 +99,30 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
       break;
     case Component::kSoftmax :
       ans = new Softmax(input_dim, output_dim);
+      break;
+    case Component::kSigmoid :
+      ans = new Sigmoid(input_dim, output_dim);
+      break;
+    case Component::kNormalize :
+      ans = new Normalize(input_dim, output_dim);
+      break;
+    case Component::kConvolutionalComponent :
+      ans = new ConvolutionalComponent(input_dim, output_dim);
+      break;
+    case Component::kMaxPoolingComponent :
+      ans = new MaxPoolingComponent(input_dim, output_dim);
+      break;
+    case Component::kSplice :
+      ans = new Splice(input_dim, output_dim);
+      break;
+    case Component::kCopy :
+      ans = new CopyComponent(input_dim, output_dim);
+      break;
+    case Component::kAddShift :
+      ans = new AddShift(input_dim, output_dim);
+      break;
+    case Component::kRescale :
+      ans = new Rescale(input_dim, output_dim);
       break;
     case Component::kUnknown :
     default :

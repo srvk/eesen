@@ -1,4 +1,4 @@
-# Eesen
+### Eesen
 
 **Eesen** is to simplify the existing complicated, expertise-intensive ASR pipeline into a straightforward learning problem. Acoustic modeling in Eesen involves training a single recurrent neural network (RNN) to model the mapping from speech to transcripts. Eesen discards the following elements required by the existing ASR pipeline:
 
@@ -14,31 +14,30 @@ Eesen is released as an open-source project under the highly non-restrictive Apa
 
 <!-- Refer to [here](https://github.com/yajiemiao/eesen/wiki/Updates) for the full list of updates. -->
 
-# Key Components
+### Key Components
 
 Eesen contains 3 key components to enable end-to-end ASR:
 * **Acoustic Model** -- Bi-directional RNNs with LSTM units.
 * **Training**       -- [Connectionist temporal classification (CTC)](http://www.machinelearning.org/proceedings/icml2006/047_Connectionist_Tempor.pdf) as the training objective.
 * **Decoding**       -- A principled decoding approach based on Weighted Finite-State Transducers (WFSTs).  
 
-# Highlights of Eesen
+### Highlights of Eesen
 
 * The WFST-based decoding approach can incorporate lexicons and language models into CTC decoding in an effective and efficient way. 
-* GPU implementation of RNN model training and CTC learning.
+* GPU implementation of LSTM model training and CTC learning.
 * Multiple utterances are processed in parallel for training speed-up.
-* Inherits Kaldi's programming stype. Convenient to implement new modules. 
 * Fully-fledged [example setups](https://github.com/eesentk/eesen/tree/master/asr_egs) to demonstrate end-to-end system building, with both phonemes and characters as labels.
 
-# Experimental Results
+### Experimental Results
 
 Refer to RESULTS under each [example setup](https://github.com/eesentk/eesen/tree/master/asr_egs).
 
-# Contact
+### Contact
 
 If you have questions, post to [Issues](https://github.com/eesentk/eesen/issues) or [email us](mailto:yajiemiao@gmail.com).
 
-# References
+### References
 
-For more informaiton, refer to our paper:
+For more informaiton, refer to the following paper(s):
 
 [EESEN: End-to-End Speech Recognition using Deep RNN Models and WFST-based Decoding](http://arxiv.org/abs/1507.08240), ASRU 2015.

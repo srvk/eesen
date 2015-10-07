@@ -28,8 +28,7 @@
 #include <set>
 #include <vector>
 #include "fstext/lattice-weight.h"
-//#include "hmm/transition-model.h"
-#include "itf/options-itf.h"
+#include "util/options-itf.h"
 #include "lat/kaldi-lattice.h"
 
 namespace fst {
@@ -124,7 +123,7 @@ struct DeterminizeLatticePrunedOptions {
                                      max_states(-1),
                                      max_arcs(-1),
                                      retry_cutoff(0.5) { }
-  void Register (kaldi::OptionsItf *po) {
+  void Register (eesen::OptionsItf *po) {
     po->Register("delta", &delta, "Tolerance used in determinization");
     po->Register("max-mem", &max_mem, "Maximum approximate memory usage in "
                 "determinization (real usage might be many times this)");
@@ -160,7 +159,7 @@ struct DeterminizeLatticePhonePrunedOptions {
                                           phone_determinize(true),
                                           word_determinize(true),
                                           minimize(false) {}
-  void Register (kaldi::OptionsItf *po) {
+  void Register (eesen::OptionsItf *po) {
     po->Register("delta", &delta, "Tolerance used in determinization");
     po->Register("max-mem", &max_mem, "Maximum approximate memory usage in "
                 "determinization (real usage might be many times this).");
@@ -239,9 +238,9 @@ bool DeterminizeLatticePhonePruned(
     output side.
 */
 bool DeterminizeLatticePhonePrunedWrapper(
-    MutableFst<kaldi::LatticeArc> *ifst,
+    MutableFst<eesen::LatticeArc> *ifst,
     double prune,
-    MutableFst<kaldi::CompactLatticeArc> *ofst,
+    MutableFst<eesen::CompactLatticeArc> *ofst,
     DeterminizeLatticePhonePrunedOptions opts
       = DeterminizeLatticePhonePrunedOptions());
 /// @} end "addtogroup fst_extensions"

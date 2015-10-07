@@ -42,7 +42,7 @@
 #include "lm/kaldi-lmtable.h"
 
 
-namespace kaldi {
+namespace eesen {
 
 /// @defgroup LanguageModel LanguageModel
 /// @{
@@ -124,8 +124,8 @@ class LangModelFst: public fst::VectorFst<fst::StdArc> {
     // interpret "" as stdout for compatibility with OpenFst conventions.
     std::string wxfilename(filename == "" ? "-" : filename.c_str());
     bool write_binary = true, write_header = false;
-    kaldi::Output ko(wxfilename, write_binary, write_header);
-    fst::FstWriteOptions wopts(kaldi::PrintableWxfilename(wxfilename));
+    eesen::Output ko(wxfilename, write_binary, write_header);
+    fst::FstWriteOptions wopts(eesen::PrintableWxfilename(wxfilename));
     return /* fst::Verify(*pfst_) && */
         pfst_->Write(ko.Stream(), wopts);
   }
@@ -144,7 +144,7 @@ class LangModelFst: public fst::VectorFst<fst::StdArc> {
 };
 /// @} LanguageModel
 
-}  // end namespace kaldi
+}  // end namespace eesen
 
 #endif  // KALDI_LM_KALDI_LM_H_
 

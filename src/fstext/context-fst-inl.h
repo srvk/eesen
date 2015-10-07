@@ -331,7 +331,7 @@ void ContextFstImpl<Arc, LabelT>::Expand(StateId s) {  // expands arcs only [not
     this->AddArc(s, arc);
 #endif
   }
-  for (typename kaldi::ConstIntegerSet<Label>::iterator iter = phone_syms_.begin();
+  for (typename eesen::ConstIntegerSet<Label>::iterator iter = phone_syms_.begin();
        iter != phone_syms_.end(); ++iter) {
     Label phone = *iter;
     if (this->CreateArc(s, phone, &arc)) {
@@ -342,7 +342,7 @@ void ContextFstImpl<Arc, LabelT>::Expand(StateId s) {  // expands arcs only [not
 #endif
     }
   }
-  for (typename kaldi::ConstIntegerSet<Label>::iterator iter = disambig_syms_.begin();
+  for (typename eesen::ConstIntegerSet<Label>::iterator iter = disambig_syms_.begin();
        iter != disambig_syms_.end(); ++iter) {
     Label disambig_sym = *iter;
     if (this->CreateArc(s, disambig_sym, &arc)) {
@@ -430,9 +430,9 @@ template<class I>
 void WriteILabelInfo(std::ostream &os, bool binary,
                      const vector<vector<I> > &info) {
   I sz = info.size();
-  kaldi::WriteBasicType(os, binary, sz);
+  eesen::WriteBasicType(os, binary, sz);
   for (I i = 0; i < sz; i++) {
-    kaldi::WriteIntegerVector(os, binary, info[i]);
+    eesen::WriteIntegerVector(os, binary, info[i]);
   }
 }
 
@@ -441,11 +441,11 @@ template<class I>
 void ReadILabelInfo(std::istream &is, bool binary,
                     vector<vector<I> > *info) {
   I sz = info->size();
-  kaldi::ReadBasicType(is, binary, &sz);
+  eesen::ReadBasicType(is, binary, &sz);
   assert(info != NULL);
   info->resize(sz);
   for (int i = 0; i < sz; i++) {
-    kaldi::ReadIntegerVector(is, binary, &((*info)[i]));
+    eesen::ReadIntegerVector(is, binary, &((*info)[i]));
   }
 }
 

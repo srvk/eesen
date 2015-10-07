@@ -26,7 +26,7 @@
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
+    using namespace eesen;
     const char *usage =
         "Create Mel-filter bank (FBANK) feature files.\n"
         "Usage:  compute-fbank-feats [options...] <wav-rspecifier> <feats-wspecifier>\n";

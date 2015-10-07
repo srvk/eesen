@@ -22,12 +22,12 @@
 
 #include "feat/feature-mfcc.h"
 #include "base/kaldi-math.h"
-#include "matrix/kaldi-matrix-inl.h"
+#include "cpucompute/matrix-inl.h"
 #include "feat/wave-reader.h"
 
 
 // TODO: some of the other functions should be tested.  
-namespace kaldi {
+namespace eesen {
 
 void UnitTestOnlineCmvn() {
   for (int32 i = 0; i < 1000; i++) {
@@ -98,7 +98,7 @@ void UnitTestOnlineCmvn() {
 
 
 int main() {
-  using namespace kaldi;
+  using namespace eesen;
   try {
     UnitTestOnlineCmvn();
     std::cout << "Tests succeeded.\n";

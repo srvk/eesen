@@ -21,7 +21,7 @@
 #include "base/kaldi-common.h"
 #include "util/text-utils.h"
 
-namespace kaldi {
+namespace eesen {
 
 char GetRandChar() {
   return static_cast<char>(32 + Rand() % 95);  // between ' ' and '~'
@@ -185,7 +185,7 @@ void TestTrim() {
   KALDI_ASSERT(TrimTmp("X\n") == "X");
   KALDI_ASSERT(TrimTmp("X\n\t") == "X");
   KALDI_ASSERT(TrimTmp("\n\tX") == "X");
-} // end namespace kaldi
+} // end namespace eesen
 
 
 void TestSplitStringOnFirstSpace() {
@@ -234,10 +234,10 @@ void TestIsLine() {
   KALDI_ASSERT(!IsLine(" a b"));
 }
 
-} // end namespace kaldi
+} // end namespace eesen
 
 int main() {
-  using namespace kaldi;
+  using namespace eesen;
   TestSplitStringToVector();
   TestSplitStringToIntegers();
   TestSplitStringToFloats();

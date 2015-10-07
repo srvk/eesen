@@ -20,7 +20,7 @@
 #define KALDI_UTIL_KALDI_IO_INL_H_
 
 
-namespace kaldi {
+namespace eesen {
 
 bool Input::Open(const std::string &rxfilename, bool *binary) {
   return OpenInternal(rxfilename, true, binary);
@@ -39,7 +39,7 @@ bool Output::IsOpen() {
 }
 
 
-}  // end namespace kaldi.
+}  // end namespace eesen.
 
 
 #endif

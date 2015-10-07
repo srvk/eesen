@@ -280,11 +280,11 @@ bool PushCompactLatticeWeights(
 
 // Instantiate for CompactLattice.
 template
-bool PushCompactLatticeStrings<kaldi::LatticeWeight, kaldi::int32>(
-   MutableFst<kaldi::CompactLatticeArc> *clat);
+bool PushCompactLatticeStrings<eesen::LatticeWeight, eesen::int32>(
+   MutableFst<eesen::CompactLatticeArc> *clat);
 
 template
-bool PushCompactLatticeWeights<kaldi::LatticeWeight, kaldi::int32>(
-   MutableFst<kaldi::CompactLatticeArc> *clat);
+bool PushCompactLatticeWeights<eesen::LatticeWeight, eesen::int32>(
+   MutableFst<eesen::CompactLatticeArc> *clat);
 
 }  // namespace fst

@@ -29,7 +29,7 @@
 
 #include "base/kaldi-common.h"
 
-namespace kaldi {
+namespace eesen {
 
 /// Split a string using any of the single character delimiters.
 /// If omit_empty_strings == true, the output will contain any
@@ -163,6 +163,6 @@ bool IsToken(const std::string &token);
 bool IsLine(const std::string &line);
 
 
-}  // namespace kaldi
+}  // namespace eesen
 
 #endif  // KALDI_UTIL_TEXT_UTILS_H_

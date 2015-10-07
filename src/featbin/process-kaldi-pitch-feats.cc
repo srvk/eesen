@@ -27,7 +27,7 @@
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
+    using namespace eesen;
     const char *usage =
         "Post-process Kaldi pitch features, consisting of pitch and NCCF, into\n"
         "features suitable for input to ASR system.  Default setup produces\n"

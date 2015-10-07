@@ -99,9 +99,9 @@ class ContextFstImpl : public CacheImpl<Arc> {
   typedef typename Store::State State;
 #endif
   typedef unordered_map<vector<LabelT>,
-                        StateId, kaldi::VectorHasher<LabelT> > VectorToStateType;
+                        StateId, eesen::VectorHasher<LabelT> > VectorToStateType;
   typedef unordered_map<vector<LabelT>,
-                        Label, kaldi::VectorHasher<LabelT> > VectorToLabelType;
+                        Label, eesen::VectorHasher<LabelT> > VectorToLabelType;
 
   typedef typename VectorToStateType::const_iterator VectorToStateIter;
   typedef typename VectorToLabelType::const_iterator VectorToLabelIter;
@@ -172,8 +172,8 @@ class ContextFstImpl : public CacheImpl<Arc> {
   vector<vector<LabelT> > ilabel_info_;
 
   // Stuff we were provided at input (but changed to more convenient form):
-  kaldi::ConstIntegerSet<Label> phone_syms_;
-  kaldi::ConstIntegerSet<Label> disambig_syms_;
+  eesen::ConstIntegerSet<Label> phone_syms_;
+  eesen::ConstIntegerSet<Label> disambig_syms_;
   Label subsequential_symbol_;
   int N_;
   int P_;

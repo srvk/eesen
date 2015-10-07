@@ -20,7 +20,7 @@
 #include "base/io-funcs.h"
 #include "base/kaldi-math.h"
 
-namespace kaldi {
+namespace eesen {
 
 template<>
 void WriteBasicType<bool>(std::ostream &os, bool binary, bool b) {
@@ -203,4 +203,4 @@ void ExpectToken(std::istream &is, bool binary, const std::string &token) {
   ExpectToken(is, binary, token.c_str());
 }
 
-}  // end namespace kaldi
+}  // end namespace eesen

@@ -20,13 +20,13 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "matrix/kaldi-matrix.h"
+#include "cpucompute/matrix.h"
 #include "feat/cmvn.h"
 
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
+    using namespace eesen;
 
     const char *usage =
         "Apply cepstral mean and (optionally) variance normalization\n"
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
     }
     
     
-    kaldi::int32 num_done = 0, num_err = 0;
+    eesen::int32 num_done = 0, num_err = 0;
     
     std::string cmvn_rspecifier_or_rxfilename = po.GetArg(1);
     std::string feat_rspecifier = po.GetArg(2);

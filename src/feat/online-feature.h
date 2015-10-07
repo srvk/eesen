@@ -27,16 +27,16 @@
 #include <vector>
 #include <deque>
 
-#include "matrix/matrix-lib.h"
+#include "cpucompute/matrix-lib.h"
 #include "util/common-utils.h"
 #include "base/kaldi-error.h"
 #include "feat/feature-functions.h"
 #include "feat/feature-mfcc.h"
 #include "feat/feature-plp.h"
 #include "feat/feature-fbank.h"
-#include "itf/online-feature-itf.h"
+#include "feat/online-feature-itf.h"
 
-namespace kaldi {
+namespace eesen {
 /// @addtogroup  onlinefeat OnlineFeatureExtraction
 /// @{
 
@@ -538,6 +538,6 @@ class OnlineAppendFeature: public OnlineFeatureInterface {
 };
 
 /// @} End of "addtogroup onlinefeat"
-}  // namespace kaldi
+}  // namespace eesen
 
 #endif  // KALDI_FEAT_ONLINE_FEATURE_H_

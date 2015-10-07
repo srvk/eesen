@@ -60,9 +60,9 @@ void signal_handler(int) {
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
+    using namespace eesen;
     using namespace fst;
-    using kaldi::int32;
+    using eesen::int32;
 
     const char *usage =
         "Removes epsilons and determinizes in one step\n"

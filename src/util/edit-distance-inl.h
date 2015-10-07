@@ -22,7 +22,7 @@
 #include "util/stl-utils.h"
 
 
-namespace kaldi {
+namespace eesen {
 
 template<class T>
 int32 LevenshteinEditDistance(const std::vector<T> &a,
@@ -184,6 +184,6 @@ int32 LevenshteinAlignment(const std::vector<T> &a,
 }
 
 
-}  // end namespace kaldi
+}  // end namespace eesen
 
 #endif // KALDI_UTIL_EDIT_DISTANCE_INL_H_

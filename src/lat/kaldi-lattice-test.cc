@@ -22,7 +22,7 @@
 #include "fstext/rand-fst.h"
 
 
-namespace kaldi {
+namespace eesen {
 
 
 CompactLattice *RandCompactLattice() {
@@ -156,10 +156,10 @@ void TestLatticeTableCross(bool binary) {
 
 
 
-} // end namespace kaldi
+} // end namespace eesen
 
 int main() {
-  using namespace kaldi;
+  using namespace eesen;
   for (int i = 0; i < 2; i++) {
     bool binary = (i%2 == 0);
     TestCompactLatticeTable(binary);

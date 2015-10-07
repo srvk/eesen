@@ -30,9 +30,9 @@
 #include "base/kaldi-common.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
-#include "itf/decodable-itf.h"
+#include "decoder/decodable-itf.h"
 
-namespace kaldi {
+namespace eesen {
 
 /// This function iterates over the states of a topologically sorted lattice and
 /// counts the time instance corresponding to each state. The times are returned
@@ -150,6 +150,6 @@ void ComposeCompactLatticeDeterministic(
     fst::DeterministicOnDemandFst<fst::StdArc>* det_fst,
     CompactLattice* composed_clat);
 
-}  // namespace kaldi
+}  // namespace eesen
 
 #endif  // KALDI_LAT_LATTICE_FUNCTIONS_H_

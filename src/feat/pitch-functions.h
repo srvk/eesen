@@ -29,11 +29,11 @@
 
 #include "base/kaldi-error.h"
 #include "feat/mel-computations.h"
-#include "itf/online-feature-itf.h"
-#include "matrix/matrix-lib.h"
+#include "feat/online-feature-itf.h"
+#include "cpucompute/matrix-lib.h"
 #include "util/common-utils.h"
 
-namespace kaldi {
+namespace eesen {
 /// @addtogroup  feat FeatureExtraction
 /// @{
 
@@ -434,5 +434,5 @@ void ComputeAndProcessKaldiPitch(const PitchExtractionOptions &pitch_opts,
 
 
 /// @} End of "addtogroup feat"
-}  // namespace kaldi
+}  // namespace eesen
 #endif  // KALDI_FEAT_PITCH_FUNCTIONS_H_

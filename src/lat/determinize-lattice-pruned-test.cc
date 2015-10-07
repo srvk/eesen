@@ -34,7 +34,7 @@ namespace fst {
 // FSTs (not guaranteed determinzable, but we use the
 // max-states option to stop it getting out of control).
 template<class Arc> void TestDeterminizeLatticePruned() {
-  typedef kaldi::int32 Int;
+  typedef eesen::int32 Int;
   typedef typename Arc::Weight Weight;
   typedef ArcTpl<CompactLatticeWeightTpl<Weight, Int> > CompactArc;
   
@@ -57,7 +57,7 @@ template<class Arc> void TestDeterminizeLatticePruned() {
     KALDI_ASSERT(sorted);
 
     ILabelCompare<Arc> ilabel_comp;
-    if (kaldi::Rand() % 2 == 0)
+    if (eesen::Rand() % 2 == 0)
       ArcSort(fst, ilabel_comp);
     
     std::cout << "FST before lattice-determinizing is:\n";
@@ -72,9 +72,9 @@ template<class Arc> void TestDeterminizeLatticePruned() {
     VectorFst<Arc> det_fst;
     try {
       DeterminizeLatticePrunedOptions lat_opts;
-      lat_opts.max_mem = ((kaldi::Rand() % 2 == 0) ? 100 : 1000);
-      lat_opts.max_states = ((kaldi::Rand() % 2 == 0) ? -1 : 20);
-      lat_opts.max_arcs = ((kaldi::Rand() % 2 == 0) ? -1 : 30);
+      lat_opts.max_mem = ((eesen::Rand() % 2 == 0) ? 100 : 1000);
+      lat_opts.max_states = ((eesen::Rand() % 2 == 0) ? -1 : 20);
+      lat_opts.max_arcs = ((eesen::Rand() % 2 == 0) ? -1 : 30);
       bool ans = DeterminizeLatticePruned<Weight>(*fst, 10.0, &det_fst, lat_opts);
 
       std::cout << "FST after lattice-determinizing is:\n";
@@ -94,7 +94,7 @@ template<class Arc> void TestDeterminizeLatticePruned() {
 
       VectorFst<Arc> pruned_fst(*fst);
       if (pruned_fst.NumStates() != 0)
-        kaldi::PruneLattice(10.0, &pruned_fst);
+        eesen::PruneLattice(10.0, &pruned_fst);
       
       VectorFst<CompactArc> compact_pruned_fst, compact_pruned_det_fst;
       ConvertLattice<Weight, Int>(pruned_fst, &compact_pruned_fst, false);
@@ -120,7 +120,7 @@ template<class Arc> void TestDeterminizeLatticePruned() {
       }
 
       if (ans)
-        KALDI_ASSERT(RandEquivalent(compact_pruned_det_fst, compact_pruned_fst, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length, max*/));
+        KALDI_ASSERT(RandEquivalent(compact_pruned_det_fst, compact_pruned_fst, 5/*paths*/, 0.01/*delta*/, eesen::Rand()/*seed*/, 100/*path length, max*/));
     } catch (...) {
       std::cout << "Failed to lattice-determinize this FST (probably not determinizable)\n";
     }
@@ -165,7 +165,7 @@ template<class Arc> void TestDeterminizeLatticePruned2() {
 
 int main() {
   using namespace fst;
-  TestDeterminizeLatticePruned<kaldi::LatticeArc>();
-  TestDeterminizeLatticePruned2<kaldi::LatticeArc>();
+  TestDeterminizeLatticePruned<eesen::LatticeArc>();
+  TestDeterminizeLatticePruned2<eesen::LatticeArc>();
   std::cout << "Tests succeeded\n";
 }

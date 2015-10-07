@@ -24,8 +24,9 @@
 #include <string>
 
 #include "feat/feature-functions.h"
+#include "feat/srfft.h"
 
-namespace kaldi {
+namespace eesen {
 /// @addtogroup  feat FeatureExtraction
 /// @{
 
@@ -129,7 +130,7 @@ class Mfcc {
 
 
 /// @} End of "addtogroup feat"
-}  // namespace kaldi
+}  // namespace eesen
 
 
 #endif  // KALDI_FEAT_FEATURE_MFCC_H_

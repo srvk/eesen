@@ -20,12 +20,12 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "feat/feature-functions.h"
-#include "matrix/kaldi-matrix.h"
+#include "cpucompute/matrix.h"
 
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
+    using namespace eesen;
 
     const char *usage =
         "Add deltas (typically to raw mfcc or plp features\n"

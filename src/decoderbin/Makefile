@@ -1,14 +1,14 @@
 
 all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
-include ../kaldi.mk
+include ../config.mk
 
 BINFILES = analyze-counts arpa2fst compute-wer decode-faster latgen-faster lattice-best-path lattice-1best lattice-scale nbest-to-ctm
 
 OBJFILES =
 
-ADDLIBS = ../lm/kaldi-lm.a ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a \
-	  ../matrix/kaldi-matrix.a  ../util/kaldi-util.a ../base/kaldi-base.a
+ADDLIBS = ../lm/lm.a ../decoder/decoder.a ../lat/lat.a \
+	  ../cpucompute/cpucompute.a  ../util/util.a ../base/base.a
 
 
 TESTFILES =

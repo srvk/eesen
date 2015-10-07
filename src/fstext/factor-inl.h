@@ -98,7 +98,7 @@ void Factor(const Fst<Arc> &fst, MutableFst<Arc> *ofst,
                  || state_properties[i] == (kStateArcsIn|kStateArcsOut|kStateIlabelsOut));
   vector<StateId> state_mapping(max_state+1, kNoStateId);
 
-  typedef unordered_map<vector<I>, Label, kaldi::VectorHasher<I> > SymbolMapType;
+  typedef unordered_map<vector<I>, Label, eesen::VectorHasher<I> > SymbolMapType;
   SymbolMapType symbol_mapping;
   Label symbol_counter = 0;
   {
@@ -242,7 +242,7 @@ public:
          assert(to_remove_set_.count(0) == 0);  // makes no sense to remove epsilon.
        }
 private:
-  kaldi::ConstIntegerSet<I> to_remove_set_;
+  eesen::ConstIntegerSet<I> to_remove_set_;
 };
 
 

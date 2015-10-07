@@ -20,7 +20,7 @@
 // limitations under the License.
 #include "util/parse-options.h"
 
-namespace kaldi {
+namespace eesen {
 
 struct DummyOptions {
   int32 my_int;
@@ -274,10 +274,10 @@ void UnitTestParseOptions() {
 }
 
 
-}  // end namespace kaldi.
+}  // end namespace eesen.
 
 int main() {
-  using namespace kaldi;
+  using namespace eesen;
   UnitTestParseOptions();
   return 0;
 }

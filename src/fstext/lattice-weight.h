@@ -26,7 +26,7 @@
 
 namespace fst {
 
-// Declare weight type for lattice... will import to namespace kaldi.  has two
+// Declare weight type for lattice... will import to namespace eesen.  has two
 // members, value1_ and value2_, of type BaseFloat (normally equals float).  It
 // is basically the same as the tropical semiring on value1_+value2_, except it
 // keeps track of a and b separately.  More precisely, it is equivalent to the

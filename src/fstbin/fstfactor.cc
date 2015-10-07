@@ -41,9 +41,9 @@
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
+    using namespace eesen;
     using namespace fst;
-    using kaldi::int32;
+    using eesen::int32;
     /*
       fstfactor in.fst out1.fst out2.fst
       produces two fsts such that the composition of out1.fst and out2.fst

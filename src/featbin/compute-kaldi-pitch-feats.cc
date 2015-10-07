@@ -26,7 +26,7 @@
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
+    using namespace eesen;
     const char *usage =
         "Apply Kaldi pitch extractor, starting from wav input.  Output is 2-dimensional\n"
         "features consisting of (NCCF, pitch in Hz), where NCCF is between -1 and 1, and\n"

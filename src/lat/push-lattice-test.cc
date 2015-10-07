@@ -23,7 +23,7 @@
 #include "fstext/rand-fst.h"
 
 
-namespace kaldi {
+namespace eesen {
 using namespace fst;
 
 CompactLattice *RandCompactLattice() {
@@ -117,11 +117,11 @@ void TestPushCompactLatticeWeights() {
 
 
 
-} // end namespace kaldi
+} // end namespace eesen
 
 int main() {
-  using namespace kaldi;
-  using kaldi::int32;
+  using namespace eesen;
+  using eesen::int32;
   for (int32 i = 0; i < 15; i++) {
     TestPushCompactLatticeStrings();
     TestPushCompactLatticeWeights();

@@ -44,7 +44,7 @@
 #include <fst/fstlib.h>
 #include <fst/fst-decl.h>
 #include "fstext/context-fst.h"
-#include "itf/context-dep-itf.h"
+#include "fstext/context-dep-itf.h"
 
 
 namespace fst {
@@ -55,7 +55,7 @@ namespace fst {
 //! ctx_dep [in] object that
 
 template<typename L>
-bool ContextExpandLeaves(const kaldi::ContextDependencyInterface &ctx_dep,
+bool ContextExpandLeaves(const eesen::ContextDependencyInterface &ctx_dep,
                          const vector<L> &phones,
                          const vector<L> &disambig_syms,
                          const vector<vector<L> > &symbol_map_in,

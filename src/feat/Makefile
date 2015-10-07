@@ -2,19 +2,19 @@
 
 all:
 
-include ../kaldi.mk
+include ../config.mk
 
 TESTFILES = feature-mfcc-test feature-plp-test feature-fbank-test \
          feature-functions-test pitch-functions-test feature-sdc-test \
          resample-test
 
-OBJFILES = cmvn.o feature-functions.o feature-mfcc.o feature-plp.o feature-fbank.o \
+OBJFILES = srfft.o cmvn.o feature-functions.o feature-mfcc.o feature-plp.o feature-fbank.o \
            feature-spectrogram.o mel-computations.o wave-reader.o \
            pitch-functions.o resample.o online-feature.o
 
-LIBNAME = kaldi-feat
+LIBNAME = feat
 
-ADDLIBS = ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a ../thread/kaldi-thread.a
+ADDLIBS = ../util/util.a ../cpucompute/cpucompute.a ../base/base.a ../thread/thread.a
 
 include ../makefiles/default_rules.mk
 

@@ -25,12 +25,12 @@
 #include <string>
 #include <vector>
 
-#include "matrix/matrix-lib.h"
+#include "cpucompute/matrix-lib.h"
 #include "util/common-utils.h"
 #include "base/kaldi-error.h"
 #include "feat/mel-computations.h"
 
-namespace kaldi {
+namespace eesen {
 /// @addtogroup  feat FeatureExtraction
 /// @{
 
@@ -346,7 +346,7 @@ void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
 
 
 /// @} End of "addtogroup feat"
-}  // namespace kaldi
+}  // namespace eesen
 
 
 

@@ -19,10 +19,10 @@
 #include "util/simple-io-funcs.h"
 #include "util/text-utils.h"
 
-namespace kaldi {
+namespace eesen {
 
 bool WriteIntegerVectorSimple(std::string wxfilename, const std::vector<int32> &list) {
-  kaldi::Output ko;
+  eesen::Output ko;
   // false, false is: text-mode, no Kaldi header.
   if (!ko.Open(wxfilename, false, false)) return false;
   for (size_t i = 0; i < list.size(); i++) ko.Stream() << list[i] << '\n';
@@ -30,7 +30,7 @@ bool WriteIntegerVectorSimple(std::string wxfilename, const std::vector<int32> &
 }
 
 bool ReadIntegerVectorSimple(std::string rxfilename, std::vector<int32> *list) {
-  kaldi::Input ki;
+  eesen::Input ki;
   if (!ki.OpenTextMode(rxfilename)) return false;
   std::istream &is = ki.Stream();
   int32 i;
@@ -42,7 +42,7 @@ bool ReadIntegerVectorSimple(std::string rxfilename, std::vector<int32> *list) {
 }
 
 bool WriteIntegerVectorVectorSimple(std::string wxfilename, const std::vector<std::vector<int32> > &list) {
-  kaldi::Output ko;
+  eesen::Output ko;
   // false, false is: text-mode, no Kaldi header.
   if (!ko.Open(wxfilename, false, false)) return false;
   std::ostream &os = ko.Stream();
@@ -57,7 +57,7 @@ bool WriteIntegerVectorVectorSimple(std::string wxfilename, const std::vector<st
 }
 
 bool ReadIntegerVectorVectorSimple(std::string rxfilename, std::vector<std::vector<int32> > *list) {
-  kaldi::Input ki;
+  eesen::Input ki;
   if (!ki.OpenTextMode(rxfilename)) return false;
   std::istream &is = ki.Stream();
   list->clear();
@@ -74,4 +74,4 @@ bool ReadIntegerVectorVectorSimple(std::string rxfilename, std::vector<std::vect
 }
 
 
-}  // end namespace kaldi
+}  // end namespace eesen

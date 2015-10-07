@@ -26,7 +26,7 @@
 #include "feat/mel-computations.h"
 #include "feat/feature-functions.h"
 
-namespace kaldi {
+namespace eesen {
 
 
 MelBanks::MelBanks(const MelBanksOptions &opts,
@@ -304,4 +304,4 @@ void Lpc2Cepstrum(int n, const BaseFloat *pLPC, BaseFloat *pCepst) {
 }
 
 
-}  // namespace kaldi
+}  // namespace eesen

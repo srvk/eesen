@@ -25,7 +25,7 @@
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
+    using namespace eesen;
     const char *usage =
         "Create MFCC feature files.\n"
         "Usage:  compute-mfcc-feats [options...] <wav-rspecifier> <feats-wspecifier>\n";

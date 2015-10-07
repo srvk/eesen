@@ -43,9 +43,9 @@
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
+    using namespace eesen;
     using namespace fst;
-    using kaldi::int32;
+    using eesen::int32;
 
     const char *usage =
         "Removes some (but not all) epsilons in an algorithm that will always reduce the number of\n"

@@ -24,10 +24,11 @@
 #include <string>
 
 #include "feat/feature-functions.h"
-#include "itf/options-itf.h"
-#include "matrix/kaldi-matrix-inl.h"
+#include "util/options-itf.h"
+#include "cpucompute/matrix-inl.h"
+#include "feat/srfft.h"
 
-namespace kaldi {
+namespace eesen {
 /// @addtogroup  feat FeatureExtraction
 /// @{
 
@@ -150,7 +151,7 @@ class Plp {
 
 /// @} End of "addtogroup feat"
 
-}  // namespace kaldi
+}  // namespace eesen
 
 
 #endif  // KALDI_FEAT_FEATURE_PLP_H_

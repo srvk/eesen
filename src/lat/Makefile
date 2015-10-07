@@ -1,7 +1,7 @@
 
 all:
 
-include ../kaldi.mk
+include ../config.mk
 
 EXTRA_CXXFLAGS += -Wno-sign-compare
 
@@ -12,10 +12,10 @@ OBJFILES = kaldi-lattice.o lattice-functions.o \
        push-lattice.o minimize-lattice.o \
        determinize-lattice-pruned.o confidence.o
 
-LIBNAME = kaldi-lat
+LIBNAME = lat
 
-ADDLIBS = ../matrix/kaldi-matrix.a \
-          ../util/kaldi-util.a ../base/kaldi-base.a
+ADDLIBS = ../cpucompute/cpucompute.a \
+          ../util/util.a ../base/base.a
 
 
 include ../makefiles/default_rules.mk

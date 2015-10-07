@@ -19,7 +19,7 @@
 #include <string>
 #include "base/kaldi-common.h"
 
-namespace kaldi {
+namespace eesen {
 
 std::string CharToString(const char &c) {
   char buf[20];
@@ -30,4 +30,4 @@ std::string CharToString(const char &c) {
   return (std::string) buf;
 }
 
-}  // end namespace kaldi
+}  // end namespace eesen

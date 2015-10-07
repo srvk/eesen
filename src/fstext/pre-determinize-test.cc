@@ -33,7 +33,7 @@ template<class Arc>  void TestPreDeterminize() {
   typedef typename Arc::Weight Weight;
 
   VectorFst<Arc> *fst = new VectorFst<Arc>();
-  int n_syms = 2 + kaldi::Rand() % 5, n_states = 3 + kaldi::Rand() % 10, n_arcs = 5 + kaldi::Rand() % 30, n_final = 1 + kaldi::Rand()%3;  // Up to 2 unique symbols.
+  int n_syms = 2 + eesen::Rand() % 5, n_states = 3 + eesen::Rand() % 10, n_arcs = 5 + eesen::Rand() % 30, n_final = 1 + eesen::Rand()%3;  // Up to 2 unique symbols.
   cout << "Testing pre-determinize with "<<n_syms<<" symbols, "<<n_states<<" states and "<<n_arcs<<" arcs and "<<n_final<<" final states.\n";
   SymbolTable *sptr = NULL;
   
@@ -51,19 +51,19 @@ template<class Arc>  void TestPreDeterminize() {
   }
   // Set final states.
   for (size_t j = 0;j < (size_t)n_final;j++) {
-    StateId id = all_states[kaldi::Rand() % n_states];
-    Weight weight = (Weight)(0.33*(kaldi::Rand() % 5) );
+    StateId id = all_states[eesen::Rand() % n_states];
+    Weight weight = (Weight)(0.33*(eesen::Rand() % 5) );
     printf("calling SetFinal with %d and %f\n", id, weight.Value());
     fst->SetFinal(id, weight);
   }
   // Create arcs.
   for (size_t i = 0;i < (size_t)n_arcs;i++) {
     Arc a;
-    a.nextstate = all_states[kaldi::Rand() % n_states];
-    a.ilabel = all_syms[kaldi::Rand() % n_syms];
-    a.olabel = all_syms[kaldi::Rand() % n_syms];  // same input+output vocab.
-    a.weight = (Weight) (0.33*(kaldi::Rand() % 2));
-    StateId start_state = all_states[kaldi::Rand() % n_states];
+    a.nextstate = all_states[eesen::Rand() % n_states];
+    a.ilabel = all_syms[eesen::Rand() % n_syms];
+    a.olabel = all_syms[eesen::Rand() % n_syms];  // same input+output vocab.
+    a.weight = (Weight) (0.33*(eesen::Rand() % 2));
+    StateId start_state = all_states[eesen::Rand() % n_states];
     fst->AddArc(start_state, a);
   }
 
@@ -155,7 +155,7 @@ template<class Arc>  void TestPreDeterminize() {
   std::cout <<" Checking equivalent to original FST.\n";
   // giving Rand() as a seed stops the random number generator from always being reset to
   // the same point each time, while maintaining determinism of the test.
-  assert(RandEquivalent(ofst, *fst_copy_orig, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
+  assert(RandEquivalent(ofst, *fst_copy_orig, 5/*paths*/, 0.01/*delta*/, eesen::Rand()/*seed*/, 100/*path length-- max?*/));
 
   delete fst;
   delete fst_copy_orig;
@@ -210,7 +210,7 @@ template<class Arc>  void TestAddSelfLoops() {
 
 
   // So states 1 and 2 should have self-loops on.
-  size_t num_extra = kaldi::Rand() % 5;
+  size_t num_extra = eesen::Rand() % 5;
   vector<Label> extra_ilabels, extra_olabels;
   CreateNewSymbols(ilabels,  num_extra, "in#", &extra_ilabels);
   CreateNewSymbols(olabels,  num_extra, "out#", &extra_olabels);

@@ -20,7 +20,7 @@
 #include "decoder/decoder-wrappers.h"
 #include "decoder/faster-decoder.h"
 
-namespace kaldi {
+namespace eesen {
 
 bool DecodeUtteranceLatticeFaster(
     LatticeFasterDecoder &decoder, // not const but is really an input.
@@ -117,4 +117,4 @@ bool DecodeUtteranceLatticeFaster(
   return true;
 }
 
-} // end namespace kaldi.
+} // end namespace eesen.

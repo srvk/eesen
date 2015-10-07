@@ -78,7 +78,7 @@
 # define KALDI_SQR(x) ((x) * (x))
 #endif
 
-namespace kaldi {
+namespace eesen {
 
 // -infinity
 const float kLogZeroFloat = -std::numeric_limits<float>::infinity();
@@ -340,7 +340,7 @@ inline double Log(double x) { return log(x); }
 inline float Log(float x) { return logf(x); }
 
 
-}  // namespace kaldi
+}  // namespace eesen
 
 
 #endif  // KALDI_BASE_KALDI_MATH_H_

@@ -24,9 +24,9 @@
 #include <algorithm>
 #include "util/kaldi-io.h"
 #include "util/text-utils.h"
-#include "matrix/kaldi-matrix.h"
+#include "cpucompute/matrix.h"
 
-namespace kaldi {
+namespace eesen {
 
 /// \addtogroup holders
 /// @{
@@ -793,7 +793,7 @@ template<int kFeatDim> class SphinxMatrixHolder {
 
 /// @} end "addtogroup holders"
 
-} // end namespace kaldi
+} // end namespace eesen
 
 
 

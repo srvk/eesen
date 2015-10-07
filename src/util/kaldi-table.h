@@ -28,7 +28,7 @@
 #include "base/kaldi-common.h"
 #include "util/kaldi-holder.h"
 
-namespace kaldi {
+namespace eesen {
 
 // Forward declarations
 template<class Holder> class RandomAccessTableReaderImplBase;
@@ -452,7 +452,7 @@ class RandomAccessTableReaderMapped {
 
 
 /// @} end "addtogroup table_group"
-} // end namespace kaldi
+} // end namespace eesen
 
 #include "kaldi-table-inl.h"
 

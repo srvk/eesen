@@ -22,7 +22,7 @@
 #include "lat/kaldi-lattice.h"
 #include "fst/script/print-impl.h"
 
-namespace kaldi {
+namespace eesen {
 
 /// Converts lattice types if necessary, deleting its input.
 template<class OrigWeightType>
@@ -515,4 +515,4 @@ bool LatticeHolder::Read(std::istream &is) {
 
 
 
-} // end namespace kaldi
+} // end namespace eesen

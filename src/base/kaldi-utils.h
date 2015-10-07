@@ -66,7 +66,7 @@
 #endif
 
 
-namespace kaldi {
+namespace eesen {
 
 
 // CharToString prints the character in a human-readable form, for debugging.

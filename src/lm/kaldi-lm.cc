@@ -27,7 +27,7 @@
 #include "lm/kaldi-lm.h"
 #include <stdexcept>
 
-namespace kaldi {
+namespace eesen {
 // add the string contained in inpline to the current transducer
 // starting at initial state
 LangModelFst::StateId LangModelFst::ReadTxtLine(const string &inpline) {
@@ -117,6 +117,6 @@ fst::StdVectorFst* LangModelFst::ReadStream(
   return pfst_;
 }
 
-}  // end namespace kaldi
+}  // end namespace eesen
 
 

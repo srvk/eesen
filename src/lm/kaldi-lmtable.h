@@ -57,7 +57,7 @@ using std::tr1::unordered_map;
 #endif
 
 
-namespace kaldi {
+namespace eesen {
 /// @addtogroup LanguageModel
 /// @{
 /// @file kaldi-lmtable.h
@@ -192,7 +192,7 @@ class LmTable : public lmtable {
 
 #endif
 /// @} end of "LanguageModel"
-}  // end namespace kaldi
+}  // end namespace eesen
 
 
 #endif  // KALDI_LM_KALDI_LMTABLE_H_

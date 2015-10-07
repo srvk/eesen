@@ -27,9 +27,9 @@
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
-    typedef kaldi::int32 int32;
-    typedef kaldi::int64 int64;
+    using namespace eesen;
+    typedef eesen::int32 int32;
+    typedef eesen::int64 int64;
     using fst::SymbolTable;
     using fst::VectorFst;
     using fst::StdArc;

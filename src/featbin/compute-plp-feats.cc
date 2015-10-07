@@ -26,7 +26,7 @@
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
+    using namespace eesen;
     const char *usage =
         "Create PLP feature files.\n"
         "Usage:  compute-plp-feats [options...] <wav-rspecifier> <feats-wspecifier>\n";

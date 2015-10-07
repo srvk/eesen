@@ -27,7 +27,7 @@
 #include "base/kaldi-common.h"
 #include <sstream>
 
-namespace kaldi {
+namespace eesen {
 
 // typedef fst::StdArc::StateId StateId;
 
@@ -425,5 +425,5 @@ void LmTable::DumpContinue(ngram ng, int ilev, int elev,
 
 #endif
 
-}  // end namespace kaldi
+}  // end namespace eesen
 

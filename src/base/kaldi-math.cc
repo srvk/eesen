@@ -24,7 +24,7 @@
 #include <pthread.h>
 #endif
 
-namespace kaldi {
+namespace eesen {
 // These routines are tested in matrix/matrix-test.cc
 
 int32 RoundUpToNearestPowerOfTwo(int32 n) {
@@ -165,6 +165,6 @@ void RandGauss2(double *a, double *b, RandomState *state)
 }
 
 
-}  // end namespace kaldi
+}  // end namespace eesen
 
 

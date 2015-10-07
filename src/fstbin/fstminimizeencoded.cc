@@ -34,9 +34,9 @@
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
+    using namespace eesen;
     using namespace fst;
-    using kaldi::int32;
+    using eesen::int32;
 
     const char *usage =
         "Minimizes FST after encoding [similar to fstminimize, but no weight-pushing]\n"

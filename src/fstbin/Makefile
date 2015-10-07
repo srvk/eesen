@@ -8,7 +8,7 @@ all:
 
 EXTRA_CXXFLAGS = -Wno-sign-compare
 
-include ../kaldi.mk
+include ../config.mk
 
 BINFILES = fstdeterminizestar  \
            fstrmsymbols fstisstochastic fstminimizeencoded \
@@ -24,7 +24,7 @@ TESTFILES =
 # actually, this library is currently empty.  Everything is a header.
 LIBFILE = 
 
-ADDLIBS = ../fstext/kaldi-fstext.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a \
-          ../util/kaldi-util.a 
+ADDLIBS = ../fstext/fstext.a ../cpucompute/cpucompute.a ../base/base.a \
+          ../util/util.a 
 
 include ../makefiles/default_rules.mk

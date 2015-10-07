@@ -24,10 +24,10 @@
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
+    using namespace eesen;
     using namespace fst;
-    typedef kaldi::int32 int32;
-    typedef kaldi::uint64 uint64;
+    typedef eesen::int32 int32;
+    typedef eesen::uint64 uint64;
 
     const char *usage =
         "Reads a table of FSTs; for each element, finds the best path and prints out the\n"

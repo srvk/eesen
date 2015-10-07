@@ -28,11 +28,11 @@
 #include <vector>
 
 
-#include "matrix/matrix-lib.h"
+#include "cpucompute/matrix-lib.h"
 #include "util/common-utils.h"
 #include "base/kaldi-error.h"
 
-namespace kaldi {
+namespace eesen {
 /// @addtogroup  feat FeatureExtraction
 /// @{
 
@@ -248,5 +248,5 @@ class LinearResample {
 
 
 /// @} End of "addtogroup feat"
-}  // namespace kaldi
+}  // namespace eesen
 #endif  // KALDI_FEAT_RESAMPLE_H_

@@ -27,7 +27,7 @@
 #include "decoder/lattice-faster-decoder.h"
 #include "lat/lattice-functions.h"
 
-namespace kaldi {
+namespace eesen {
 
 // instantiate this class once for each thing you have to decode.
 LatticeFasterDecoder::LatticeFasterDecoder(const fst::Fst<fst::StdArc> &fst,
@@ -916,4 +916,4 @@ void LatticeFasterDecoder::TopSortTokens(Token *tok_list,
     (*topsorted_list)[iter->second] = iter->first;
 }
 
-} // end namespace kaldi.
+} // end namespace eesen.

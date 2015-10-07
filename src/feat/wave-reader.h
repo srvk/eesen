@@ -46,11 +46,11 @@
 #include <cstring>
 
 #include "base/kaldi-types.h"
-#include "matrix/kaldi-vector.h"
-#include "matrix/kaldi-matrix.h"
+#include "cpucompute/vector.h"
+#include "cpucompute/matrix.h"
 
 
-namespace kaldi {
+namespace eesen {
 
 /// This class's purpose is to read in Wave files.
 class WaveData {
@@ -156,6 +156,6 @@ class WaveHolder {
 };
 
 
-}  // namespace kaldi
+}  // namespace eesen
 
 #endif  // KALDI_FEAT_WAVE_READER_H_

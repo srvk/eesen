@@ -31,7 +31,7 @@
 #include <fstream>
 #endif
 
-namespace kaldi
+namespace eesen
 {
 // This class provides a way to initialize a filebuf with a FILE* pointer
 // directly; it will not close the file pointer when it is deleted.
@@ -84,7 +84,7 @@ class basic_pipebuf : public std::basic_filebuf<CharType, Traits>
 };  // class basic_pipebuf
 #endif // _MSC_VER
 
-};  // namespace kaldi
+};  // namespace eesen
 
 #endif // KALDI_UTIL_KALDI_PIPEBUF_H_
 

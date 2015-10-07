@@ -28,9 +28,9 @@
 #include <numeric>
 
 int main(int argc, char *argv[]) {
-  using namespace kaldi;
-  typedef kaldi::int32 int32;
-  typedef kaldi::uint64 uint64;
+  using namespace eesen;
+  typedef eesen::int32 int32;
+  typedef eesen::uint64 uint64;
   try {
     const char *usage =
         "Computes element counts from integer vector table.\n"
@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
     ////
     //// THE REST IS FOR ANALYSIS, IT GETS PRINTED TO LOG
     ////
-    if (symbol_table_filename != "" || (kaldi::g_kaldi_verbose_level >= 1)) {
+    if (symbol_table_filename != "" || (eesen::g_kaldi_verbose_level >= 1)) {
 
       // load the symbol table
       fst::SymbolTable *elem_syms = NULL;

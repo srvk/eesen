@@ -24,9 +24,9 @@
 #include <algorithm>
 #include "util/kaldi-io.h"
 #include "util/text-utils.h"
-#include "matrix/kaldi-vector.h"
+#include "cpucompute/vector.h"
 
-namespace kaldi {
+namespace eesen {
 
 
 // The Table class uses a Holder class to wrap objects, and make them behave
@@ -200,7 +200,7 @@ template<int kFeatDim=13> class SphinxMatrixHolder;
 /// @} end "addtogroup holders"
 
 
-} // end namespace kaldi
+} // end namespace eesen
 
 #include "kaldi-holder-inl.h"
 

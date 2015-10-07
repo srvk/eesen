@@ -22,7 +22,7 @@
 
 
 
-namespace kaldi {
+namespace eesen {
 
 void TimerTest() {
 
@@ -41,6 +41,6 @@ void TimerTest() {
 
 
 int main() {
-  kaldi::TimerTest();
+  eesen::TimerTest();
 }
 

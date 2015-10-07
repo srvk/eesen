@@ -19,7 +19,7 @@
 #include "base/io-funcs.h"
 #include "base/kaldi-math.h"
 
-namespace kaldi {
+namespace eesen {
 
 void UnitTestIo(bool binary) {
   {
@@ -124,10 +124,10 @@ void UnitTestIo(bool binary) {
 
 
 
-}  // end namespace kaldi.
+}  // end namespace eesen.
 
 int main() {
-  using namespace kaldi;
+  using namespace eesen;
   for (size_t i = 0; i < 10; i++) {
     UnitTestIo(false);
     UnitTestIo(true);

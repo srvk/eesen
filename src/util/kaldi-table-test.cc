@@ -26,7 +26,7 @@
 #include <unistd.h> // for sleep.
 #endif
 
-namespace kaldi {
+namespace eesen {
 
 void UnitTestReadScriptFile() {
   typedef std::pair<std::string, std::string>  pr;
@@ -883,10 +883,10 @@ void UnitTestTableRandomBothDoubleMatrix(bool binary, bool read_scp,
 
 
 
-}  // end namespace kaldi.
+}  // end namespace eesen.
 
 int main() {
-  using namespace kaldi;
+  using namespace eesen;
   UnitTestReadScriptFile();
   UnitTestClassifyWspecifier();
   UnitTestClassifyRspecifier();

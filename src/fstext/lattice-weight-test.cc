@@ -34,14 +34,14 @@ typedef CompactLatticeWeightCommonDivisorTpl<LatticeWeight, int32>
 
 
 LatticeWeight RandomLatticeWeight() {
-  if (kaldi::Rand() % 3 == 0) {
+  if (eesen::Rand() % 3 == 0) {
     return LatticeWeight::Zero();
-  } else if (kaldi::Rand() % 3 ==  0) {
+  } else if (eesen::Rand() % 3 ==  0) {
     return LatticeWeight( 1, 2);  // sometimes return special values..
-  } else if (kaldi::Rand() % 3 ==  0) {
+  } else if (eesen::Rand() % 3 ==  0) {
     return LatticeWeight( 2, 1);  // this tests more thoroughly certain properties...
   } else {
-    return LatticeWeight( 100 * kaldi::RandGauss(), 100 * kaldi::RandGauss());
+    return LatticeWeight( 100 * eesen::RandGauss(), 100 * eesen::RandGauss());
   }
 }
 
@@ -50,10 +50,10 @@ CompactLatticeWeight RandomCompactLatticeWeight() {
   if (w == LatticeWeight::Zero()) {
     return CompactLatticeWeight(w, vector<int32>());
   } else {
-    int32 len = kaldi::Rand() % 4;
+    int32 len = eesen::Rand() % 4;
     vector<int32> str;
     for(int32 i = 0; i < len; i++)
-      str.push_back(kaldi::Rand() % 10 + 1);
+      str.push_back(eesen::Rand() % 10 + 1);
     return CompactLatticeWeight(w, str);
   }
 }
@@ -65,8 +65,8 @@ void LatticeWeightTest() {
     LatticeWeight l4 = Times(l1, l2);
     BaseFloat f1 = l1.Value1() + l1.Value2(), f2 = l2.Value1() + l2.Value2(), f3 = l3.Value1() + l3.Value2(),
         f4 = l4.Value1() + l4.Value2();
-    kaldi::AssertEqual(std::min(f1, f2), f3);
-    kaldi::AssertEqual(f1 + f2, f4);
+    eesen::AssertEqual(std::min(f1, f2), f3);
+    eesen::AssertEqual(f1 + f2, f4);
 
     KALDI_ASSERT(Plus(l3, l3) == l3);
     KALDI_ASSERT(Plus(l1, l2) == Plus(l2, l1)); // commutativity of plus

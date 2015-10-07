@@ -1,15 +1,15 @@
 all:
 
 EXTRA_CXXFLAGS = -Wno-sign-compare -O3
-include ../kaldi.mk
+include ../config.mk
 
 TESTFILES = 
 
 OBJFILES = lattice-faster-decoder.o faster-decoder.o decoder-wrappers.o
 
-LIBNAME = kaldi-decoder
+LIBNAME = decoder
 
-ADDLIBS = ../lat/kaldi-lat.a ../util/kaldi-util.a ../base/kaldi-base.a ../matrix/kaldi-matrix.a 
+ADDLIBS = ../lat/lat.a ../util/util.a ../base/base.a ../cpucompute/cpucompute.a 
 
 include ../makefiles/default_rules.mk
 

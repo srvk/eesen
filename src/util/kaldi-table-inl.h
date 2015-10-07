@@ -28,7 +28,7 @@
 #include "util/stl-utils.h" // for StringHasher.
 
 
-namespace kaldi {
+namespace eesen {
 
 /// \addtogroup table_impl_types
 /// @{
@@ -2214,7 +2214,7 @@ const typename Holder::T& RandomAccessTableReaderMapped<Holder>::Value(
 
 /// @}
 
-} // end namespace kaldi
+} // end namespace eesen
 
 
 

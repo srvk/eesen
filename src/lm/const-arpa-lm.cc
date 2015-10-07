@@ -23,7 +23,7 @@
 #include "util/stl-utils.h"
 #include "util/text-utils.h"
 
-namespace kaldi {
+namespace eesen {
 
 // Auxiliary struct for converting ConstArpaLm format langugae model to Arpa
 // format.
@@ -1007,4 +1007,4 @@ bool BuildConstArpaLm(const bool natural_base, const int32 bos_symbol,
   return true;
 }
 
-} // namespace kaldi
+} // namespace eesen

@@ -19,7 +19,7 @@
 #include "base/kaldi-math.h"
 #include "base/timer.h"
 
-namespace kaldi {
+namespace eesen {
 
 template<class I> void UnitTestGcdLcmTpl() {
   for (I a = 1; a < 15; a++) {  // a is min gcd.
@@ -62,7 +62,7 @@ void UnitTestGcdLcm() {
 
 void UnitTestRand() {
   // Testing random-number generation.
-  using namespace kaldi;
+  using namespace eesen;
   std::cout << "Testing random-number generation.  "
             << "If there is an error this may not terminate.\n";
   std::cout << "If this does not terminate, look more closely.  "
@@ -154,7 +154,7 @@ void UnitTestRand() {
 }
 
 void UnitTestLogAddSub() {
-  using namespace kaldi;
+  using namespace eesen;
   for (int i = 0; i < 100; i++) {
     double f1 = Rand() % 10000, f2 = Rand() % 20;
     double add1 = exp(LogAdd(log(f1), log(f2)));
@@ -199,7 +199,7 @@ void UnitTestDefines() {  // Yes, we even unit-test the preprocessor statements.
 }
 
 void UnitTestAssertFunc() {  // Testing Assert** *functions
-  using namespace kaldi;
+  using namespace eesen;
   for (int i = 1; i < 100; i++) {
     float f1 = Rand() % 10000 + 1, f2 = Rand() % 20 + 1;
     float tmp1 = f1 * f2;
@@ -295,10 +295,10 @@ void UnitTestLogSpeed() {
             << ") is " << flops;
 }
 
-}  // end namespace kaldi.
+}  // end namespace eesen.
 
 int main() {
-  using namespace kaldi;
+  using namespace eesen;
   UnitTestApproxEqual();
   UnitTestGcdLcm();
   UnitTestFactorize();

@@ -24,8 +24,8 @@
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
-    typedef kaldi::int32 int32;
+    using namespace eesen;
+    typedef eesen::int32 int32;
 
     const char *usage =
         "Takes as input lattices which must be linear (single path),\n"

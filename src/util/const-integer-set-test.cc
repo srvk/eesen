@@ -25,7 +25,7 @@
 #include <cstdlib>
 #include <iostream>
 
-namespace kaldi {
+namespace eesen {
 
 template<class Int> void TestSetOfNumbers(bool binary) {
   std::set<Int> baseline_set;
@@ -125,12 +125,12 @@ template<class Int> void TestSetOfNumbers(bool binary) {
   // }
 }
 
-} // end namespace kaldi
+} // end namespace eesen
 
 
 
 int main() {
-  using namespace kaldi;
+  using namespace eesen;
   for (size_t i = 0;i < 10;i++) {
     TestSetOfNumbers<int>(Rand()%2);
     TestSetOfNumbers<unsigned int>(Rand()%2);

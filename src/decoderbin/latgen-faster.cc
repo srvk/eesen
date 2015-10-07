@@ -32,8 +32,8 @@
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
-    typedef kaldi::int32 int32;
+    using namespace eesen;
+    typedef eesen::int32 int32;
     using fst::SymbolTable;
     using fst::VectorFst;
     using fst::StdArc;
@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
                    << word_syms_filename;
 
     double tot_like = 0.0;
-    kaldi::int64 frame_count = 0;
+    eesen::int64 frame_count = 0;
     int num_success = 0, num_fail = 0;
 
     if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) {

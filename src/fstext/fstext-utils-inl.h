@@ -86,7 +86,7 @@ void GetOutputSymbols(const Fst<Arc> &fst,
   if (!include_eps && !all_syms.empty() && *all_syms.begin() == 0)
     all_syms.erase(0);
   KALDI_ASSERT(symbols != NULL);
-  kaldi::CopySetToVector(all_syms, symbols);
+  eesen::CopySetToVector(all_syms, symbols);
 }
 
 template<class Arc, class I>
@@ -106,7 +106,7 @@ void GetInputSymbols(const Fst<Arc> &fst,
   if (!include_eps && all_syms.count(0) != 0)
     all_syms.erase(0);
   KALDI_ASSERT(symbols != NULL);
-  kaldi::CopySetToVector(all_syms, symbols);
+  eesen::CopySetToVector(all_syms, symbols);
   std::sort(symbols->begin(), symbols->end());
 }
 
@@ -636,7 +636,7 @@ void MakePrecedingInputSymbolsSameClass(bool start_is_epsilon, MutableFst<Arc> *
     }
   }
   if (bad_states.empty()) return;  // Nothing to do.
-  kaldi::ConstIntegerSet<StateId> bad_states_ciset(bad_states);  // faster lookup.
+  eesen::ConstIntegerSet<StateId> bad_states_ciset(bad_states);  // faster lookup.
 
   // Work out list of arcs we have to change as (state, arc-offset).
   // Can't do the actual changes in this pass, since we have to add new
@@ -905,10 +905,10 @@ bool EqualAlign(const Fst<Arc> &ifst,
     size_t num_arcs = ifst.NumArcs(s);
     size_t num_arcs_tot = num_arcs;
     if (ifst.Final(s) != Weight::Zero()) num_arcs_tot++;
-    // kaldi::RandInt is a bit like Rand(), but gets around situations
+    // eesen::RandInt is a bit like Rand(), but gets around situations
     // where RAND_MAX is very small.
     // Change this to Rand() % num_arcs_tot if compile issues arise
-    size_t arc_offset = static_cast<size_t>(kaldi::RandInt(0, num_arcs_tot-1));
+    size_t arc_offset = static_cast<size_t>(eesen::RandInt(0, num_arcs_tot-1));
 
     if (arc_offset < num_arcs) {  // an actual arc.
       ArcIterator<Fst<Arc> > aiter(ifst, s);
@@ -1108,7 +1108,7 @@ void ComposeDeterministicOnDemand(const Fst<Arc> &fst1,
   typedef typename Arc::StateId StateId;
   typedef std::pair<StateId, StateId> StatePair;
   typedef unordered_map<StatePair, StateId, 
-    kaldi::PairHasher<StateId> > MapType;
+    eesen::PairHasher<StateId> > MapType;
   typedef typename MapType::iterator IterType;
 
   fst_composed->DeleteStates();
@@ -1267,16 +1267,16 @@ void RhoCompose(const Fst<Arc> &fst1,
 inline VectorFst<StdArc> *ReadFstKaldi(std::string rxfilename) {
   if (rxfilename == "") rxfilename = "-"; // interpret "" as stdin,
   // for compatibility with OpenFst conventions.
-  kaldi::Input ki(rxfilename);
+  eesen::Input ki(rxfilename);
   fst::FstHeader hdr;
   if (!hdr.Read(ki.Stream(), rxfilename))
     KALDI_ERR << "Reading FST: error reading FST header from "
-              << kaldi::PrintableRxfilename(rxfilename);
+              << eesen::PrintableRxfilename(rxfilename);
   FstReadOptions ropts("<unspecified>", &hdr);
   VectorFst<StdArc> *fst = VectorFst<StdArc>::Read(ki.Stream(), ropts);
   if (!fst)
     KALDI_ERR << "Could not read fst from "
-              << kaldi::PrintableRxfilename(rxfilename);
+              << eesen::PrintableRxfilename(rxfilename);
   return fst;
 }
 
@@ -1285,8 +1285,8 @@ inline void WriteFstKaldi(const VectorFst<StdArc> &fst,
   if (wxfilename == "") wxfilename = "-"; // interpret "" as stdout,
   // for compatibility with OpenFst conventions.
   bool write_binary = true, write_header = false;
-  kaldi::Output ko(wxfilename, write_binary, write_header);
-  FstWriteOptions wopts(kaldi::PrintableWxfilename(wxfilename));
+  eesen::Output ko(wxfilename, write_binary, write_header);
+  FstWriteOptions wopts(eesen::PrintableWxfilename(wxfilename));
   fst.Write(ko.Stream(), wopts);
 }
 

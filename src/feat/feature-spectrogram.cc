@@ -22,7 +22,7 @@
 #include "feat/feature-spectrogram.h"
 
 
-namespace kaldi {
+namespace eesen {
 
 Spectrogram::Spectrogram(const SpectrogramOptions &opts)
     : opts_(opts), feature_window_function_(opts.frame_opts), srfft_(NULL) {
@@ -93,4 +93,4 @@ void Spectrogram::Compute(const VectorBase<BaseFloat> &wave,
   }
 }
 
-}  // namespace kaldi
+}  // namespace eesen

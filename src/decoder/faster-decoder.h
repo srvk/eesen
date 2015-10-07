@@ -22,13 +22,13 @@
 #define KALDI_DECODER_FASTER_DECODER_H_
 
 #include "util/stl-utils.h"
-#include "itf/options-itf.h"
+#include "util/options-itf.h"
 #include "util/hash-list.h"
 #include "fst/fstlib.h"
-#include "itf/decodable-itf.h"
+#include "decoder/decodable-itf.h"
 #include "lat/kaldi-lattice.h" // for CompactLatticeArc
 
-namespace kaldi {
+namespace eesen {
 
 struct FasterDecoderOptions {
   BaseFloat beam;
@@ -188,7 +188,7 @@ class FasterDecoder {
 };
 
 
-} // end namespace kaldi.
+} // end namespace eesen.
 
 
 #endif

@@ -22,9 +22,9 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "matrix/kaldi-matrix.h"
+#include "cpucompute/matrix.h"
 
-namespace kaldi {
+namespace eesen {
 
 // returns true if successfully appended.
 bool AppendFeats(const std::vector<Matrix<BaseFloat> > &in,
@@ -69,7 +69,7 @@ bool AppendFeats(const std::vector<Matrix<BaseFloat> > &in,
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
+    using namespace eesen;
     using namespace std;
     
     const char *usage =

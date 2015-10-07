@@ -32,7 +32,7 @@
 #include <string>
 #include "base/kaldi-common.h"
 
-namespace kaldi {
+namespace eesen {
 
 
 
@@ -224,7 +224,7 @@ inline void InitKaldiOutputStream(std::ostream &os, bool binary);
 /// It will typically not be called by users directly.
 inline bool InitKaldiInputStream(std::istream &is, bool *binary);
 
-}  // end namespace kaldi.
+}  // end namespace eesen.
 
 #include "base/io-funcs-inl.h"
 

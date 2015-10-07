@@ -30,8 +30,8 @@
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
-    typedef kaldi::int32 int32;
+    using namespace eesen;
+    typedef eesen::int32 int32;
     using fst::SymbolTable;
     using fst::VectorFst;
     using fst::StdArc;
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
     VectorFst<StdArc> *decode_fst = fst::ReadFstKaldi(fst_in_filename);
 
     BaseFloat tot_like = 0.0;
-    kaldi::int64 frame_count = 0;
+    eesen::int64 frame_count = 0;
     int num_success = 0, num_fail = 0;
     FasterDecoder decoder(*decode_fst, decoder_opts);
 

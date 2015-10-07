@@ -1,0 +1,19 @@
+
+These instructions are valid for UNIX-like systems. Installation on Windows is not supported currently.
+
+1. Requirements:
+
+   > cd tools/
+   > make     (this will install most of the requirements)
+
+   Additionally, run install_atlas.sh and install_srilm.sh to install ATLAS and SRILM respectively.
+
+2. Installation 
+
+   The CUDA library should be installed before installing Eesen. Then Eesen can be installed as:
+
+   > cd src
+   > ./configure --use-cuda=yes --cudatk-dir=/path/to/cuda_library
+   > make depend
+   > make   
+

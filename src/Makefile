@@ -1,34 +1,30 @@
 # This is the top-level Makefile for Kaldi.
-# Also see kaldi.mk which supplies options and some rules
+# Also see config.mk which supplies options and some rules
 # used by the Makefiles in the subdirectories.
 
 SHELL := /bin/bash
 
 
-SUBDIRS = base matrix util feat \
-          fstext lm decoder lat cudamatrix nnet \
+SUBDIRS = base cpucompute util feat \
+          fstext lm decoder lat gpucompute net \
           fstbin featbin \
-          nnetbin decoderbin
+          netbin decoderbin
 
-MEMTESTDIRS = base matrix util feat \
-          fstext lm decoder lat nnet \
+MEMTESTDIRS = base cpucompute util feat \
+          fstext lm decoder lat net \
           fstbin featbin \
-          nnetbin decoderbin
+          netbin decoderbin
 
-CUDAMEMTESTDIR = cudamatrix
+CUDAMEMTESTDIR = gpucompute
 
 SUBDIRS_LIB = $(filter-out %bin, $(SUBDIRS))
 
 
-# Optional subdirectories
-#EXT_SUBDIRS = online onlinebin  # python-kaldi-decoding
-#EXT_SUBDIRS_LIB = $(filter-out %bin, $(EXT_SUBDIRS))
-
-include kaldi.mk
+include config.mk
 
 # Reset the default goal, so that the all target will become default
 .DEFAULT_GOAL :=
-all: checkversion test_dependencies kaldi.mk mklibdir $(SUBDIRS)
+all: checkversion test_dependencies config.mk mklibdir $(SUBDIRS)
 	-echo Done
 
 mklibdir:
@@ -46,9 +42,9 @@ endif
 .PHONY: checkversion
 checkversion:
 ifeq ($(shell ./configure --version),$(CONFIGURE_VERSION))
-	@echo "The version of configure script matches kaldi.mk version. Good."
+	@echo "The version of configure script matches config.mk version. Good."
 else
-	$(error The kaldi.mk file was generated using a different version of configure script. Run the configure script again.)
+	$(error The config.mk file was generated using a different version of configure script. Run the configure script again.)
 endif
 
 biglib: $(SUBDIRS_LIB)
@@ -79,17 +75,17 @@ endif
 endif
 endif
 
-kaldi.mk:
-	@[ -f kaldi.mk ] || { echo "kaldi.mk does not exist; you have to run ./configure"; exit 1; }
+config.mk:
+	@[ -f config.mk ] || { echo "config.mk does not exist; you have to run ./configure"; exit 1; }
 
 # Compile optional stuff
 ext: test_dependencies ext_depend $(SUBDIRS) $(EXT_SUBDIRS)
 	-echo Done
 
 ifndef OPENFST_VER
-$(error Please rerun configure: OPENFST_VER is not defined, likely kaldi.mk was produced by older configure script.)
+$(error Please rerun configure: OPENFST_VER is not defined, likely config.mk was produced by older configure script.)
 endif
-# Note: OPENFST_VER is determined by configure and added to kaldi.mk
+# Note: OPENFST_VER is determined by configure and added to config.mk
 OPENFST_VER_NUM := $(shell echo $(OPENFST_VER) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
 test_dependencies:
 ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10302)","1")
@@ -143,17 +139,17 @@ $(EXT_SUBDIRS) : mklibdir
 # this is necessary for correct parallel compilation
 #1)The tools depend on all the libraries
 
-fstbin featbin nnetbin decoderbin: \
- base matrix util feat fstext lm decoder lat cudamatrix nnet
+fstbin featbin netbin decoderbin: \
+ base cpucompute util feat fstext lm decoder lat gpucompute net
 
 #2)The libraries have inter-dependencies
 base:
-matrix : base
-util: base matrix
-feat: base matrix util
-fstext: base util matrix
+cpucompute : base
+util: base cpucompute
+feat: base cpucompute util
+fstext: base util cpucompute
 lm: base util fstext
-decoder: base util matrix lat
+decoder: base util cpucompute lat
 lat: base util
-cudamatrix: base util matrix	
-nnet: base util matrix cudamatrix
+gpucompute: base util cpucompute	
+net: base util cpucompute gpucompute

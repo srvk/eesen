@@ -73,7 +73,7 @@ $add_deltas && feats="$feats add-deltas ark:- ark:- |"
 
 # Decode for each of the acoustic scales
 $cmd JOB=1:$nj $dir/log/decode.JOB.log \
-  nnet-forward --class-frame-counts=$srcdir/label.counts --apply-log=true --no-softmax=false $srcdir/final.nnet "$feats" ark:- \| \
+  net-output-extract --class-frame-counts=$srcdir/label.counts --apply-log=true $srcdir/final.nnet "$feats" ark:- \| \
   latgen-faster  --max-active=$max_active --max-mem=$max_mem --beam=$beam --lattice-beam=$lattice_beam \
   --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
   $graphdir/TLG.fst ark:- "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;

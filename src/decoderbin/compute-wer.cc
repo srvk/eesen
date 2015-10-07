@@ -25,7 +25,7 @@
 #include "util/edit-distance.h"
 
 
-namespace kaldi {
+namespace eesen {
 
 
 template<typename T>
@@ -61,8 +61,8 @@ void PrintAlignmentStats(const std::vector<T> &ref,
 
 
 int main(int argc, char *argv[]) {
-  using namespace kaldi;
-  typedef kaldi::int32 int32;
+  using namespace eesen;
+  typedef eesen::int32 int32;
 
   try {
     const char *usage =

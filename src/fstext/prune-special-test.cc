@@ -73,7 +73,7 @@ static void TestPruneSpecial() {
   }
 
   KALDI_ASSERT(RandEquivalent(ofst1, ofst2,
-                              5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/,
+                              5/*paths*/, 0.01/*delta*/, eesen::Rand()/*seed*/,
                               100/*path length-- max?*/));
 
   delete ifst;
@@ -83,7 +83,7 @@ static void TestPruneSpecial() {
 } // namespace fst
 
 int main() {
-  kaldi::g_kaldi_verbose_level = 4;
+  eesen::g_kaldi_verbose_level = 4;
   using namespace fst;
   for (int i = 0; i < 25; i++) {
     TestPruneSpecial();

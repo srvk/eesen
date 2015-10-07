@@ -2,8 +2,7 @@
 
 // Copyright 2009-2011  Microsoft Corporation
 //                2013  Johns Hopkins University (author: Daniel Povey)
-// Copyright      2015  Yajie Miao  Carnegie Mellon University
-//                      (Modified by Yajie for CTC decoding)      
+// Copyright      2015  Yajie Miao
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -25,9 +24,9 @@
 
 #include <vector>
 #include "base/kaldi-common.h"
-#include "itf/decodable-itf.h"
+#include "decoder/decodable-itf.h"
 
-namespace kaldi {
+namespace eesen {
 
 // Yajie deleted the DecodableMatrixScaledMapped class simply because we don't need it 
 // for CTC decoding.
@@ -63,6 +62,6 @@ class DecodableMatrixScaled: public DecodableInterface {
 };
 
 
-}  // namespace kaldi
+}  // namespace eesen
 
 #endif  // KALDI_DECODER_DECODABLE_MATRIX_H_

@@ -8,7 +8,7 @@ all:
 
 EXTRA_CXXFLAGS = -Wno-sign-compare
 
-include ../kaldi.mk
+include ../config.mk
 
 TESTFILES = determinize-star-test \
       pre-determinize-test trivial-factor-weight-test \
@@ -20,11 +20,11 @@ TESTFILES = determinize-star-test \
 OBJFILES = push-special.o
 
 
-LIBNAME = kaldi-fstext
+LIBNAME = fstext
 
 # tree and matrix archives needed for test-context-fst
 # matrix archive needed for push-special.
-ADDLIBS =  ../matrix/kaldi-matrix.a \
-           ../util/kaldi-util.a ../base/kaldi-base.a 
+ADDLIBS =  ../cpucompute/cpucompute.a \
+           ../util/util.a ../base/base.a 
 
 include ../makefiles/default_rules.mk

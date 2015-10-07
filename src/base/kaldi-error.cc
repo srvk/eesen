@@ -31,7 +31,7 @@
 #include "base/kaldi-common.h"
 #include "base/kaldi-error.h"
 
-namespace kaldi {
+namespace eesen {
 int32 g_kaldi_verbose_level = 0;  // Just initialize this global variable.
 const char *g_program_name = NULL;
 
@@ -181,4 +181,4 @@ KaldiErrorMessage::~KaldiErrorMessage() NOEXCEPT(false) {
   }
 }
 
-}  // end namespace kaldi
+}  // end namespace eesen

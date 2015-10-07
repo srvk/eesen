@@ -21,7 +21,7 @@
 #include "feat/feature-fbank.h"
 
 
-namespace kaldi {
+namespace eesen {
 
 Fbank::Fbank(const FbankOptions &opts)
     : opts_(opts), feature_window_function_(opts.frame_opts), srfft_(NULL) {
@@ -182,4 +182,4 @@ void Fbank::ComputeInternal(const VectorBase<BaseFloat> &wave,
   }
 }
 
-}  // namespace kaldi
+}  // namespace eesen

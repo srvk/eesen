@@ -63,7 +63,7 @@ template<class Weight, class IntType> class CompactLatticeMinimizer {
   
   static HashType ConvertStringToHashValue(const std::vector<IntType> &vec) {
     const HashType prime = 53281;
-    kaldi::VectorHasher<IntType> h;
+    eesen::VectorHasher<IntType> h;
     HashType ans = static_cast<HashType>(h(vec));
     if (ans == 0)  ans = prime;
     // We don't allow a zero answer, as this can cause too many values to be the
@@ -279,8 +279,8 @@ bool MinimizeCompactLattice(
 
 // Instantiate for CompactLattice type.
 template
-bool MinimizeCompactLattice<kaldi::LatticeWeight, kaldi::int32>(
-    MutableFst<kaldi::CompactLatticeArc> *clat, float delta);
+bool MinimizeCompactLattice<eesen::LatticeWeight, eesen::int32>(
+    MutableFst<eesen::CompactLatticeArc> *clat, float delta);
   
 
 }  // namespace fst

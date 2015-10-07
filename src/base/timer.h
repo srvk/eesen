@@ -23,7 +23,7 @@
 
 #include "base/kaldi-utils.h"
 
-namespace kaldi
+namespace eesen
 {
 
 class Timer {
@@ -49,7 +49,7 @@ class Timer {
 
 # include <sys/time.h>
 # include <unistd.h>
-namespace kaldi
+namespace eesen
 {
 class Timer
 {

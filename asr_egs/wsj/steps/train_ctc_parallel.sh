@@ -6,7 +6,7 @@
 # This script trains acoustic models based on CTC and using SGD. 
 
 ## Begin configuration section
-train_tool=nnet-ctc-train-parallel  # the command for training; by default, we use the
+train_tool=train-ctc-parallel  # the command for training; by default, we use the
                 # parallel version which processes multiple utterances at the same time 
 
 # configs for multiple sequences
@@ -122,7 +122,7 @@ gunzip -c $dir/labels.tr.gz | awk '{line=$0; gsub(" "," 0 ",line); print line " 
 # Initialize model parameters
 if [ ! -f $dir/nnet/nnet.iter0 ]; then
     echo "Initializing model as $dir/nnet/nnet.iter0"
-    nnet-initialize --binary=true $dir/nnet.proto $dir/nnet/nnet.iter0 >& $dir/log/initialize_model.log || exit 1;
+    net-initialize --binary=true $dir/nnet.proto $dir/nnet/nnet.iter0 >& $dir/log/initialize_model.log || exit 1;
 fi
 
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
@@ -189,6 +189,6 @@ for iter in $(seq $start_epoch_num $max_iters); do
 done
 
 # Convert the model marker from "<BiLstmParallel>" to "<BiLstm>"
-nnet-format-to-nonparal $dir/nnet/nnet.iter${iter} $dir/final.nnet >& $dir/log/model_to_nonparal.log || exit 1;
+format-to-nonparallel $dir/nnet/nnet.iter${iter} $dir/final.nnet >& $dir/log/model_to_nonparal.log || exit 1;
 
 echo "Training succeeded. The final model $dir/final.nnet"

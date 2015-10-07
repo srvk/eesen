@@ -45,7 +45,7 @@ using std::tr1::unordered_set;
 #endif
 
 
-namespace kaldi {
+namespace eesen {
 
 /// Sorts and uniq's (removes duplicates) from a vector.
 template<typename T>
@@ -321,7 +321,7 @@ inline void MergePairVectorSumming(std::vector<std::pair<I, F> > *vec) {
   vec->erase(out, end);
 }
 
-}  // namespace kaldi
+}  // namespace eesen
 
 #endif  // KALDI_UTIL_STL_UTILS_H_
 

@@ -24,7 +24,7 @@
 #include "fstext/rand-fst.h"
 
 
-namespace kaldi {
+namespace eesen {
 using namespace fst;
 
 CompactLattice *RandDeterministicCompactLattice() {
@@ -60,11 +60,11 @@ void TestMinimizeCompactLattice() {
 }
 
 
-} // end namespace kaldi
+} // end namespace eesen
 
 int main() {
-  using namespace kaldi;
-  using kaldi::int32;
+  using namespace eesen;
+  using eesen::int32;
   SetVerboseLevel(4);
   for (int32 i = 0; i < 1000; i++) {
     TestMinimizeCompactLattice();

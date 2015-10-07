@@ -41,7 +41,7 @@
 /* Important that this file does not depend on any other kaldi headers. */
 
 
-namespace kaldi {
+namespace eesen {
 
 /// \addtogroup error_group
 /// @{
@@ -118,7 +118,7 @@ class KaldiErrorMessage {
 
 #ifndef NDEBUG
 #define KALDI_ASSERT(cond) \
-  if (!(cond)) kaldi::KaldiAssertFailure_(__func__, __FILE__, __LINE__, #cond);
+  if (!(cond)) eesen::KaldiAssertFailure_(__func__, __FILE__, __LINE__, #cond);
 #else
 #define KALDI_ASSERT(cond)
 #endif
@@ -127,17 +127,17 @@ class KaldiErrorMessage {
 // also defined there.
 #ifdef KALDI_PARANOID // some more expensive asserts only checked if this defined
 #define KALDI_PARANOID_ASSERT(cond) \
-  if (!(cond)) kaldi::KaldiAssertFailure_(__func__, __FILE__, __LINE__, #cond);
+  if (!(cond)) eesen::KaldiAssertFailure_(__func__, __FILE__, __LINE__, #cond);
 #else
 #define KALDI_PARANOID_ASSERT(cond)
 #endif
 
-#define KALDI_ERR kaldi::KaldiErrorMessage(__func__, __FILE__, __LINE__).stream() 
-#define KALDI_WARN kaldi::KaldiWarnMessage(__func__, __FILE__, __LINE__).stream() 
-#define KALDI_LOG kaldi::KaldiLogMessage(__func__, __FILE__, __LINE__).stream()
+#define KALDI_ERR eesen::KaldiErrorMessage(__func__, __FILE__, __LINE__).stream() 
+#define KALDI_WARN eesen::KaldiWarnMessage(__func__, __FILE__, __LINE__).stream() 
+#define KALDI_LOG eesen::KaldiLogMessage(__func__, __FILE__, __LINE__).stream()
 
-#define KALDI_VLOG(v) if (v <= kaldi::g_kaldi_verbose_level)     \
-           kaldi::KaldiVlogMessage(__func__, __FILE__, __LINE__, v).stream()
+#define KALDI_VLOG(v) if (v <= eesen::g_kaldi_verbose_level)     \
+           eesen::KaldiVlogMessage(__func__, __FILE__, __LINE__, v).stream()
 
 inline bool IsKaldiError(const std::string &str) {
   return(!strncmp(str.c_str(), "ERROR ", 6));
@@ -148,6 +148,6 @@ void KaldiAssertFailure_(const char *func, const char *file,
 
 /// @} end "addtogroup error_group"
 
-}  // namespace kaldi
+}  // namespace eesen
 
 #endif  // KALDI_BASE_KALDI_ERROR_H_

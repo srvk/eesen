@@ -21,10 +21,10 @@
 
 
 #include "feat/feature-functions.h"
-#include "matrix/matrix-functions.h"
+#include "cpucompute/matrix-functions.h"
 
 
-namespace kaldi {
+namespace eesen {
 
 int32 NumFrames(int32 nsamp,
                 const FrameExtractionOptions &opts) {
@@ -532,4 +532,4 @@ void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
 
 
 
-}  // namespace kaldi
+}  // namespace eesen

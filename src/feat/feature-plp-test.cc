@@ -22,10 +22,10 @@
 
 #include "feat/feature-plp.h"
 #include "base/kaldi-math.h"
-#include "matrix/kaldi-matrix-inl.h"
+#include "cpucompute/matrix-inl.h"
 #include "feat/wave-reader.h"
 
-using namespace kaldi;
+using namespace eesen;
 
 
 

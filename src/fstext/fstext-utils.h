@@ -435,8 +435,8 @@ class VectorFstTplHolder {
       }
       using std::string;
       using std::vector;
-      using kaldi::SplitStringToIntegers;
-      using kaldi::ConvertStringToInteger;
+      using eesen::SplitStringToIntegers;
+      using eesen::ConvertStringToInteger;
       t_ = new VectorFst<Arc>();
       string line;
       size_t nline = 0;
@@ -445,7 +445,7 @@ class VectorFstTplHolder {
         nline++;
         vector<string> col;
         // on Windows we'll write in text and read in binary mode.
-        kaldi::SplitStringToVector(line, separator.c_str(), true, &col);
+        eesen::SplitStringToVector(line, separator.c_str(), true, &col);
         if (col.size() == 0) break; // Empty line is a signal to stop, in our
         // archive format.
         if (col.size() > 5) {

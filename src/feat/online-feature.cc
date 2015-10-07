@@ -22,7 +22,7 @@
 #include "feat/online-feature.h"
 #include "feat/cmvn.h"
 
-namespace kaldi {
+namespace eesen {
 
 
 template<class C>
@@ -503,4 +503,4 @@ void OnlineAppendFeature::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
 };
 
 
-}  // namespace kaldi
+}  // namespace eesen

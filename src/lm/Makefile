@@ -8,7 +8,7 @@ MATHLIB = NONE
 # Uncomment following line to use IRSTLM toolkit installed in ../lmtoolkit
 #include ./irstlm.mk
 
-include ../kaldi.mk
+include ../config.mk
 
 TESTFILES =
 
@@ -16,8 +16,8 @@ OBJFILES = const-arpa-lm.o kaldi-lmtable.o kaldi-lm.o
 
 TESTOUTPUTS =
 
-LIBNAME = kaldi-lm
+LIBNAME = lm
 
-ADDLIBS = ../base/kaldi-base.a ../fstext/kaldi-fstext.a ../util/kaldi-util.a
+ADDLIBS = ../base/base.a ../fstext/fstext.a ../util/util.a
 
 include ../makefiles/default_rules.mk

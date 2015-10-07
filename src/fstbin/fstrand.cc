@@ -29,7 +29,7 @@
 int main(int argc, char *argv[]) {
   try {
     using namespace fst;
-    using kaldi::int32;
+    using eesen::int32;
 
     const char *usage =
         "Generate random FST\n"
@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
     RandFstOptions opts;
 
 
-    kaldi::ParseOptions po(usage);
+    eesen::ParseOptions po(usage);
     po.Register("allow-empty", &opts.allow_empty,
                 "If true, we may generate an empty FST.");
 

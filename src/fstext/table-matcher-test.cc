@@ -41,8 +41,8 @@ template<class Arc>  void TestTableMatcher(bool connect, bool left) {
   TableComposeOptions opts;
   if (left) opts.table_match_type = MATCH_OUTPUT;
   else opts.table_match_type = MATCH_INPUT;
-  opts.min_table_size = 1 + kaldi::Rand() % 5;
-  opts.table_ratio = 0.25 * (kaldi::Rand() % 5);
+  opts.min_table_size = 1 + eesen::Rand() % 5;
+  opts.table_ratio = 0.25 * (eesen::Rand() % 5);
   opts.connect = connect;
 
   ArcSort(fst1, olabel_comp);
@@ -81,7 +81,7 @@ template<class Arc>  void TestTableMatcher(bool connect, bool left) {
     fstprinter.Print(&std::cout, "standard output");
   }
 
-  if ( !RandEquivalent(composed, composed_baseline, 3/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 20/*path length-- max?*/)) {
+  if ( !RandEquivalent(composed, composed_baseline, 3/*paths*/, 0.01/*delta*/, eesen::Rand()/*seed*/, 20/*path length-- max?*/)) {
     VectorFst<Arc> diff1;
     Difference(composed, composed_baseline, &diff1);
     std::cout <<" Diff1 (composed - baseline) \n";
@@ -128,8 +128,8 @@ template<class Arc>  void TestTableMatcherCacheLeft(bool connect) {
 
   TableComposeOptions opts;
   opts.table_match_type = MATCH_OUTPUT;
-  opts.min_table_size = 1 + kaldi::Rand() % 5;
-  opts.table_ratio = 0.25 * (kaldi::Rand() % 5);
+  opts.min_table_size = 1 + eesen::Rand() % 5;
+  opts.table_ratio = 0.25 * (eesen::Rand() % 5);
   opts.connect = connect;
 
   TableComposeCache<Fst<Arc> > cache(opts);
@@ -159,7 +159,7 @@ template<class Arc>  void TestTableMatcherCacheLeft(bool connect) {
     std::cout << "Connect = "<< (connect?"True\n":"False\n");
 
 
-    if ( !RandEquivalent(composed, composed_baseline, 3/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/)) {
+    if ( !RandEquivalent(composed, composed_baseline, 3/*paths*/, 0.01/*delta*/, eesen::Rand()/*seed*/, 100/*path length-- max?*/)) {
       VectorFst<Arc> diff1;
       Difference(composed, composed_baseline, &diff1);
       std::cout <<" Diff1 (composed - baseline) \n";
@@ -207,8 +207,8 @@ template<class Arc>  void TestTableMatcherCacheRight(bool connect) {
 
   TableComposeOptions opts;
   opts.table_match_type = MATCH_INPUT;
-  opts.min_table_size = 1 + kaldi::Rand() % 5;
-  opts.table_ratio = 0.25 * (kaldi::Rand() % 5);
+  opts.min_table_size = 1 + eesen::Rand() % 5;
+  opts.table_ratio = 0.25 * (eesen::Rand() % 5);
   opts.connect = connect;
 
   TableComposeCache<Fst<Arc> > cache(opts);
@@ -237,7 +237,7 @@ template<class Arc>  void TestTableMatcherCacheRight(bool connect) {
     std::cout << "Connect = "<< (connect?"True\n":"False\n");
 
 
-    if ( !RandEquivalent(composed, composed_baseline, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 20/*path length-- max?*/)) {
+    if ( !RandEquivalent(composed, composed_baseline, 5/*paths*/, 0.01/*delta*/, eesen::Rand()/*seed*/, 20/*path length-- max?*/)) {
       VectorFst<Arc> diff1;
       Difference(composed, composed_baseline, &diff1);
       std::cout <<" Diff1 (composed - baseline) \n";

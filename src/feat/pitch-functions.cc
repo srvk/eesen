@@ -27,9 +27,9 @@
 #include "feat/online-feature.h"
 #include "feat/pitch-functions.h"
 #include "feat/resample.h"
-#include "matrix/matrix-functions.h"
+#include "cpucompute/matrix-functions.h"
 
-namespace kaldi {
+namespace eesen {
 
 /**
    This function processes the NCCF n to a POV feature f by applying the formula
@@ -1619,4 +1619,4 @@ void ComputeAndProcessKaldiPitch(
 }
 
 
-}  // namespace kaldi
+}  // namespace eesen

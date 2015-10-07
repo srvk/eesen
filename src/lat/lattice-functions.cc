@@ -29,7 +29,7 @@
 #include "base/kaldi-math.h"
 //#include "hmm/hmm-utils.h"
 
-namespace kaldi {
+namespace eesen {
 using std::map;
 using std::vector;
 
@@ -621,7 +621,7 @@ bool RescoreLattice(DecodableInterface *decodable,
     }
   }
   std::vector<int32> state_times;
-  int32 utt_len = kaldi::LatticeStateTimes(*lat, &state_times);
+  int32 utt_len = eesen::LatticeStateTimes(*lat, &state_times);
   
   std::vector<std::vector<int32> > time_to_state(utt_len );
   
@@ -849,4 +849,4 @@ void ComposeCompactLatticeDeterministic(
   fst::Connect(composed_clat);
 }
 
-}  // namespace kaldi
+}  // namespace eesen

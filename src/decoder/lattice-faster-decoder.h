@@ -32,12 +32,12 @@
 #include "util/stl-utils.h"
 #include "util/hash-list.h"
 #include "fst/fstlib.h"
-#include "itf/decodable-itf.h"
+#include "decoder/decodable-itf.h"
 #include "fstext/fstext-lib.h"
 #include "lat/determinize-lattice-pruned.h"
 #include "lat/kaldi-lattice.h"
 
-namespace kaldi {
+namespace eesen {
 
 struct LatticeFasterDecoderConfig {
   BaseFloat beam;
@@ -412,6 +412,6 @@ class LatticeFasterDecoder {
 
 
 
-} // end namespace kaldi.
+} // end namespace eesen.
 
 #endif

@@ -24,7 +24,7 @@
 // Do not include this file directly.  It is included by const-integer-set.h
 
 
-namespace kaldi {
+namespace eesen {
 
 template<class I>
 void ConstIntegerSet<I>::InitInternal() {
@@ -83,6 +83,6 @@ void ConstIntegerSet<I>::Read(std::istream &is, bool binary) {
 
 
 
-} // end namespace kaldi
+} // end namespace eesen
 
 #endif

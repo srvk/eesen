@@ -25,9 +25,9 @@
 #include <vector>
 
 #include "base/kaldi-common.h"
-#include "itf/options-itf.h"
+#include "util/options-itf.h"
 
-namespace kaldi {
+namespace eesen {
 
 
 /// The class SimpleOptions is an implementation of OptionsItf that allows
@@ -107,6 +107,6 @@ class SimpleOptions : public OptionsItf {
   std::map<std::string, std::string*> string_map_;
 };
 
-}  // namespace kaldi
+}  // namespace eesen
 
 #endif  // KALDI_UTIL_SIMPLE_OPTIONS_H_

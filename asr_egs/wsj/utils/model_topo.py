@@ -78,8 +78,8 @@ if __name__ == '__main__':
     if arguments.has_key('lstm_type') and arguments['lstm_type'] == 'uni':
         model_type = '<LstmParallel>'
 
-    print '<NnetProto>'
-    lstm_comm = ' <ParamRange> ' + param_range + ' <LearnRateCoef> 1.0 <BiasLearnRateCoef> 1.0 <MaxGrad> 50.0'
+    print '<Nnet>'
+    lstm_comm = ' <ParamRange> ' + param_range + ' <LearnRateCoef> 1.0 <MaxGrad> 50.0'
 
     # add the option to set the initial value of the forget-gate bias
     if arguments.has_key('fgate_bias_init'):
@@ -90,11 +90,11 @@ if __name__ == '__main__':
         actual_cell_dim = lstm_cell_dim 
 
     # the first layer takes input features
-    print model_type + ' <InputDim> ' + str(input_feat_dim) + ' <OutputDim> ' + str(actual_cell_dim) + lstm_comm
+    print model_type + ' <InputDim> ' + str(input_feat_dim) + ' <CellDim> ' + str(actual_cell_dim) + lstm_comm
     # the following bidirectional LSTM layers
     for n in range(1, lstm_layer_num):
-         print model_type + ' <InputDim> ' + str(actual_cell_dim) + ' <OutputDim> ' + str(actual_cell_dim) + lstm_comm
+         print model_type + ' <InputDim> ' + str(actual_cell_dim) + ' <CellDim> ' + str(actual_cell_dim) + lstm_comm
     # the final affine-transform and softmax layer
     print '<AffineTransform> <InputDim> ' + str(actual_cell_dim) + ' <OutputDim> ' + str(target_num) + ' <ParamRange> ' + param_range
     print '<Softmax> <InputDim> ' + str(target_num) + ' <OutputDim> ' + str(target_num)
-    print '</NnetProto>'
+    print '</Nnet>'

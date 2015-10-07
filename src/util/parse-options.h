@@ -27,9 +27,9 @@
 #include <vector>
 
 #include "base/kaldi-common.h"
-#include "itf/options-itf.h"
+#include "util/options-itf.h"
 
-namespace kaldi {
+namespace eesen {
 
 /// The class ParseOptions is for parsing command-line options; see
 /// \ref parse_options for more documentation.
@@ -259,6 +259,6 @@ template<class C1, class C2> void ReadConfigsFromFile(const std::string config_f
 
 
 
-}  // namespace kaldi
+}  // namespace eesen
 
 #endif  // KALDI_UTIL_PARSE_OPTIONS_H_

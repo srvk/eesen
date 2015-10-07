@@ -73,7 +73,7 @@ static void TestPushSpecial() {
   KALDI_ASSERT(std::abs(min.Value() - max.Value()) <=  1.2 * delta);
   
   KALDI_ASSERT(RandEquivalent(*fst, fst_copy,
-                              5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
+                              5/*paths*/, 0.01/*delta*/, eesen::Rand()/*seed*/, 100/*path length-- max?*/));
   delete fst;
 }
 
@@ -81,7 +81,7 @@ static void TestPushSpecial() {
 } // namespace fst
 
 int main() {
-  kaldi::g_kaldi_verbose_level = 4;
+  eesen::g_kaldi_verbose_level = 4;
   using namespace fst;
   for (int i = 0; i < 25; i++) {
     TestPushSpecial();

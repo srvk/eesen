@@ -9,9 +9,9 @@ exit 0
 %WER 33.0 | 2628 21594 | 71.9 21.6 6.5 4.8 33.0 68.6 | exp_110h/train_phn_l4_c320/decode_eval2000_sw1_fsh_tgpr/score_6/eval2000.ctm.callhm.filt.sys
 
 # CTC Phonemes on the Complete set (with 5 BiLSTM layers) 
-%WER 15.1 | 1831 21395 | 87.5 10.2 2.4 2.6 15.1 53.2 | exp/train_phn_l5_c320/decode_eval2000_sw1_fsh_tgpr/score_7/eval2000.ctm.swbd.filt.sys
-%WER 21.3 | 4459 42989 | 82.4 14.1 3.5 3.7 21.3 59.5 | exp/train_phn_l5_c320/decode_eval2000_sw1_fsh_tgpr/score_7/eval2000.ctm.filt.sys
-%WER 27.4 | 2628 21594 | 77.3 18.0 4.6 4.8 27.4 64.0 | exp/train_phn_l5_c320/decode_eval2000_sw1_fsh_tgpr/score_7/eval2000.ctm.callhm.filt.sys
+%WER 15.0 | 1831 21395 | 87.7 9.9 2.4 2.7 15.0 54.0 | exp/train_phn_l5_c320/decode_eval2000_sw1_fsh_tgpr/score_7/eval2000.ctm.swbd.filt.sys
+%WER 21.0 | 4459 42989 | 82.8 13.8 3.4 3.7 21.0 59.9 | exp/train_phn_l5_c320/decode_eval2000_sw1_fsh_tgpr/score_7/eval2000.ctm.filt.sys
+%WER 26.9 | 2628 21594 | 77.6 17.4 5.0 4.5 26.9 64.6 | exp/train_phn_l5_c320/decode_eval2000_sw1_fsh_tgpr/score_6/eval2000.ctm.callhm.filt.sys
 
 ###################################################################
 # A comparison to HMM/DNN hybrid systems

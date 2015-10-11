@@ -16,9 +16,9 @@ mkdir -p $dir $lmdir
 local=`pwd`/local
 utils=`pwd`/utils
 
-. ./path.sh # Needed for KALDI_ROOT
-export PATH=$PATH:$KALDI_ROOT/tools/irstlm/bin
-sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
+. ./path.sh # Needed for EESEN_ROOT
+export PATH=$PATH:$EESEN_ROOT/tools/irstlm/bin
+sph2pipe=$EESEN_ROOT/tools/sph2pipe_v2.5/sph2pipe
 if [ ! -x $sph2pipe ]; then
    echo "Could not find (or execute) the sph2pipe program at $sph2pipe";
    exit 1;

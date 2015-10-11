@@ -10,10 +10,10 @@ dir=data/local/local_lm
 srcdir=data/local/dict_char_larger   # the expanded lexicon
 
 mkdir -p $dir
-. ./path.sh || exit 1; # for KALDI_ROOT
-export PATH=$KALDI_ROOT/tools/kaldi_lm:$PATH
+. ./path.sh || exit 1; # for EESEN_ROOT
+export PATH=$EESEN_ROOT/tools/kaldi_lm:$PATH
 ( # First make sure the kaldi_lm toolkit is installed.
- cd $KALDI_ROOT/tools || exit 1;
+ cd $EESEN_ROOT/tools || exit 1;
  if [ -d kaldi_lm ]; then
    echo Not installing the kaldi_lm toolkit since it is already there.
  else
@@ -170,7 +170,7 @@ ngram -lm $sdir/srilm.o3g.pr7.kn.gz -ppl $sdir/cleaned.heldout
 
 ##  From here is how to train with
 # IRSTLM.  This is not really working at the moment.
-export IRSTLM=$KALDI_ROOT/tools/irstlm/
+export IRSTLM=$EESEN_ROOT/tools/irstlm/
 
 idir=$dir/irstlm
 mkdir $idir

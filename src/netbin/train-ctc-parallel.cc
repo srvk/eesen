@@ -1,7 +1,6 @@
 // netbin/train-ctc-parallel.cc
 
-// Copyright 2015   Yajie Miao
-//                  Hang Su
+// Copyright 2015   Yajie Miao, Hang Su
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -165,26 +164,30 @@ int main(int argc, char *argv[]) {
       // Error rates
       ctc.ErrorRateMSeq(frame_num_utt, net_out, labels_utt);
 
+
       // Backward pass
       if (!crossvalidate) {
         net.Backpropagate(obj_diff, NULL);
+        if (num_jobs != 1 && (num_done + cur_sequence_num) / utts_per_avg != num_done / utts_per_avg) {
+          comm_avg_weights(net, job_id, num_jobs, avg_count, target_model_filename);
+          avg_count++;
+        }
       }
-
+      
       num_done += cur_sequence_num;
       total_frames += feat_mat_host.NumRows();
-
-      //
-      if (num_jobs != 1 && (num_done - cur_sequence_num) / utts_per_avg != num_done / utts_per_avg) {
-        comm_avg_weights(net, job_id, num_jobs, avg_count, target_model_filename);
-        avg_count++;
-      }
-
+      
       if (feature_reader.Done()) break; // end loop of while(1)
     }
 
     if (num_jobs != 1) {
-      comm_avg_weights(net, job_id, num_jobs, avg_count, target_model_filename);
-      comm_touch_done(ctc, job_id, target_model_filename);
+      if (!crossvalidate) {
+        comm_avg_weights(net, job_id, num_jobs, avg_count, target_model_filename);
+        std::string avg_model_name = comm_avg_model_name(target_model_filename, avg_count);
+        rename(avg_model_name, target_model_filename);
+      }
+      std::string base_done_filename = crossvalidate ? model_filename + ".cv" : target_model_filename + ".tr";
+      comm_touch_done(ctc, job_id, num_jobs, base_done_filename);
       avg_count++;
       KALDI_LOG << "Total average operations: " << avg_count;
     }

@@ -1,7 +1,8 @@
 // net/affine-trans-layer.h
 
 // Copyright 2011-2014  Brno University of Technology (author: Karel Vesely)
-//                2015  Yajie Miao
+//                2015  Yajie Miao, Hang Su
+//                
 
 // See ../../COPYING for clarification regarding multiple authors
 //

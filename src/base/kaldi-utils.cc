@@ -1,5 +1,6 @@
 // base/kaldi-utils.cc
 // Copyright 2009-2011   Karel Vesely;  Yanmin Qian;  Microsoft Corporation
+//           2015        Hang Su
 
 // See ../../COPYING for clarification regarding multiple authors
 //

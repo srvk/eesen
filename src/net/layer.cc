@@ -1,7 +1,7 @@
 // net/layer.cc
 
 // Copyright 2011-2013  Brno University of Technology (Author: Karel Vesely)
-//                2015  Yajie Miao
+//                2015  Yajie Miao, Hang Su
 
 // See ../../COPYING for clarification regarding multiple authors
 //

@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Ondrej Glembek;  Microsoft Corporation;
 //                      Saarland University;  Karel Vesely;  Yanmin Qian
+//                      Hang Su
 
 // See ../../COPYING for clarification regarding multiple authors
 //

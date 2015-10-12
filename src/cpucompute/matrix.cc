@@ -402,7 +402,6 @@ void MatrixBase<Real>::AddDiagVecMat(
     cblas_Xaxpy(num_cols, alpha * *vdata, Mdata, M_col_stride, data, 1);
 }
 
-// <jiayu>
 template<typename Real>
 void MatrixBase<Real>::AddMatDiagVec(
     const Real alpha, 
@@ -454,89 +453,6 @@ void MatrixBase<Real>::AddMatDotMat(const Real alpha,
         dataB += B.Stride();
     }
 }
-// </jiayu>
-
-#if !defined(HAVE_ATLAS) && !defined(USE_KALDI_SVD)
-// ****************************************************************************
-// ****************************************************************************
-template<typename Real>
-void MatrixBase<Real>::LapackGesvd(VectorBase<Real> *s, MatrixBase<Real> *U_in, 
-                                   MatrixBase<Real> *V_in) {
-  KALDI_ASSERT(s != NULL && U_in != this && V_in != this);
-
-  Matrix<Real> tmpU, tmpV;
-  if (U_in == NULL) tmpU.Resize(this->num_rows_, 1);  // work-space if U_in empty.
-  if (V_in == NULL) tmpV.Resize(1, this->num_cols_);  // work-space if V_in empty.
-
-  /// Impementation notes:
-  /// Lapack works in column-order, therefore the dimensions of *this are
-  /// swapped as well as the U and V matrices.
-
-  KaldiBlasInt M   = num_cols_;
-  KaldiBlasInt N   = num_rows_;
-  KaldiBlasInt LDA = Stride();
-
-  KALDI_ASSERT(N>=M);  // NumRows >= columns.
-
-  if (U_in) {
-    KALDI_ASSERT((int)U_in->num_rows_ == N && (int)U_in->num_cols_ == M);
-  }
-  if (V_in) {
-    KALDI_ASSERT((int)V_in->num_rows_ == M && (int)V_in->num_cols_ == M);
-  }
-  KALDI_ASSERT((int)s->Dim() == std::min(M, N));
-
-  MatrixBase<Real> *U = (U_in ? U_in : &tmpU);
-  MatrixBase<Real> *V = (V_in ? V_in : &tmpV);
-
-  KaldiBlasInt V_stride      = V->Stride();
-  KaldiBlasInt U_stride      = U->Stride();
-
-  // Original LAPACK recipe
-  // KaldiBlasInt l_work = std::max(std::max<long int>
-  //   (1, 3*std::min(M, N)+std::max(M, N)), 5*std::min(M, N))*2;
-  KaldiBlasInt l_work = -1;
-  Real   work_query;
-  KaldiBlasInt result;
-
-  // query for work space
-  char *u_job = const_cast<char*>(U_in ? "s" : "N");  // "s" == skinny, "N" == "none."
-  char *v_job = const_cast<char*>(V_in ? "s" : "N");  // "s" == skinny, "N" == "none."
-  clapack_Xgesvd(v_job, u_job,
-                 &M, &N, data_, &LDA,
-                 s->Data(),
-                 V->Data(), &V_stride,
-                 U->Data(), &U_stride,
-                 &work_query, &l_work,
-                 &result);
-  
-  KALDI_ASSERT(result >= 0 && "Call to CLAPACK dgesvd_ called with wrong arguments");
-
-  l_work = static_cast<KaldiBlasInt>(work_query);
-  Real *p_work;
-  void *temp;
-  if ((p_work = static_cast<Real*>(
-          KALDI_MEMALIGN(16, sizeof(Real)*l_work, &temp))) == NULL)
-    throw std::bad_alloc();
-  
-  // perform svd
-  clapack_Xgesvd(v_job, u_job,
-                 &M, &N, data_, &LDA,
-                 s->Data(),
-                 V->Data(), &V_stride,
-                 U->Data(), &U_stride,
-                 p_work, &l_work,
-                 &result);
-
-  KALDI_ASSERT(result >= 0 && "Call to CLAPACK dgesvd_ called with wrong arguments");
-
-  if (result != 0) {
-    KALDI_WARN << "CLAPACK sgesvd_ : some weird convergence not satisfied";
-  }
-  free(p_work);
-}
-
-#endif
 
 // Copy constructor.  Copies data to newly allocated memory.
 template<typename Real>
@@ -1330,20 +1246,6 @@ void MatrixBase<Real>::AddToDiag(const Real alpha) {
     data[r * this_stride] += alpha;
 }
 
-/*
-template<typename Real>
-Real MatrixBase<Real>::Cond() const {
-  KALDI_ASSERT(num_rows_ > 0&&num_cols_ > 0);
-  Vector<Real> singular_values(std::min(num_rows_, num_cols_));
-  Svd(&singular_values);  // Get singular values...
-  Real min = singular_values(0), max = singular_values(0);  // both absolute values...
-  for (MatrixIndexT i = 1;i < singular_values.Dim();i++) {
-    min = std::min((Real)std::abs(singular_values(i)), min); max = std::max((Real)std::abs(singular_values(i)), max);
-  }
-  if (min > 0) return max/min;
-  else return std::numeric_limits<Real>::infinity();
-}
-*/
 template<typename Real>
 Real MatrixBase<Real>::Trace(bool check_square) const  {
   KALDI_ASSERT(!check_square || num_rows_ == num_cols_);
@@ -1413,76 +1315,6 @@ void MatrixBase<Real>::AddMatMatMat(Real alpha,
   }
 }
 
-
-
-/*
-template<typename Real>
-void MatrixBase<Real>::DestructiveSvd(VectorBase<Real> *s, MatrixBase<Real> *U, MatrixBase<Real> *Vt) {
-  // Svd, *this = U*diag(s)*Vt.
-  // With (*this).num_rows_ == m, (*this).num_cols_ == n,
-  // Support only skinny Svd with m>=n (NumRows>=NumCols), and zero sizes for U and Vt mean
-  // we do not want that output.  We expect that s.Dim() == m,
-  // U is either 0 by 0 or m by n, and rv is either 0 by 0 or n by n.
-  // Throws exception on error.
-
-  KALDI_ASSERT(num_rows_>=num_cols_ && "Svd requires that #rows by >= #cols.");  // For compatibility with JAMA code.
-  KALDI_ASSERT(s->Dim() == num_cols_);  // s should be the smaller dim.
-  KALDI_ASSERT(U == NULL || (U->num_rows_ == num_rows_&&U->num_cols_ == num_cols_));
-  KALDI_ASSERT(Vt == NULL || (Vt->num_rows_ == num_cols_&&Vt->num_cols_ == num_cols_));
-
-  Real prescale = 1.0;
-  if ( std::abs((*this)(0, 0) ) < 1.0e-30) {  // Very tiny value... can cause problems in Svd.
-    Real max_elem = LargestAbsElem();
-    if (max_elem != 0) {
-      prescale = 1.0 / max_elem;
-      if (std::abs(prescale) == std::numeric_limits<Real>::infinity()) { prescale = 1.0e+40; }
-      (*this).Scale(prescale);
-    }
-  }
-
-#if !defined(HAVE_ATLAS) && !defined(USE_KALDI_SVD)
-  // "S" == skinny Svd (only one we support because of compatibility with Jama one which is only skinny),
-  // "N"== no eigenvectors wanted.
-  LapackGesvd(s, U, Vt);
-#else*/
-  /*  if (num_rows_ > 1 && num_cols_ > 1 && (*this)(0, 0) == (*this)(1, 1)
-      && Max() == Min() && (*this)(0, 0) != 0.0) { // special case that JamaSvd sometimes crashes on.
-      KALDI_WARN << "Jama SVD crashes on this type of matrix, perturbing it to prevent crash.";
-      for(int32 i = 0; i < NumRows(); i++)
-      (*this)(i, i)  *= 1.00001;
-      }*/
-/*  bool ans = JamaSvd(s, U, Vt);
-  if (Vt != NULL) Vt->Transpose();  // possibly to do: change this and also the transpose inside the JamaSvd routine.  note, Vt is square.
-  if (!ans) {
-    KALDI_ERR << "Error doing Svd";  // This one will be caught.
-  }
-#endif
-  if (prescale != 1.0) s->Scale(1.0/prescale);
-}
-
-template<typename Real>
-void MatrixBase<Real>::Svd(VectorBase<Real> *s, MatrixBase<Real> *U, MatrixBase<Real> *Vt) const {
-  try {
-    if (num_rows_ >= num_cols_) {
-      Matrix<Real> tmp(*this);
-      tmp.DestructiveSvd(s, U, Vt);
-    } else {
-      Matrix<Real> tmp(*this, kTrans);  // transpose of *this.
-      // rVt will have different dim so cannot transpose in-place --> use a temp matrix.
-      Matrix<Real> Vt_Trans(Vt ? Vt->num_cols_ : 0, Vt ? Vt->num_rows_ : 0);
-      // U will be transpose
-      tmp.DestructiveSvd(s, Vt ? &Vt_Trans : NULL, U);
-      if (U) U->Transpose();
-      if (Vt) Vt->CopyFromMat(Vt_Trans, kTrans);  // copy with transpose.
-    }
-  } catch (...) {
-    KALDI_ERR << "Error doing Svd (did not converge), first part of matrix is\n"
-              << SubMatrix<Real>(*this, 0, std::min((MatrixIndexT)10, num_rows_),
-                                 0, std::min((MatrixIndexT)10, num_cols_))
-              << ", min and max are: " << Min() << ", " << Max(); 
-  }
-}
-*/
 template<typename Real>
 bool MatrixBase<Real>::IsSymmetric(Real cutoff) const {
   MatrixIndexT R = num_rows_, C = num_cols_;
@@ -1737,30 +1569,6 @@ void MatrixBase<Real>::ApplyHeaviside() {
   }
 }
 
-/*
-template<typename Real>
-bool MatrixBase<Real>::Power(Real power) {
-  KALDI_ASSERT(num_rows_ > 0 && num_rows_ == num_cols_);
-  MatrixIndexT n = num_rows_;
-  Matrix<Real> P(n, n);
-  Vector<Real> re(n), im(n);
-  this->Eig(&P, &re, &im);
-  // Now attempt to take the complex eigenvalues to this power.
-  for (MatrixIndexT i = 0; i < n; i++)
-    if (!AttemptComplexPower(&(re(i)), &(im(i)), power))
-      return false;  // e.g. real and negative, or zero, eigenvalues.
-
-  Matrix<Real> D(n, n);  // D to the power.
-  CreateEigenvalueMatrix(re, im, &D);
-
-  Matrix<Real> tmp(n, n);  // P times D
-  tmp.AddMatMat(1.0, P, kNoTrans, D, kNoTrans, 0.0);  // tmp := P*D
-  P.Invert();
-  // next line is: *this = tmp * P^{-1} = P * D * P^{-1}
-  (*this).AddMatMat(1.0, tmp, kNoTrans, P, kNoTrans, 0.0);
-  return true;
-}
-*/
 template<typename Real>
 void Matrix<Real>::Swap(Matrix<Real> *other) {
   std::swap(this->data_, other->data_);
@@ -1768,46 +1576,6 @@ void Matrix<Real>::Swap(Matrix<Real> *other) {
   std::swap(this->num_rows_, other->num_rows_);
   std::swap(this->stride_, other->stride_);
 }
-
-// Repeating this comment that appeared in the header:
-// Eigenvalue Decomposition of a square NxN matrix into the form (*this) = P D
-// P^{-1}.  Be careful: the relationship of D to the eigenvalues we output is
-// slightly complicated, due to the need for P to be real.  In the symmetric
-// case D is diagonal and real, but in
-// the non-symmetric case there may be complex-conjugate pairs of eigenvalues.
-// In this case, for the equation (*this) = P D P^{-1} to hold, D must actually
-// be block diagonal, with 2x2 blocks corresponding to any such pairs.  If a
-// pair is lambda +- i*mu, D will have a corresponding 2x2 block
-// [lambda, mu; -mu, lambda].
-// Note that if the input matrix (*this) is non-invertible, P may not be invertible
-// so in this case instead of the equation (*this) = P D P^{-1} holding, we have
-// instead (*this) P = P D.
-//
-// By making the pointer arguments non-NULL or NULL, the user can choose to take
-// not to take the eigenvalues directly, and/or the matrix D which is block-diagonal
-// with 2x2 blocks.
-/*template<typename Real>
-void MatrixBase<Real>::Eig(MatrixBase<Real> *P,
-                           VectorBase<Real> *r,
-                           VectorBase<Real> *i) const {
-  EigenvalueDecomposition<Real>  eig(*this);
-  if (P) eig.GetV(P);
-  if (r) eig.GetRealEigenvalues(r);
-  if (i) eig.GetImagEigenvalues(i);
-}
-*/
-
-// Begin non-member function definitions.
-
-//  /**
-//   * @brief Extension of the HTK header
-//  */
-// struct HtkHeaderExt
-//  {
-// INT_32 mHeaderSize;
-// INT_32 mVersion;
-// INT_32 mSampSize;
-// };
 
 template<typename Real>
 bool ReadHtk(std::istream &is, Matrix<Real> *M_ptr, HtkHeader *header_ptr)
@@ -2086,42 +1854,6 @@ double TraceMatMatMatMat(const MatrixBase<double> &A, MatrixTransposeType transA
                          const MatrixBase<double> &B, MatrixTransposeType transB,
                          const MatrixBase<double> &C, MatrixTransposeType transC,
                          const MatrixBase<double> &D, MatrixTransposeType transD);
-/*
-template<typename Real>
-void CreateEigenvalueMatrix(const VectorBase<Real> &re, const VectorBase<Real> &im,
-                            MatrixBase<Real> *D) {
-  MatrixIndexT n = re.Dim();
-  KALDI_ASSERT(im.Dim() == n && D->NumRows() == n && D->NumCols() == n);
-
-  MatrixIndexT j = 0;
-  D->SetZero();
-  while (j < n) {
-    if (im(j) == 0) {  // Real eigenvalue
-      (*D)(j, j) = re(j);
-      j++;
-    } else {  // First of a complex pair
-      KALDI_ASSERT(j+1 < n && ApproxEqual(im(j+1), -im(j))
-                   && ApproxEqual(re(j+1), re(j)));
-      /// if (im(j) < 0.0) KALDI_WARN << "Negative first im part of pair";  // TEMP
-      Real lambda = re(j), mu = im(j);
-      // create 2x2 block [lambda, mu; -mu, lambda]
-      (*D)(j, j) = lambda;
-      (*D)(j, j+1) = mu;
-      (*D)(j+1, j) = -mu;
-      (*D)(j+1, j+1) = lambda;
-      j += 2;
-    }
-  }
-}
-
-template
-void CreateEigenvalueMatrix(const VectorBase<float> &re, const VectorBase<float> &im,
-                            MatrixBase<float> *D);
-template
-void CreateEigenvalueMatrix(const VectorBase<double> &re, const VectorBase<double> &im,
-                            MatrixBase<double> *D);
-
-*/
 
 template<typename Real>
 bool AttemptComplexPower(Real *x_re, Real *x_im, Real power) {

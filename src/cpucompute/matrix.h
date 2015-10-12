@@ -299,71 +299,8 @@ class MatrixBase {
   /// RectifiedLinearComponent in the neural net code.
   void ApplyHeaviside();
   
-  /// Eigenvalue Decomposition of a square NxN matrix into the form (*this) = P D
-  /// P^{-1}.  Be careful: the relationship of D to the eigenvalues we output is
-  /// slightly complicated, due to the need for P to be real.  In the symmetric
-  /// case D is diagonal and real, but in
-  /// the non-symmetric case there may be complex-conjugate pairs of eigenvalues.
-  /// In this case, for the equation (*this) = P D P^{-1} to hold, D must actually
-  /// be block diagonal, with 2x2 blocks corresponding to any such pairs.  If a
-  /// pair is lambda +- i*mu, D will have a corresponding 2x2 block
-  /// [lambda, mu; -mu, lambda].
-  /// Note that if the input matrix (*this) is non-invertible, P may not be invertible
-  /// so in this case instead of the equation (*this) = P D P^{-1} holding, we have
-  /// instead (*this) P = P D.
-  ///
-  /// The non-member function CreateEigenvalueMatrix creates D from eigs_real and eigs_imag.
-//  void Eig(MatrixBase<Real> *P,
-//           VectorBase<Real> *eigs_real,
-//           VectorBase<Real> *eigs_imag) const;
-
-  /// The Power method attempts to take the matrix to a power using a method that
-  /// works in general for fractional and negative powers.  The input matrix must
-  /// be invertible and have reasonable condition (or we don't guarantee the
-  /// results.  The method is based on the eigenvalue decomposition.  It will
-  /// return false and leave the matrix unchanged, if at entry the matrix had
-  /// real negative eigenvalues (or if it had zero eigenvalues and the power was
-  /// negative).
-//  bool Power(Real pow);
-
-  /** Singular value decomposition
-     Major limitations:
-     For nonsquare matrices, we assume m>=n (NumRows >= NumCols), and we return
-     the "skinny" Svd, i.e. the matrix in the middle is diagonal, and the
-     one on the left is rectangular.
-
-     In Svd, *this = U*diag(S)*Vt.
-     Null pointers for U and/or Vt at input mean we do not want that output.  We
-     expect that S.Dim() == m, U is either NULL or m by n,
-     and v is either NULL or n by n.
-     The singular values are not sorted (use SortSvd for that).  */
-//  void DestructiveSvd(VectorBase<Real> *s, MatrixBase<Real> *U,
-//                      MatrixBase<Real> *Vt);  // Destroys calling matrix.
-
-  /// Compute SVD (*this) = U diag(s) Vt.   Note that the V in the call is already
-  /// transposed; the normal formulation is U diag(s) V^T.
-  /// Null pointers for U or V mean we don't want that output (this saves
-  /// compute).  The singular values are not sorted (use SortSvd for that).
-//  void Svd(VectorBase<Real> *s, MatrixBase<Real> *U,
-//           MatrixBase<Real> *Vt) const;
-  /// Compute SVD but only retain the singular values.
-//  void Svd(VectorBase<Real> *s) const { Svd(s, NULL, NULL); }
-
-
-  /// Returns smallest singular value.
-//  Real MinSingularValue() const {
-//    Vector<Real> tmp(std::min(NumRows(), NumCols()));
-//    Svd(&tmp);
-//    return tmp.Min();
-//  }
-
   void TestUninitialized() const; // This function is designed so that if any element
-  // if the matrix is uninitialized memory, valgrind will complain.
   
-  /// Returns condition number by computing Svd.  Works even if cols > rows.
-  /// Returns infinity if all singular values are zero.
-//  Real Cond() const;
-
   /// Returns true if matrix is Symmetric.
   bool IsSymmetric(Real cutoff = 1.0e-05) const;  // replace magic number
 
@@ -542,20 +479,6 @@ class MatrixBase {
   /// write to stream.
   void Write(std::ostream & out, bool binary) const;
 
-  // Below is internal methods for Svd, user does not have to know about this.
-//#if !defined(HAVE_ATLAS) && !defined(USE_KALDI_SVD)
-  // protected:
-  // Should be protected but used directly in testing routine.
-  // destroys *this!
-//  void LapackGesvd(VectorBase<Real> *s, MatrixBase<Real> *U,
-//                     MatrixBase<Real> *Vt);
-//#else
-// protected:
-  // destroys *this!
-//  bool JamaSvd(VectorBase<Real> *s, MatrixBase<Real> *U,
-//               MatrixBase<Real> *V);
-
-//#endif
  protected:
 
   ///  Initializer, callable only from child.
@@ -811,16 +734,6 @@ Real TraceMatMatMatMat(const MatrixBase<Real> &A, MatrixTransposeType transA,
 /// \addtogroup matrix_funcs_misc
 /// @{
 
-
-/// Creates the eigenvalue matrix D that is part of the decomposition used Matrix::Eig.
-/// D will be block-diagonal with blocks of size 1 (for real eigenvalues) or 2x2
-/// for complex pairs.  If a complex pair is lambda +- i*mu, D will have a corresponding
-/// 2x2 block [lambda, mu; -mu, lambda].
-/// This function will throw if any complex eigenvalues are not in complex conjugate
-/// pairs (or the members of such pairs are not consecutively numbered).
-//template<typename Real>
-//void CreateEigenvalueMatrix(const VectorBase<Real> &real, const VectorBase<Real> &imag,
-//                            MatrixBase<Real> *D);
 
 /// The following function is used in Matrix::Power, and separately tested, so we
 /// declare it here mainly for the testing code to see.  It takes a complex value to

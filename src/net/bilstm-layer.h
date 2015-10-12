@@ -1,6 +1,6 @@
 // net/bilstm-layer.h
 
-// Copyright 2015   Yajie Miao
+// Copyright 2015   Yajie Miao, Hang Su
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -519,6 +519,39 @@ public:
       phole_i_c_bw_.AddVec(-lr, phole_i_c_bw_corr_, 1.0);
       phole_f_c_bw_.AddVec(-lr, phole_f_c_bw_corr_, 1.0);
       phole_o_c_bw_.AddVec(-lr, phole_o_c_bw_corr_, 1.0);
+    }
+
+    void Scale(BaseFloat scale) {
+      wei_gifo_x_fw_.Scale(scale);
+      wei_gifo_m_fw_.Scale(scale);
+      bias_fw_.Scale(scale);
+      phole_i_c_fw_.Scale(scale);
+      phole_f_c_fw_.Scale(scale);
+      phole_o_c_fw_.Scale(scale);
+
+      wei_gifo_x_bw_.Scale(scale);
+      wei_gifo_m_bw_.Scale(scale);
+      bias_bw_.Scale(scale);
+      phole_i_c_bw_.Scale(scale);
+      phole_f_c_bw_.Scale(scale);
+      phole_o_c_bw_.Scale(scale);
+    }
+
+    void Add(BaseFloat scale, const TrainableLayer & layer_other) {
+      const BiLstm *other = dynamic_cast<const BiLstm*>(&layer_other);
+      wei_gifo_x_fw_.AddMat(scale, other->wei_gifo_x_fw_);
+      wei_gifo_m_fw_.AddMat(scale, other->wei_gifo_m_fw_);
+      bias_fw_.AddVec(scale, other->bias_fw_);
+      phole_i_c_fw_.AddVec(scale, other->phole_i_c_fw_);
+      phole_f_c_fw_.AddVec(scale, other->phole_f_c_fw_);
+      phole_o_c_fw_.AddVec(scale, other->phole_o_c_fw_);
+      
+      wei_gifo_x_bw_.AddMat(scale, other->wei_gifo_x_bw_);
+      wei_gifo_m_bw_.AddMat(scale, other->wei_gifo_m_bw_);
+      bias_bw_.AddVec(scale, other->bias_bw_);
+      phole_i_c_bw_.AddVec(scale, other->phole_i_c_bw_);
+      phole_f_c_bw_.AddVec(scale, other->phole_f_c_bw_);
+      phole_o_c_bw_.AddVec(scale, other->phole_o_c_bw_);
     }
 
     int32 NumParams() const {

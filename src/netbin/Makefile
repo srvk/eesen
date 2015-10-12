@@ -6,7 +6,10 @@ include ../config.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
-BINFILES = net-initialize net-copy format-to-nonparallel train-ctc train-ctc-parallel train-ce train-ce-parallel net-output-extract
+BINFILES = net-initialize net-copy format-to-nonparallel \
+					 train-ctc train-ctc-parallel train-ce \
+					 train-ce-parallel net-output-extract \
+					 net-average
 
 OBJFILES =
 

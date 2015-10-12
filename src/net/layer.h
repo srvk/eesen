@@ -1,7 +1,7 @@
 // net/layer.h
 
 // Copyright 2011-2013  Brno University of Technology (Author: Karel Vesely)
-//                2015  Yajie Miao
+//                2015  Yajie Miao, Hang Su
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -111,6 +111,8 @@ class Layer {
   static Layer* Init(const std::string &conf_line);
   /// Read component from stream
   static Layer* Read(std::istream &is, bool binary);
+  /// Read component from stream (with layer initialized before)
+  void ReRead(std::istream &is, bool binary);
   /// Write component to stream
   void Write(std::ostream &os, bool binary) const;
   void WriteNonParal(std::ostream &os, bool binary) const;

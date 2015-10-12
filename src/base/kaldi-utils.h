@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Ondrej Glembek;  Microsoft Corporation;
 //                      Saarland University;  Karel Vesely;  Yanmin Qian
+//                      Hang Su
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -72,6 +73,9 @@ namespace eesen {
 // CharToString prints the character in a human-readable form, for debugging.
 std::string CharToString(const char &c);
 
+std::string IntToString(const int &i);
+
+bool FileExist(const char *fileName);
 
 inline int MachineIsLittleEndian() {
   int check = 1;

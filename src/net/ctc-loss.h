@@ -1,6 +1,6 @@
 // net/ctc-loss.h
 
-// Copyright 2015  Yajie Miao
+// Copyright 2015  Yajie Miao, Hang Su
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,6 +55,9 @@ class Ctc {
 
   /// Generate string with report
   std::string Report();
+
+  float NumErrorTokens() const { return error_num_;}
+  int32 NumRefTokens() const { return ref_num_;}
 
  private:
   int32 frames_;                    // total frame number

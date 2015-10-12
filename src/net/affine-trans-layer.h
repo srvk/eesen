@@ -1,7 +1,8 @@
 // net/affine-trans-layer.h
 
 // Copyright 2011-2014  Brno University of Technology (author: Karel Vesely)
-//                2015  Yajie Miao
+//                2015  Yajie Miao, Hang Su
+//                
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -134,10 +135,16 @@ class AffineTransform : public TrainableLayer {
     linearity_.AddMat(-lr, linearity_corr_);
     bias_.AddVec(-lr, bias_corr_);
   }
+  
+  void Scale(BaseFloat scale) {
+    linearity_.Scale(scale);
+    bias_.Scale(scale);
+  }
 
-  /// Accessors to the component parameters
-  const CuVectorBase<BaseFloat>& GetBias() const {
-    return bias_;
+  void Add(BaseFloat scale, const TrainableLayer & layer_other) {
+    const AffineTransform *other = dynamic_cast<const AffineTransform*>(&layer_other);
+    linearity_.AddMat(scale, other->linearity_);
+    bias_.AddVec(scale, other->bias_);
   }
 
   void SetBias(const CuVectorBase<BaseFloat>& bias) {

@@ -1,6 +1,6 @@
 // net/lstm-layer.h
 
-// Copyright 2015   Yajie Miao
+// Copyright 2015   Yajie Miao, Hang Su
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -310,6 +310,25 @@ public:
       phole_i_c_.AddVec(-lr, phole_i_c_corr_, 1.0);
       phole_f_c_.AddVec(-lr, phole_f_c_corr_, 1.0);
       phole_o_c_.AddVec(-lr, phole_o_c_corr_, 1.0);
+    }
+
+    void Scale(BaseFloat scale) {
+      wei_gifo_x_.Scale(scale);
+      wei_gifo_m_.Scale(scale);
+      bias_.Scale(scale);
+      phole_i_c_.Scale(scale);
+      phole_f_c_.Scale(scale);
+      phole_o_c_.Scale(scale);
+    }
+
+    void Add(BaseFloat scale, const TrainableLayer & layer_other) {
+      const Lstm *other = dynamic_cast<const Lstm*>(&layer_other);
+      wei_gifo_x_.AddMat(scale, other->wei_gifo_x_);
+      wei_gifo_m_.AddMat(scale, other->wei_gifo_m_);
+      bias_.AddVec(scale, other->bias_);
+      phole_i_c_.AddVec(scale, other->phole_i_c_);
+      phole_f_c_.AddVec(scale, other->phole_f_c_);
+      phole_o_c_.AddVec(scale, other->phole_o_c_);
     }
 
     int32 NumParams() const {

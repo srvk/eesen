@@ -1,7 +1,7 @@
 // net/net.cc
 
 // Copyright 2011-2013  Brno University of Technology (Author: Karel Vesely)
-//                2015  Yajie Miao
+//                2015  Yajie Miao, Hang Su
 //
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -266,6 +266,24 @@ void Net::Read(std::istream &is, bool binary) {
   Check(); //check consistency (dims...)
 }
 
+void Net::ReRead(const std::string &file) {
+  bool binary;
+  Input in(file, &binary);
+  ReRead(in.Stream(), binary);
+  in.Close();
+  // Warn if the NN is empty
+  if(NumLayers() == 0) {
+    KALDI_WARN << "The network '" << file << "' is empty.";
+  }
+}
+
+
+void Net::ReRead(std::istream &is, bool binary) {
+  // get the network layers from a factory
+  for(int32 i=0; i<NumLayers(); i++) {
+    layers_[i]->ReRead(is, binary);
+  }
+}
 
 void Net::Write(const std::string &file, bool binary) const {
   Output out(file, binary, true);
@@ -334,6 +352,27 @@ std::string Net::InfoGradient() const {
          << ", " << layers_[i]->InfoGradient() << std::endl;
   }
   return ostr.str();
+}
+
+void Net::Scale(BaseFloat scale) {
+  for(int32 i=0; i < (int32)layers_.size(); i++) {
+    if (layers_[i]->IsTrainable()) {
+      TrainableLayer *tl = dynamic_cast<TrainableLayer*>(layers_[i]);
+      tl->Scale(scale);
+    }
+  }
+}
+
+void Net::AddNet(BaseFloat scale, Net &net_other) {
+  KALDI_ASSERT(net_other.NumLayers() == NumLayers());
+
+  for(int32 i=0; i < (int32)layers_.size(); i++) {
+    if (layers_[i]->IsTrainable()) {
+      TrainableLayer *tl = dynamic_cast<TrainableLayer*>(layers_[i]);
+      TrainableLayer *tl_other = dynamic_cast<TrainableLayer*>(&(net_other.GetLayer(i)));
+      tl->Add(scale, *tl_other);
+    }
+  }
 }
 
 void Net::Check() const {

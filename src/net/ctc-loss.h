@@ -56,6 +56,9 @@ class Ctc {
   /// Generate string with report
   std::string Report();
 
+  float NumErrorTokens() const { return error_num_;}
+  int32 NumRefTokens() const { return ref_num_;}
+
  private:
   int32 frames_;                    // total frame number
   int32 sequences_num_; 

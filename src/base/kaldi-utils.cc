@@ -17,6 +17,8 @@
 // limitations under the License.
 
 #include <string>
+#include <sstream>
+#include <fstream>
 #include "base/kaldi-common.h"
 
 namespace eesen {
@@ -29,5 +31,17 @@ std::string CharToString(const char &c) {
     sprintf(buf, "[character %d]", (int) c);
   return (std::string) buf;
 }
+
+std::string IntToString(const int &i) {
+  std::stringstream ss;
+  ss << i;
+  return ss.str();
+}
+
+bool FileExist(const char *file_name) {
+  std::ifstream infile(file_name);
+  return infile.good();
+}
+
 
 }  // end namespace eesen

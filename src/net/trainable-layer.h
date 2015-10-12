@@ -57,6 +57,10 @@ class TrainableLayer : public Layer {
   /// Compute gradient and update parameters
   virtual void Update(const CuMatrixBase<BaseFloat> &input,
                       const CuMatrixBase<BaseFloat> &diff) = 0;
+  
+  virtual void Scale(BaseFloat scale) = 0;
+
+  virtual void Add(BaseFloat scale, const TrainableLayer & layer_other) = 0;
 
   /// Sets the training options to the component
   virtual void SetTrainOptions(const NetTrainOptions &opts) {

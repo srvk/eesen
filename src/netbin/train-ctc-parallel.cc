@@ -1,6 +1,7 @@
 // netbin/train-ctc-parallel.cc
 
 // Copyright 2015   Yajie Miao
+//                  Hang Su
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +23,7 @@
 #include "util/common-utils.h"
 #include "base/timer.h"
 #include "gpucompute/cuda-device.h"
+#include "net/communicator.h"
 
 int main(int argc, char *argv[]) {
   using namespace eesen;
@@ -57,6 +59,15 @@ int main(int argc, char *argv[]) {
 
     std::string use_gpu="yes";
 //    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
+
+    int32 num_jobs = 1;
+    po.Register("num-jobs", &num_jobs, "Number subjobs in multi-GPU mode");
+
+    int32 job_id = 1;
+    po.Register("job-id", &job_id, "Subjob id in multi-GPU mode");
+
+    int32 utts_per_avg = 500;
+    po.Register("utts-per-avg", &utts_per_avg, "Number of utterances to process per average (default is 250)");
 
     po.Read(argc, argv);
 
@@ -105,7 +116,7 @@ int main(int argc, char *argv[]) {
     std::vector< std::vector<int> > labels_utt(num_sequence);  // Label vector of every utterance
     int32 feat_dim = net.InputDim();
 
-    int32 num_done = 0, num_no_tgt_mat = 0, num_other_error = 0;
+    int32 num_done = 0, num_no_tgt_mat = 0, num_other_error = 0, avg_count = 0;
     while (1) {
 
       std::vector<int> frame_num_utt;
@@ -162,7 +173,20 @@ int main(int argc, char *argv[]) {
       num_done += cur_sequence_num;
       total_frames += feat_mat_host.NumRows();
 
+      //
+      if (num_jobs != 1 && (num_done - cur_sequence_num) / utts_per_avg != num_done / utts_per_avg) {
+        comm_avg_weights(net, job_id, num_jobs, avg_count, target_model_filename);
+        avg_count++;
+      }
+
       if (feature_reader.Done()) break; // end loop of while(1)
+    }
+
+    if (num_jobs != 1) {
+      comm_avg_weights(net, job_id, num_jobs, avg_count, target_model_filename);
+      comm_touch_done(ctc, job_id, target_model_filename);
+      avg_count++;
+      KALDI_LOG << "Total average operations: " << avg_count;
     }
      
     // Print statistics of gradients when training finishes 
@@ -179,7 +203,7 @@ int main(int argc, char *argv[]) {
               << " with other errors. "
               << "[" << (crossvalidate?"CROSS-VALIDATION":"TRAINING")
               << ", " << time.Elapsed()/60 << " min, fps" << total_frames/time.Elapsed()
-              << "]";  
+              << "]";
     KALDI_LOG << ctc.Report();
 
 #if HAVE_CUDA==1

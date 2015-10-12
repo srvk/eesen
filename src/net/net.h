@@ -87,10 +87,15 @@ class Net {
 
   /// Initialize MLP from config
   void Init(const std::string &config_file);
-  /// Read the MLP from file (can add layers to exisiting instance of Nnet)
+  /// Read the MLP from file (can add layers to exisiting instance of Net)
   void Read(const std::string &file);  
-  /// Read the MLP from stream (can add layers to exisiting instance of Nnet)
+  /// Read the MLP from stream (can add layers to exisiting instance of Net)
   void Read(std::istream &in, bool binary);  
+  /// Re-read a MLP from file (of the same structure of current Net)
+  void ReRead(const std::string &file);
+  /// Re-read a MLP from stream (of the same structure of current Net)
+  void ReRead(std::istream &in, bool binary);
+
   /// Write MLP to file
   void Write(const std::string &file, bool binary) const;
   /// Write MLP to stream 
@@ -107,6 +112,11 @@ class Net {
   std::string Info() const;
   /// Create string with per-layer gradient statistics
   std::string InfoGradient() const;
+
+  /// Scale the weights
+  void Scale(BaseFloat scale);
+  /// Add another net to current net
+  void AddNet(BaseFloat scale, Net &net_other);
 
   /// Consistency check.
   void Check() const;

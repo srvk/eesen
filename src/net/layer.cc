@@ -162,6 +162,36 @@ Layer* Layer::Read(std::istream &is, bool binary) {
   return layer;
 }
 
+void Layer::ReRead(std::istream &is, bool binary) {
+  int32 dim_out, dim_in;
+  std::string token;
+
+  int first_char = Peek(is, binary);
+  if (first_char == EOF) return;
+
+  ReadToken(is, binary, &token);
+  // Finish reading when optional terminal token appears
+  if(token == "</Nnet>") return;
+  
+  // Skip optional initial token
+  if(token == "<Nnet>") {
+    ReadToken(is, binary, &token);
+  }
+
+  ExpectToken(is, binary, "<InputDim>");
+  ReadBasicType(is, binary, &dim_in);
+  if (IsLstmType(token)) {
+    ExpectToken(is, binary, "<CellDim>");
+  } else {
+    ExpectToken(is, binary, "<OutputDim>");
+  }
+  ReadBasicType(is, binary, &dim_out);
+
+  KALDI_ASSERT(dim_in == input_dim_);
+  KALDI_ASSERT(dim_out == output_dim_);
+  
+  this->ReadData(is, binary);
+}
 
 void Layer::Write(std::ostream &os, bool binary) const {
   std::string layer_type_string = Layer::TypeToMarker(GetType());

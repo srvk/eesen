@@ -73,7 +73,7 @@ dir=$3
 mkdir -p $dir/log $dir/nnet
 
 for f in $data_tr/feats.scp $data_cv/feats.scp $dir/labels.tr.gz $dir/labels.cv.gz $dir/nnet.proto; do
-  [ ! -f $f ] && echo "decode.sh: no such file $f" && exit 1;
+  [ ! -f $f ] && echo "train_ctc_parallel.sh: no such file $f" && exit 1;
 done
 
 ## Read the training status for resuming
@@ -109,8 +109,8 @@ feats_cv="ark,s,cs:copy-feats scp:$dir/cv_local.scp ark:- |"
 [ $clean_up == true ] && trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
 
 if [ ! -z "$nj" ]; then
-  cat $dir/train_local.scp | myutils/distribute_scp.pl --mode utt $nj $dir/train_split
-  cat $dir/cv_local.scp | myutils/distribute_scp.pl --mode utt $nj $dir/cv_split
+  cat $dir/train_local.scp | utils/distribute_scp.pl --mode utt $nj $dir/train_split
+  cat $dir/cv_local.scp | utils/distribute_scp.pl --mode utt $nj $dir/cv_split
   feats_sub_tr="ark,s,cs:copy-feats scp:$dir/train_split.JOB.scp ark:- |"
   feats_sub_cv="ark,s,cs:copy-feats scp:$dir/cv_split.JOB.scp ark:- |"
 fi
@@ -154,12 +154,12 @@ for iter in $(seq $start_epoch_num $max_iters); do
         >& $dir/log/tr.iter$iter.log || exit 1;
       tracc=$(cat $dir/log/tr.iter${iter}.log | grep "TOKEN_ACCURACY" | tail -n 1 | awk '{ acc=$3; gsub("%","",acc); print acc; }')
     else
-      $cudall_cmd JOB=1:$nj $dir/log/tr.iter$iter.JOB.log \
+      $cuda_cmd JOB=1:$nj $dir/log/tr.iter$iter.JOB.log \
         $train_tool --report-step=$report_step --num-sequence=$num_sequence --frame-limit=$frame_num_limit \
         --learn-rate=$learn_rate --momentum=$momentum --num-jobs=$nj --job-id=JOB \
         --verbose=$verbose \
         ${utts_per_avg:+ --utts-per-avg=$utts_per_avg} \
-        "$feats_sub_tr" "$labels_tr" $dir/nnet/nnet.iter$[iter-1] $dir/nnet/nnet.iter${iter} >& $dir/log/tr.iter$iter.log || exit 1
+        "$feats_sub_tr" "$labels_tr" $dir/nnet/nnet.iter$[iter-1] $dir/nnet/nnet.iter${iter} || exit 1
       tracc=$(cat $dir/log/tr.iter${iter}.1.log | grep "TOTAL TOKEN_ACCURACY" | tail -n 1 | awk '{ acc=$(NF-1); gsub("%","",acc); print acc; }')
     fi
 
@@ -183,7 +183,7 @@ for iter in $(seq $start_epoch_num $max_iters); do
         --cross-validate=true --num-jobs=$nj --job-id=JOB \
         --learn-rate=$learn_rate \
         --verbose=$verbose \
-        "$feats_sub_cv" "$labels_cv" $dir/nnet/nnet.iter${iter} >& $dir/log/cv.iter$iter.log || exit 1;
+        "$feats_sub_cv" "$labels_cv" $dir/nnet/nnet.iter${iter} || exit 1;
       cvacc=$(cat $dir/log/cv.iter${iter}.1.log | grep "TOTAL TOKEN_ACCURACY" | tail -n 1 | awk '{ acc=$(NF-1); gsub("%","",acc); print acc; }')
     fi
 

@@ -184,7 +184,7 @@ int main(int argc, char *argv[]) {
       if (!crossvalidate) {
         comm_avg_weights(net, job_id, num_jobs, avg_count, target_model_filename);
         std::string avg_model_name = comm_avg_model_name(target_model_filename, avg_count);
-        rename(avg_model_name, target_model_filename);
+        rename(avg_model_name.c_str(), target_model_filename.c_str());
       }
       std::string base_done_filename = crossvalidate ? model_filename + ".cv" : target_model_filename + ".tr";
       comm_touch_done(ctc, job_id, num_jobs, base_done_filename);

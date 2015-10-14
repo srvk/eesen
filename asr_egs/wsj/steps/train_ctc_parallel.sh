@@ -46,7 +46,7 @@ cvacc=-1
 halving=0
 
 # Multi-GPU training
-nj=
+nj=1
 utts_per_avg=700
 
 clean_up=true
@@ -86,40 +86,24 @@ done
 echo $norm_vars > $dir/norm_vars  # output feature configs which will be used in decoding
 echo $add_deltas > $dir/add_deltas
 
-if $sort_by_len; then
-  feat-to-len scp:$data_tr/feats.scp ark,t:- | awk '{print $2}' > $dir/len.tmp || exit 1;
-  paste -d " " $data_tr/feats.scp $dir/len.tmp | sort -k3 -n - | awk '{print $1 " " $2}' > $dir/train.scp || exit 1;
-  feat-to-len scp:$data_cv/feats.scp ark,t:- | awk '{print $2}' > $dir/len.tmp || exit 1;
-  paste -d " " $data_cv/feats.scp $dir/len.tmp | sort -k3 -n - | awk '{print $1 " " $2}' > $dir/cv.scp || exit 1;
-  rm -f $dir/len.tmp
-else
-  cat $data_tr/feats.scp | utils/shuffle_list.pl --srand ${seed:-777} > $dir/train.scp
-  cat $data_cv/feats.scp | utils/shuffle_list.pl --srand ${seed:-777} > $dir/cv.scp
-fi
-
-feats_tr="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_tr/utt2spk scp:$data_tr/cmvn.scp scp:$dir/train.scp ark:- |"
-feats_cv="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_cv/utt2spk scp:$data_cv/cmvn.scp scp:$dir/cv.scp ark:- |"
-
-# Save the features to a local dir on the GPU machine. On Linux, this usually points to /tmp
-tmpdir=$dir/feats; mkdir -p $tmpdir
-copy-feats "$feats_tr" ark,scp:$tmpdir/train.ark,$dir/train_local.scp || exit 1;
-copy-feats "$feats_cv" ark,scp:$tmpdir/cv.ark,$dir/cv_local.scp || exit 1;
-feats_tr="ark,s,cs:copy-feats scp:$dir/train_local.scp ark:- |"
-feats_cv="ark,s,cs:copy-feats scp:$dir/cv_local.scp ark:- |"
+echo "Preparing train and cv features"
+tmpdir=$dir/feats; 
+[ -d $tmpdir ] || mkdir -p $tmpdir
 [ $clean_up == true ] && trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
+utils/prep_scps.sh --nj $nj --cmd "$train_cmd" ${seed:+ --seed=$seed} --clean-up $clean_up \
+  $data_tr/feats.scp $data_cv/feats.scp $num_sequence $frame_num_limit $tmpdir $dir || exit 1;
 
-if [ ! -z "$nj" ]; then
-  cat $dir/train_local.scp | myutils/distribute_scp.pl --mode utt $nj $dir/train_split
-  cat $dir/cv_local.scp | myutils/distribute_scp.pl --mode utt $nj $dir/cv_split
-  feats_sub_tr="ark,s,cs:copy-feats scp:$dir/train_split.JOB.scp ark:- |"
-  feats_sub_cv="ark,s,cs:copy-feats scp:$dir/cv_split.JOB.scp ark:- |"
+feats_tr="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_tr/utt2spk scp:$data_tr/cmvn.scp scp:$dir/feats_tr.JOB.scp ark:- |"
+feats_cv="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_cv/utt2spk scp:$data_cv/cmvn.scp scp:$dir/feats_cv.JOB.scp ark:- |"
+
+if [ $nj -eq 1 ]; then
+  feats_tr=$(echo $feats_tr | sed 's#JOB#1#')
+  feats_tr=$(echo $feats_cv | sed 's#JOB#1#')
 fi
 
 if $add_deltas; then
   feats_tr="$feats_tr add-deltas ark:- ark:- |"
   feats_cv="$feats_cv add-deltas ark:- ark:- |"
-  feats_sub_tr="$feats_sub_tr add-deltas ark:- ark:- |"
-  feats_sub_cv="$feats_sub_cv add-deltas ark:- ark:- |"
 fi
 ## End of feature setup
 
@@ -154,12 +138,12 @@ for iter in $(seq $start_epoch_num $max_iters); do
         >& $dir/log/tr.iter$iter.log || exit 1;
       tracc=$(cat $dir/log/tr.iter${iter}.log | grep "TOKEN_ACCURACY" | tail -n 1 | awk '{ acc=$3; gsub("%","",acc); print acc; }')
     else
-      $cudall_cmd JOB=1:$nj $dir/log/tr.iter$iter.JOB.log \
+      $cuda_cmd JOB=1:$nj $dir/log/tr.iter$iter.JOB.log \
         $train_tool --report-step=$report_step --num-sequence=$num_sequence --frame-limit=$frame_num_limit \
         --learn-rate=$learn_rate --momentum=$momentum --num-jobs=$nj --job-id=JOB \
         --verbose=$verbose \
         ${utts_per_avg:+ --utts-per-avg=$utts_per_avg} \
-        "$feats_sub_tr" "$labels_tr" $dir/nnet/nnet.iter$[iter-1] $dir/nnet/nnet.iter${iter} >& $dir/log/tr.iter$iter.log || exit 1
+        "$feats_tr" "$labels_tr" $dir/nnet/nnet.iter$[iter-1] $dir/nnet/nnet.iter${iter} >& $dir/log/tr.iter$iter.log || exit 1
       tracc=$(cat $dir/log/tr.iter${iter}.1.log | grep "TOTAL TOKEN_ACCURACY" | tail -n 1 | awk '{ acc=$(NF-1); gsub("%","",acc); print acc; }')
     fi
 
@@ -183,7 +167,7 @@ for iter in $(seq $start_epoch_num $max_iters); do
         --cross-validate=true --num-jobs=$nj --job-id=JOB \
         --learn-rate=$learn_rate \
         --verbose=$verbose \
-        "$feats_sub_cv" "$labels_cv" $dir/nnet/nnet.iter${iter} >& $dir/log/cv.iter$iter.log || exit 1;
+        "$feats_cv" "$labels_cv" $dir/nnet/nnet.iter${iter} >& $dir/log/cv.iter$iter.log || exit 1;
       cvacc=$(cat $dir/log/cv.iter${iter}.1.log | grep "TOTAL TOKEN_ACCURACY" | tail -n 1 | awk '{ acc=$(NF-1); gsub("%","",acc); print acc; }')
     fi
 
@@ -191,7 +175,7 @@ for iter in $(seq $start_epoch_num $max_iters); do
 
     # stopping criterion
     rel_impr=$(bc <<< "($cvacc-$cvacc_prev)")
-    if [ 1 == "$halving" -a 1 == $(bc <<< "$rel_impr < $end_halving_inc") ]; then
+    if [[ 1 == "$halving" && 1 == $(bc <<< "$rel_impr < $end_halving_inc") ]]; then
       if [[ "$min_iters" != "" ]]; then
         if [ $min_iters -gt $iter ]; then
           echo we were supposed to finish, but we continue as min_iters : $min_iters

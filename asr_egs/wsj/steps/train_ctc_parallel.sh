@@ -73,7 +73,7 @@ dir=$3
 mkdir -p $dir/log $dir/nnet
 
 for f in $data_tr/feats.scp $data_cv/feats.scp $dir/labels.tr.gz $dir/labels.cv.gz $dir/nnet.proto; do
-  [ ! -f $f ] && echo "decode.sh: no such file $f" && exit 1;
+  [ ! -f $f ] && echo "train_ctc_parallel.sh: no such file $f" && exit 1;
 done
 
 ## Read the training status for resuming

@@ -132,7 +132,7 @@ awk '{name = $0; gsub(".sph$","",name); gsub(".*/","",name); print(name " " $0)}
 
 
 
-sph2pipe=`cd ../../..; echo $PWD/tools/sph2pipe_v2.5/sph2pipe`
+sph2pipe=$EESEN_ROOT/tools/sph2pipe_v2.5/sph2pipe
 [ ! -f $sph2pipe ] && echo "Could not find the sph2pipe program at $sph2pipe" && exit 1;
 
 cat $train_dir/sph.scp | awk -v sph2pipe=$sph2pipe '{printf("%s-A %s -f wav -p -c 1 %s |\n", $1, sph2pipe, $2); 

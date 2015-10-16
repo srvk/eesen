@@ -209,7 +209,7 @@ void Layer::Write(std::ostream &os, bool binary) const {
 }
 
 void Layer::WriteNonParal(std::ostream &os, bool binary) const {
-  std::string layer_type_string = Layer::TypeToMarker(GetType());
+  std::string layer_type_string = Layer::TypeToMarker(GetTypeNonParal());
   WriteToken(os, binary, layer_type_string);
   WriteToken(os, binary, "<InputDim>");
   WriteBasicType(os, binary, InputDim());

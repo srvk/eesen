@@ -8,11 +8,7 @@
 * Dictionary, if characters are used as the modeling units
 * **...**
 
-Eesen is developed on the basis of the [Kaldi](http://kaldi.sourceforge.net/) toolkit. However, Eesen is fully self-contained, requiring no dependencies from Kaldi to funciton. 
-
-Eesen is released as an open-source project under the highly non-restrictive Apache License Version 2.0. We welcome community contribution.
-
-<!-- Refer to [here](https://github.com/yajiemiao/eesen/wiki/Updates) for the full list of updates. -->
+Eesen was created by [Yajie Miao](http://www.cs.cmu.edu/~ymiao) based on the [Kaldi](http://kaldi.sourceforge.net/) toolkit.
 
 ### Key Components
 
@@ -26,15 +22,12 @@ Eesen contains 3 key components to enable end-to-end ASR:
 * The WFST-based decoding approach can incorporate lexicons and language models into CTC decoding in an effective and efficient way. 
 * GPU implementation of LSTM model training and CTC learning.
 * Multiple utterances are processed in parallel for training speed-up.
-* Fully-fledged [example setups](https://github.com/eesentk/eesen/tree/master/asr_egs) to demonstrate end-to-end system building, with both phonemes and characters as labels.
+* Fully-fledged [example setups](asr_egs/) to demonstrate end-to-end system building, with both phonemes and characters as labels.
 
 ### Experimental Results
 
-Refer to RESULTS under each [example setup](https://github.com/eesentk/eesen/tree/master/asr_egs).
+Refer to RESULTS under each [example setup](asr_egs/).
 
-### Contact
-
-If you have questions, post to [Issues](https://github.com/eesentk/eesen/issues) or [email us](mailto:yajiemiao@gmail.com).
 
 ### References
 

@@ -16,3 +16,6 @@
 
 # /src/
 /src/config.mk
+
+# backups
+*~

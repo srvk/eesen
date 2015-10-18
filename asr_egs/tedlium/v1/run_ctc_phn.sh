@@ -15,7 +15,7 @@ if [ $stage -eq 1 ]; then
   # simply link the db directory to here and skip this step
   local/tedlium_download_data.sh || exit 1;
 
-  # Use the same datap prepatation script from Kaldi
+  # Use the same data preparation script from Kaldi
   local/tedlium_prepare_data.sh || exit 1
 
   # Construct the phoneme-based lexicon

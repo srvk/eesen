@@ -84,9 +84,7 @@ if [ $stage -le 3 ]; then
     --learn-rate 0.00004 --report-step 1000 --halving-after-epoch 12 \
     --feats-tmpdir $dir/XXXXX \
     data/train_nodev data/train_dev $dir || exit 1;
-fi
 
-if [ $stage -le 4 ]; then
   echo =====================================================================
   echo "                             Decoding                              "
   echo =====================================================================
@@ -95,7 +93,7 @@ if [ $stage -le 4 ]; then
     data/lang_char_test data/dev $dir/decode_dev || exit 1;
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 4 ]; then
   echo =====================================================================
   echo "                    Pitch Feature Generation                       "
   echo =====================================================================
@@ -121,7 +119,7 @@ if [ $stage -le 5 ]; then
   utils/subset_data_dir.sh --last data/train_pitch $n data/train_nodev_pitch
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 5 ]; then
   echo =====================================================================
   echo "                Model Training with FBank+Pitch Features           "
   echo =====================================================================
@@ -151,9 +149,7 @@ if [ $stage -le 6 ]; then
     --learn-rate 0.00004 --report-step 1000 --halving-after-epoch 12 \
     --feats-tmpdir $dir/XXXXX \
     data/train_nodev_pitch data/train_dev_pitch $dir || exit 1;
-fi
 
-if [ $stage -le 7 ]; then
   echo =====================================================================
   echo "                             Decoding                              "
   echo =====================================================================

@@ -80,9 +80,7 @@ if [ $stage -le 3 ]; then
     --learn-rate 0.00004 --report-step 1000 --halving-after-epoch 12 \
     --feats-tmpdir $dir/XXXXX \
     data/train_nodev data/train_dev $dir || exit 1;
-fi
 
-if [ $stage -le 4 ]; then
   echo =====================================================================
   echo "                             Decoding                              "
   echo =====================================================================

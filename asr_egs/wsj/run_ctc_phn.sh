@@ -75,9 +75,7 @@ if [ $stage -le 3 ]; then
   steps/train_ctc_parallel.sh --add-deltas true --num-sequence 10 --frame-num-limit 25000 \
     --learn-rate 0.00004 --report-step 1000 \
     data/train_tr95 data/train_cv05 $dir || exit 1;
-fi
 
-if [ $stage -le 4 ]; then
   echo =====================================================================
   echo "                            Decoding                               "
   echo =====================================================================

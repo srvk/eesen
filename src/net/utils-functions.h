@@ -22,6 +22,7 @@
 #ifndef EESEN_NET_UTILS_FUNCTIONS_H_
 #define EESEN_NET_UTILS_FUNCTIONS_H_
 
+
 #include "net/layer.h"
 #include "gpucompute/cuda-math.h"
 #include "util/text-utils.h"
@@ -40,6 +41,7 @@ std::string ToString(const T& t) {
   os << t; 
   return os.str(); 
 }
+
 
 
 /**

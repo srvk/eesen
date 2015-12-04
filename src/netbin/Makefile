@@ -9,11 +9,11 @@ LDLIBS += $(CUDA_LDLIBS)
 BINFILES = net-initialize net-copy format-to-nonparallel \
 					 train-ctc train-ctc-parallel train-ce \
 					 train-ce-parallel net-output-extract \
-					 net-average
+					 net-average test-m
 
 OBJFILES =
 
-TESTFILES =
+TESTFILES = 
 
 ADDLIBS = ../net/net.a ../gpucompute/gpucompute.a ../cpucompute/cpucompute.a \
           ../util/util.a ../base/base.a 

@@ -26,7 +26,7 @@
 #include "net/softmax-layer.h"
 #include "net/affine-trans-layer.h"
 #include "net/utils-functions.h"
-
+#include "util/text-utils.h"
 
 namespace eesen {
 
@@ -194,6 +194,11 @@ void Net::GetParams(Vector<BaseFloat>* wei_copy) const {
   KALDI_ASSERT(pos == NumParams());
 }
 
+std::vector<int> & Net::GetBlockSoftmaxDims() {
+    KALDI_ASSERT(block_softmax_dims.size() != 0);
+    return block_softmax_dims;
+  }
+
 void Net::AppendLayer(Layer* dynamically_allocated_layer) {
   // append,
   layers_.push_back(dynamically_allocated_layer);
@@ -227,6 +232,14 @@ void Net::Init(const std::string &file) {
     std::istringstream(conf_line) >> std::ws >> token; // get 1st token,
     if (token == "<Nnet>" || token == "</Nnet>") continue; // ignored tokens,
     AppendLayer(Layer::Init(conf_line+"\n"));
+		// we need to make the network aware of the block softmax dimentions, if any
+		if (conf_line.find("BlockSoftmax") != std::string::npos) {
+			std::vector<std::string> tmp;
+			SplitStringToVector(conf_line, " ", true, &tmp);
+			std::string dims_str = tmp[tmp.size() - 1];
+			if (!eesen::SplitStringToIntegers(dims_str, ",:", false, &block_softmax_dims))
+	      KALDI_ERR << "Invalid block-dims " << dims_str;	
+		}
     is >> std::ws;
   }
   // cleanup

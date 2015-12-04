@@ -1,6 +1,6 @@
 // netbin/train-ctc-parallel.cc
 
-// Copyright 2015   Yajie Miao, Hang Su
+// Copyright 2015   Yajie Miao, Hang Su, Mohammad Gowayyed
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,6 +45,10 @@ int main(int argc, char *argv[]) {
     bool binary = true, 
          crossvalidate = false;
     po.Register("binary", &binary, "Write model  in binary mode");
+
+		bool block_softmax = false;
+		po.Register("block_softmax", &binary, "Whether to use multi-softmax or not (default is false). Note that you have to pass this parameter even if the provided model contains a BlockSoftmax layer.");
+
     po.Register("cross-validate", &crossvalidate, "Perform cross-validation (no backpropagation)");
 
     int32 num_sequence = 5;
@@ -106,7 +110,7 @@ int main(int argc, char *argv[]) {
     // Initialize CTC optimizer
     Ctc ctc;
     ctc.SetReportStep(report_step);
-    CuMatrix<BaseFloat> net_out, obj_diff;
+    CuMatrix<BaseFloat> net_out, obj_diff, obj_diff_block;
 
     Timer time;
     KALDI_LOG << (crossvalidate?"CROSS-VALIDATION":"TRAINING") << " STARTED";
@@ -116,6 +120,12 @@ int main(int argc, char *argv[]) {
     int32 feat_dim = net.InputDim();
 
     int32 num_done = 0, num_no_tgt_mat = 0, num_other_error = 0, avg_count = 0;
+
+
+		std::vector<int> block_softmax_dims(0);
+		if(block_softmax)
+			block_softmax_dims = net.GetBlockSoftmaxDims();
+
     while (1) {
 
       std::vector<int> frame_num_utt;
@@ -159,12 +169,25 @@ int main(int argc, char *argv[]) {
 
       // Propagation and CTC training
       net.Propagate(CuMatrix<BaseFloat>(feat_mat_host), &net_out);
-      ctc.EvalParallel(frame_num_utt, net_out, labels_utt, &obj_diff);
+   
 
-      // Error rates
-      ctc.ErrorRateMSeq(frame_num_utt, net_out, labels_utt);
-
-
+			if(block_softmax && block_softmax_dims.size() > 0) {	
+				int startIdx = 0;
+				obj_diff.Resize(net_out.NumRows(), net_out.NumCols());
+				for(int i = 0; i < block_softmax_dims.size(); i++) {
+					// we need to get the submatrix that corresponds to the current block	
+					CuSubMatrix<BaseFloat> net_out_block = net_out.RowRange(startIdx, block_softmax_dims[i]);
+					//CuMatrix<BaseFloat> obj_diff_block = obj_diff.RowRange(startIdx, block_softmax_dims[i]);
+					ctc.EvalParallel(frame_num_utt, net_out_block, labels_utt, &obj_diff_block);
+					// Error rates
+					ctc.ErrorRateMSeq(frame_num_utt, net_out_block, labels_utt);
+				}
+			} else {
+				ctc.EvalParallel(frame_num_utt, net_out, labels_utt, &obj_diff);
+          // Error rates
+        ctc.ErrorRateMSeq(frame_num_utt, net_out, labels_utt);
+			}
+			
       // Backward pass
       if (!crossvalidate) {
         net.Backpropagate(obj_diff, NULL);

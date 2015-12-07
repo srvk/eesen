@@ -100,7 +100,8 @@ void Ctc::Eval(const CuMatrixBase<BaseFloat> &net_out, const std::vector<int32> 
 
 void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBase<BaseFloat> &net_out,
                        std::vector< std::vector<int32> > &label, CuMatrix<BaseFloat> *diff) {
-  diff->Resize(net_out.NumRows(), net_out.NumCols());
+  // assuming that diff is already Resized to the size of net_out
+  // diff->Resize(net_out.NumRows(), net_out.NumCols());
 
   int32 num_sequence = frame_num_utt.size();  // number of sequences
   int32 num_frames = net_out.NumRows();

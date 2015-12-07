@@ -122,9 +122,9 @@ int main(int argc, char *argv[]) {
     int32 num_done = 0, num_no_tgt_mat = 0, num_other_error = 0, avg_count = 0;
 
 
-		std::vector<int> block_softmax_dims(0);
-		if(block_softmax)
-			block_softmax_dims = net.GetBlockSoftmaxDims();
+    std::vector<int> block_softmax_dims(0);
+    if(block_softmax)
+      block_softmax_dims = net.GetBlockSoftmaxDims();
 
     while (1) {
 
@@ -171,22 +171,24 @@ int main(int argc, char *argv[]) {
       net.Propagate(CuMatrix<BaseFloat>(feat_mat_host), &net_out);
    
 
-			if(block_softmax && block_softmax_dims.size() > 0) {	
-				int startIdx = 0;
-				obj_diff.Resize(net_out.NumRows(), net_out.NumCols());
-				for(int i = 0; i < block_softmax_dims.size(); i++) {
-					// we need to get the submatrix that corresponds to the current block	
-					CuSubMatrix<BaseFloat> net_out_block = net_out.RowRange(startIdx, block_softmax_dims[i]);
-					//CuMatrix<BaseFloat> obj_diff_block = obj_diff.RowRange(startIdx, block_softmax_dims[i]);
-					ctc.EvalParallel(frame_num_utt, net_out_block, labels_utt, &obj_diff_block);
-					// Error rates
-					ctc.ErrorRateMSeq(frame_num_utt, net_out_block, labels_utt);
-				}
-			} else {
-				ctc.EvalParallel(frame_num_utt, net_out, labels_utt, &obj_diff);
-          // Error rates
+      obj_diff.Resize(net_out.NumRows(), net_out.NumCols());
+      if(block_softmax && block_softmax_dims.size() > 0) {	
+        int startIdx = 0;
+        
+        for(int i = 0; i < block_softmax_dims.size(); i++) {
+          // we need to get the submatrix that corresponds to the current block	
+          CuSubMatrix<BaseFloat> net_out_block = net_out.RowRange(startIdx, block_softmax_dims[i]);
+          CuMatrix<BaseFloat> obj_diff_block = obj_diff.RowRange(startIdx, block_softmax_dims[i]);
+
+          ctc.EvalParallel(frame_num_utt, net_out_block, labels_utt, &obj_diff_block);
+	  // Error rates
+          ctc.ErrorRateMSeq(frame_num_utt, net_out_block, labels_utt);
+	}
+      } else {
+        ctc.EvalParallel(frame_num_utt, net_out, labels_utt, &obj_diff);
+        // Error rates
         ctc.ErrorRateMSeq(frame_num_utt, net_out, labels_utt);
-			}
+      }
 			
       // Backward pass
       if (!crossvalidate) {

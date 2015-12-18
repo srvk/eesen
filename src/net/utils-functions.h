@@ -32,6 +32,7 @@
 
 namespace eesen {
 
+
 /**
  * Convert basic type to string (try not to overuse as ostringstream creation is slow)
  */

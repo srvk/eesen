@@ -262,6 +262,8 @@ class CuMatrixBase {
   ///// Specific Element
   /////////////////////////////////////////////////////
   inline CuValue<Real> operator() (MatrixIndexT r, MatrixIndexT c) {
+		KALDI_PARANOID_ASSERT(r > -1 && c > -1);
+
     KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(r) <
                           static_cast<UnsignedMatrixIndexT>(num_rows_) &&
                           static_cast<UnsignedMatrixIndexT>(c) <
@@ -270,6 +272,8 @@ class CuMatrixBase {
   }
   
   inline Real operator() (MatrixIndexT r, MatrixIndexT c) const {
+		KALDI_PARANOID_ASSERT(r > -1 && c > -1);
+
     KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(r) <
                           static_cast<UnsignedMatrixIndexT>(num_rows_) &&
                           static_cast<UnsignedMatrixIndexT>(c) <

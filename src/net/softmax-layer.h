@@ -121,7 +121,7 @@ class BlockSoftmax : public Layer {
 		// copy the error derivative:
     // (assuming we already got softmax-cross-entropy derivative in out_diff)
     in_diff->CopyFromMat(out_diff);
-
+/*
 		// zero-out line-in-block, where sum different from zero,
 		// process per block:
 		for (int32 bl = 0; bl < block_dims.size(); bl++) {
@@ -135,12 +135,14 @@ class BlockSoftmax : public Layer {
       // here we should have only 0 and 1
       diff_bl.MulRowsVec(row_diff_mask);
     }
+*/
   }
 
   std::string Info() const {
 		std::string res = "\n  softmax-dims ";
 		for(int i = 0; i < block_dims.size(); i++)
-			res += ToString(block_dims[i]);
+			res += ToString(block_dims[i]) + ":";
+		KALDI_LOG << "WRITING INFO " << res;
     return res;
   }
 

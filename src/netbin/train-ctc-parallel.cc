@@ -23,6 +23,7 @@
 #include "base/timer.h"
 #include "gpucompute/cuda-device.h"
 #include "net/communicator.h"
+#include "util/text-utils.h"
 
 int main(int argc, char *argv[]) {
   using namespace eesen;
@@ -43,11 +44,11 @@ int main(int argc, char *argv[]) {
     trn_opts.Register(&po); 
 
     bool binary = true, 
-         crossvalidate = false;
+				crossvalidate = false;
     po.Register("binary", &binary, "Write model  in binary mode");
 
 		bool block_softmax = false;
-		po.Register("block_softmax", &binary, "Whether to use multi-softmax or not (default is false). Note that you have to pass this parameter even if the provided model contains a BlockSoftmax layer.");
+		po.Register("block-softmax", &block_softmax, "Whether to use block-softmax or not (default is false). Note that you have to pass this parameter even if the provided model contains a BlockSoftmax layer.");
 
     po.Register("cross-validate", &crossvalidate, "Perform cross-validation (no backpropagation)");
 
@@ -98,7 +99,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     Net net;
-    net.Read(model_filename);
+		net.Read(model_filename);
     net.SetTrainOptions(trn_opts);
 
     eesen::int64 total_frames = 0;
@@ -124,8 +125,9 @@ int main(int argc, char *argv[]) {
 
     std::vector<int> block_softmax_dims(0);
     if(block_softmax)
+		{
       block_softmax_dims = net.GetBlockSoftmaxDims();
-
+		}
     while (1) {
 
       std::vector<int> frame_num_utt;
@@ -139,6 +141,7 @@ int main(int argc, char *argv[]) {
           num_no_tgt_mat++;
           continue;
         }
+				//KALDI_LOG << "working on \t\t\t\t\t" << utt;
         // Get feature / target pair
         Matrix<BaseFloat> mat = feature_reader.Value();
         std::vector<int32> targets = targets_reader.Value(utt);
@@ -169,21 +172,45 @@ int main(int argc, char *argv[]) {
 
       // Propagation and CTC training
       net.Propagate(CuMatrix<BaseFloat>(feat_mat_host), &net_out);
-   
-
+ 			
+			// I moved the Resize outside the EvalParallel for the block softmax to be convenient 
       obj_diff.Resize(net_out.NumRows(), net_out.NumCols());
+			obj_diff.Set(0);
       if(block_softmax && block_softmax_dims.size() > 0) {	
-        int startIdx = 0;
-        
+        int startIdx = 0; 
         for(int i = 0; i < block_softmax_dims.size(); i++) {
           // we need to get the submatrix that corresponds to the current block	
-          CuSubMatrix<BaseFloat> net_out_block = net_out.RowRange(startIdx, block_softmax_dims[i]);
-          CuMatrix<BaseFloat> obj_diff_block = obj_diff.RowRange(startIdx, block_softmax_dims[i]);
+	
 
-          ctc.EvalParallel(frame_num_utt, net_out_block, labels_utt, &obj_diff_block);
-	  // Error rates
-          ctc.ErrorRateMSeq(frame_num_utt, net_out_block, labels_utt);
-	}
+					std::vector< std::vector<int> > labels_utt_block(num_sequence);
+					std::vector<int> frame_num_utt_block(num_sequence);
+					// for now, we assume that the original labels use the whole index, so we need to change them to be relative to the current softmax
+					for(int s = 0; s < labels_utt.size(); s++){
+					// we need to check if this sequence belongs to this block
+					//for(int kkk=0; kkk < labels_utt[s].size(); kkk++)
+					//	KALDI_LOG << "Before " << kkk << " " << labels_utt[s][kkk];
+					//KALDI_LOG << "Before stardIdx "  << startIdx;
+					//KALDI_LOG << "Before dims "  << block_softmax_dims[i];
+						if(labels_utt[s].size() > 0 && labels_utt[s][0] > startIdx && labels_utt[s][0] < startIdx + block_softmax_dims[i]){
+								frame_num_utt_block[s] = frame_num_utt[s];
+								for(int r = 0; r < labels_utt[s].size(); r++){
+									labels_utt_block[s].push_back(labels_utt[s][r] - startIdx);
+								}
+						}else{
+							frame_num_utt_block[s] = 0;
+						}
+						//KALDI_LOG << "fc " << frame_num_utt_block[s];
+					}
+					CuSubMatrix<BaseFloat> net_out_block = net_out.ColRange(startIdx, block_softmax_dims[i]);
+          CuSubMatrix<BaseFloat> obj_diff_block = obj_diff.ColRange(startIdx, block_softmax_dims[i]);
+
+					//KALDI_LOG << "A " << i;
+          ctc.EvalParallel(frame_num_utt_block, net_out_block, labels_utt_block, &obj_diff_block);
+				  // Error rates
+					//KALDI_LOG << "B ";
+          ctc.ErrorRateMSeq(frame_num_utt_block, net_out_block, labels_utt_block);
+					startIdx += block_softmax_dims[i]; // we add i here because labels come from "agg" option, so they don't accoutn for blank labels
+				}
       } else {
         ctc.EvalParallel(frame_num_utt, net_out, labels_utt, &obj_diff);
         // Error rates

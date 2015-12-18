@@ -137,7 +137,7 @@ class Net {
     }
   }
 
-	std::vector<int>&  GetBlockSoftmaxDims();
+	std::vector<int>  GetBlockSoftmaxDims();
 
  private:
   /// Vector which contains all the layers composing the neural network,
@@ -149,9 +149,6 @@ class Net {
 
   /// Option class with hyper-parameters passed to TrainableLayer(s)
   NetTrainOptions opts_;
-
-	// in case we have block softmax
-	std::vector<int> block_softmax_dims;
 };
   
 

@@ -100,8 +100,9 @@ if __name__ == '__main__':
     print '<AffineTransform> <InputDim> ' + str(actual_cell_dim) + ' <OutputDim> ' + str(target_num) + ' <ParamRange> ' + param_range
 		
     if arguments.has_key('block_softmax_dims') and arguments['block_softmax_dims'] != "":
-      assert(sum(map(int, re.split("[,:]", arguments['block_softmax_dims']))) == target_num)
-      print '<BlockSoftmax> <InputDim> ' + str(target_num) + ' <OutputDim> ' + str(target_num) + ' <BlockDims> ' + arguments['block_softmax_dims']
+			ddims = map(int, re.split("[,:]", arguments['block_softmax_dims']))
+			assert(sum(ddims) == target_num )
+			print '<BlockSoftmax> <InputDim> ' + str(target_num) + ' <OutputDim> ' + str(target_num) + ' <BlockDims> ' + arguments['block_softmax_dims']
     else:
       print '<Softmax> <InputDim> ' + str(target_num) + ' <OutputDim> ' + str(target_num)
     print '</Nnet>'

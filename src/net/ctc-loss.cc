@@ -102,10 +102,11 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
                        std::vector< std::vector<int32> > &label, CuMatrixBase<BaseFloat> *diff) {
 
   // assuming that diff is already Resized to the size of net_out
-	// KALDI_LOG << "ctc - a";
+
   int32 num_sequence = frame_num_utt.size();  // number of sequences
   int32 num_frames = net_out.NumRows();
-  KALDI_ASSERT(num_frames % num_sequence == 0);  // after padding, number of frames is a multiple of number of sequences
+ 
+	KALDI_ASSERT(num_frames % num_sequence == 0);  // after padding, number of frames is a multiple of number of sequences
 
   int32 num_frames_per_sequence = num_frames / num_sequence;
   int32 num_classes = net_out.NumCols();
@@ -113,7 +114,7 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
   for (int32 s = 0; s < num_sequence; s++) {
     if (label[s].size() > max_label_len) max_label_len = label[s].size();
   }
-	// KALDI_LOG << "ctc - b";
+	
   // label expansion
   std::vector<int32> label_lengths_utt(num_sequence);
   int32 exp_len_labels = 2*max_label_len + 1;
@@ -125,20 +126,11 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
 			label_lengths_utt[s] = 2 * label_s.size() + 1;
 			for (int32 l = 0; l < label_s.size(); l++) {
         label_expand_[s*exp_len_labels + 2*l] = 0;
-				//KALDI_LOG << label_s[l];
-				KALDI_ASSERT(label_s[l] > 0);
-				//if(label_s[l] < 0)
-				//{
-				//	KALDI_LOG << label_s[l];
-				//	label_s[l] = 2;
-				//}
+				// KALDI_ASSERT(label_s[l] > 0); // if you need to debug any messy block-softmax
         label_expand_[s*exp_len_labels + 2*l + 1] = label_s[l];
-				//KALDI_LOG << label_expand_[s*exp_len_labels + 2*l];
-				//KALDI_LOG << label_expand_[s*exp_len_labels + 2*l + 1];
       }
       label_expand_[s*exp_len_labels + 2*label_s.size()] = 0;
 		} else {
-			//KALDI_LOG << "EMPTY!";
 			label_lengths_utt[s] = 0;
 		}
   }
@@ -147,22 +139,22 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
   // convert into the log scale
   CuMatrix<BaseFloat> log_nnet_out(net_out);
   log_nnet_out.ApplyLog();
-//	KALDI_LOG << "ctc - c";
+
   // do the forward and backward pass, to compute alpha and beta values
   alpha_.Resize(num_frames, exp_len_labels);
   beta_.Resize(num_frames, exp_len_labels);
   alpha_.Set(NumericLimits<BaseFloat>::log_zero_);
   beta_.Set(NumericLimits<BaseFloat>::log_zero_);
-	//KALDI_LOG << "ctc - c0";
+	
   for (int t = 0; t < num_frames_per_sequence; t++) {
     alpha_.ComputeCtcAlphaMSeq(log_nnet_out, t, label_expand_, frame_num_utt);
   }
-	//KALDI_LOG << "ctc - c1";
+	
   for (int t = (num_frames_per_sequence - 1); t >= 0; t--) {
     beta_.ComputeCtcBetaMSeq(log_nnet_out, t, label_expand_, frame_num_utt, label_lengths_utt);
   }
   CuVector<BaseFloat> pzx(num_sequence, kSetZero);
-	//KALDI_LOG << "ctc - c2";
+	
   for (int s = 0; s < num_sequence; s++) {
 		if(frame_num_utt[s] > 0){
 	   int label_len = 2* label[s].size() + 1;
@@ -172,7 +164,7 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
 	   pzx(s) = tmp1 + log(1 + ExpA(tmp2 - tmp1));
 		}
   }
-	//KALDI_LOG << "ctc - d";
+	
   // gradients from CTC
   ctc_err_.Resize(num_frames, num_classes, kSetZero);
   ctc_err_.ComputeCtcErrorMSeq(alpha_, beta_, net_out, label_expand_, frame_num_utt, pzx);  // here should use the original ??
@@ -187,7 +179,7 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
   diff->CopyFromMat(ctc_err_);
 
   diff->AddMat(-1.0, net_out_tmp);
-	//KALDI_LOG << "ctc - e";
+	
   // update registries
   obj_progress_ += pzx.Sum();
   sequences_progress_ += num_sequence;
@@ -196,7 +188,7 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
     frames_progress_ += frame_num_utt[s];
     frames_ += frame_num_utt[s];
   }
-	//KALDI_LOG << "ctc - f";
+	
   // progressive reporting
   {
     if (sequences_progress_ > report_step_) {

@@ -170,27 +170,24 @@ int main(int argc, char *argv[]) {
       // Set the original lengths of utterances before padding
       net.SetSeqLengths(frame_num_utt);
 
+			
+			// KALDI_LOG << feat_mat_host.NumRows();
       // Propagation and CTC training
       net.Propagate(CuMatrix<BaseFloat>(feat_mat_host), &net_out);
- 			
+	
 			// I moved the Resize outside the EvalParallel for the block softmax to be convenient 
       obj_diff.Resize(net_out.NumRows(), net_out.NumCols());
 			obj_diff.Set(0);
+			
       if(block_softmax && block_softmax_dims.size() > 0) {	
         int startIdx = 0; 
         for(int i = 0; i < block_softmax_dims.size(); i++) {
           // we need to get the submatrix that corresponds to the current block	
-	
-
-					std::vector< std::vector<int> > labels_utt_block(num_sequence);
-					std::vector<int> frame_num_utt_block(num_sequence);
+					std::vector< std::vector<int> > labels_utt_block(cur_sequence_num);
+					std::vector<int> frame_num_utt_block(cur_sequence_num);
 					// for now, we assume that the original labels use the whole index, so we need to change them to be relative to the current softmax
-					for(int s = 0; s < labels_utt.size(); s++){
+					for(int s = 0; s < cur_sequence_num; s++){
 					// we need to check if this sequence belongs to this block
-					//for(int kkk=0; kkk < labels_utt[s].size(); kkk++)
-					//	KALDI_LOG << "Before " << kkk << " " << labels_utt[s][kkk];
-					//KALDI_LOG << "Before stardIdx "  << startIdx;
-					//KALDI_LOG << "Before dims "  << block_softmax_dims[i];
 						if(labels_utt[s].size() > 0 && labels_utt[s][0] > startIdx && labels_utt[s][0] < startIdx + block_softmax_dims[i]){
 								frame_num_utt_block[s] = frame_num_utt[s];
 								for(int r = 0; r < labels_utt[s].size(); r++){
@@ -199,24 +196,21 @@ int main(int argc, char *argv[]) {
 						}else{
 							frame_num_utt_block[s] = 0;
 						}
-						//KALDI_LOG << "fc " << frame_num_utt_block[s];
 					}
+					
 					CuSubMatrix<BaseFloat> net_out_block = net_out.ColRange(startIdx, block_softmax_dims[i]);
-          CuSubMatrix<BaseFloat> obj_diff_block = obj_diff.ColRange(startIdx, block_softmax_dims[i]);
+					CuSubMatrix<BaseFloat> obj_diff_block = obj_diff.ColRange(startIdx, block_softmax_dims[i]);
 
-					//KALDI_LOG << "A " << i;
-          ctc.EvalParallel(frame_num_utt_block, net_out_block, labels_utt_block, &obj_diff_block);
+					ctc.EvalParallel(frame_num_utt_block, net_out_block, labels_utt_block, &obj_diff_block);
 				  // Error rates
-					//KALDI_LOG << "B ";
-          ctc.ErrorRateMSeq(frame_num_utt_block, net_out_block, labels_utt_block);
-					startIdx += block_softmax_dims[i]; // we add i here because labels come from "agg" option, so they don't accoutn for blank labels
+				  ctc.ErrorRateMSeq(frame_num_utt_block, net_out_block, labels_utt_block);
+					startIdx += block_softmax_dims[i];
 				}
       } else {
         ctc.EvalParallel(frame_num_utt, net_out, labels_utt, &obj_diff);
         // Error rates
         ctc.ErrorRateMSeq(frame_num_utt, net_out, labels_utt);
       }
-			
       // Backward pass
       if (!crossvalidate) {
         net.Backpropagate(obj_diff, NULL);
@@ -231,7 +225,7 @@ int main(int argc, char *argv[]) {
       
       if (feature_reader.Done()) break; // end loop of while(1)
     }
-
+		
     if (num_jobs != 1) {
       if (!crossvalidate) {
         comm_avg_weights(net, job_id, num_jobs, avg_count, target_model_filename);
@@ -243,12 +237,12 @@ int main(int argc, char *argv[]) {
       avg_count++;
       KALDI_LOG << "Total average operations: " << avg_count;
     }
-     
+    
     // Print statistics of gradients when training finishes 
     if (!crossvalidate) {
       KALDI_LOG << net.InfoGradient();
     }
-
+		
     if (!crossvalidate) {
       net.Write(target_model_filename, binary);
     }

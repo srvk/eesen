@@ -119,23 +119,7 @@ class BlockSoftmax : public Layer {
   void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
                         const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {    
 		// copy the error derivative:
-    // (assuming we already got softmax-cross-entropy derivative in out_diff)
     in_diff->CopyFromMat(out_diff);
-/*
-		// zero-out line-in-block, where sum different from zero,
-		// process per block:
-		for (int32 bl = 0; bl < block_dims.size(); bl++) {
-      CuSubMatrix<BaseFloat> diff_bl = in_diff->ColRange(block_offset[bl], block_dims[bl]);
-      CuVector<BaseFloat> row_sum(diff_bl.NumRows());
-      row_sum.AddColSumMat(1.0, diff_bl, 0.0); // 0:keep, 1:zero-out
-      // we'll scale rows by 0/1 masks
-			CuVector<BaseFloat> row_diff_mask(row_sum);
-      row_diff_mask.Scale(-1.0); // 0:keep, -1:zero-out
-      row_diff_mask.Add(1.0); // 1:keep, 0:zero-out
-      // here we should have only 0 and 1
-      diff_bl.MulRowsVec(row_diff_mask);
-    }
-*/
   }
 
   std::string Info() const {

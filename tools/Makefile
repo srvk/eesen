@@ -92,6 +92,7 @@ openfst-$(OPENFST_VERSION): openfst-$(OPENFST_VERSION).tar.gz
 
 openfst-$(OPENFST_VERSION).tar.gz:
 	wget http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-$(OPENFST_VERSION).tar.gz || \
+	curl -s http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-$(OPENFST_VERSION).tar.gz -o openfst-$(OPENFST_VERSION).tar.gz || \
 	wget -T 10 -t 3 http://www.openslr.org/resources/2/openfst-$(OPENFST_VERSION).tar.gz
 
 sclite: sclite_compiled
@@ -113,7 +114,8 @@ sctk: sctk-2.4.9-20141015-1634Z.tar.bz2
 	rm -rf sctk && ln -s sctk-2.4.9 sctk
 
 sctk-2.4.9-20141015-1634Z.tar.bz2:
-	wget -T 10 -t 3 ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.9-20141015-1634Z.tar.bz2|| \
+	wget -T 10 -t 3 ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.9-20141015-1634Z.tar.bz2 || \
+	curl -s ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.9-20141015-1634Z.tar.bz2 -o sctk-2.4.9-20141015-1634Z.tar.bz2 || \
 	wget --no-check-certificate -T 10 http://www.openslr.org/resources/4/sctk-2.4.9-20141015-1634Z.tar.bz2
 
 
@@ -124,7 +126,8 @@ ATLAS/include/cblas.h: | atlas3.8.3.tar.gz
 
 atlas3.8.3.tar.gz:
 	wget -T 10 ftp://ftp.vim.org/vol/2/metalab/distributions/tinycorelinux/2.x/tce/src/libatlas/atlas3.8.3.tar.gz || \
-    wget -T 10 http://sourceforge.net/projects/math-atlas/files/Stable/3.8.3/atlas3.8.3.tar.gz || \
+	curl -s ftp://ftp.vim.org/vol/2/metalab/distributions/tinycorelinux/2.x/tce/src/libatlas/atlas3.8.3.tar.gz -o atlas3.8.3.tar.gz || \
+	wget -T 10 http://sourceforge.net/projects/math-atlas/files/Stable/3.8.3/atlas3.8.3.tar.gz || \
 	wget --no-check-certificate -T 10 -t 3 http://www.danielpovey.com/files/kaldi/atlas3.8.3.tar.gz
 
 sph2pipe: sph2pipe_compiled
@@ -140,6 +143,7 @@ sph2pipe_v2.5: sph2pipe_v2.5.tar.gz
 
 sph2pipe_v2.5.tar.gz:
 	wget -T 10 -t 3 http://www.openslr.org/resources/3/sph2pipe_v2.5.tar.gz || \
+	curl -s http://www.openslr.org/resources/3/sph2pipe_v2.5.tar.gz -o sph2pipe_v2.5.tar.gz || \
 	wget --no-check-certificate -T 10  https://sourceforge.net/projects/kaldi/files/sph2pipe_v2.5.tar.gz
 
 openblas: openblas_compiled

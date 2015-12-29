@@ -8,8 +8,8 @@
 # Compiled Object files
 *.o
 
-# Compiled Static libraries
-*.a
+# Compiled Static and Dynamic libraries
+*.a *.so
 
 # Make dependencies
 .depend.mk

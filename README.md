@@ -33,4 +33,4 @@ Refer to RESULTS under each [example setup](asr_egs/).
 
 For more information, refer to the following paper(s):
 
-[EESEN: End-to-End Speech Recognition using Deep RNN Models and WFST-based Decoding](http://arxiv.org/abs/1507.08240), ASRU 2015.
+Yajie Miao, Mohammad Gowayyed, and Florian Metze, "[EESEN: End-to-End Speech Recognition using Deep RNN Models and WFST-based Decoding](http://arxiv.org/abs/1507.08240)," in Proc. ASRU 2015.

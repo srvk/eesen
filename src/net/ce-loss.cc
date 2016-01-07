@@ -2,6 +2,7 @@
 
 // Copyright 2011  Brno University of Technology (author: Karel Vesely)
 //           2015  Yajie Miao
+//           2015  Guoli Ye
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -75,7 +76,11 @@ void CE::Eval(const CuMatrixBase<BaseFloat> &net_out, const std::vector<int32> &
     if (sequences_progress_ > report_step_) {
       KALDI_LOG << "After " << sequences_num_ << " sequences (" << frames_/(100.0 * 3600) << "Hr): "
                     << "CE-Obj = " << obj_progress_/sequences_progress_
-                    << "   FrameAcc = " << 100.0*(correct_progress_/frames_progress_) << "%";
+                    << "Frame-level CE-Obj = " << obj_progress_/frames_progress_
+                    << "   FrameAcc = " << 100.0*(double(correct_progress_)/frames_progress_) << "%"
+		    << " obj_progress_=  " << obj_progress_  
+		    << " sequences_progress_=  " << sequences_progress_  
+		    << " frames_progress_=  " << frames_progress_  ;
       // reset
       sequences_progress_ = 0;
       frames_progress_ = 0;
@@ -148,7 +153,11 @@ void CE::EvalParallel(const CuMatrixBase<BaseFloat> &net_out,
     if (sequences_progress_ > report_step_) {
       KALDI_LOG << "After " << sequences_num_ << " sequences (" << frames_/(100.0 * 3600) << "Hr): "
                     << "CE-Obj = " << obj_progress_/sequences_progress_
-                    << "   FrameAcc = " << 100.0*(correct_progress_/frames_progress_) << "%";
+                    << "Frame-level CE-Obj = " << obj_progress_/frames_progress_
+                    << "   FrameAcc = " << 100.0*(double(correct_progress_)/frames_progress_) << "%"
+		    << " obj_progress_=  " << obj_progress_  
+		    << " sequences_progress_=  " << sequences_progress_  
+		    << " frames_progress_=  " << frames_progress_  ;
       // reset
       sequences_progress_ = 0;
       frames_progress_ = 0;

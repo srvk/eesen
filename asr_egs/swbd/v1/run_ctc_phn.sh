@@ -95,9 +95,7 @@ if [ $stage -le 3 ]; then
   steps/train_ctc_parallel.sh --add-deltas true --num-sequence 10 --frame-num-limit 25000 \
     --learn-rate 0.00004 --report-step 1000 --halving-after-epoch 12 \
     data/train_100k_nodup data/train_dev $dir || exit 1;
-fi
 
-if [ $stage -le 4 ]; then
   echo =====================================================================
   echo "                            Decoding                               "
   echo =====================================================================
@@ -108,7 +106,7 @@ if [ $stage -le 4 ]; then
   done
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 4 ]; then
   echo =====================================================================
   echo "                  Network Training with the Full Set               "
   echo =====================================================================
@@ -134,9 +132,7 @@ if [ $stage -le 5 ]; then
   steps/train_ctc_parallel.sh --add-deltas true --num-sequence 20 --frame-num-limit 25000 \
     --learn-rate 0.00004 --report-step 1000 --halving-after-epoch 12 \
     data/train_nodup data/train_dev $dir || exit 1;
-fi
 
-if [ $stage -le 6 ]; then
   echo =====================================================================
   echo "                            Decoding                               "
   echo =====================================================================

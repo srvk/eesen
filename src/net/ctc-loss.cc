@@ -83,7 +83,7 @@ void Ctc::Eval(const CuMatrixBase<BaseFloat> &net_out, const std::vector<int32> 
 
   // progressive reporting
   {
-    if (sequences_progress_ > report_step_) {
+    if (sequences_progress_ >= report_step_) {
       KALDI_VLOG(1) << "After " << sequences_num_ << " sequences (" << frames_/(100.0 * 3600) << "Hr): "
                     << "Obj(log[Pzx]) = " << obj_progress_/sequences_progress_
                     << "   TokenAcc = " << 100.0*(1.0 - error_num_progress_/ref_num_progress_) << "%";

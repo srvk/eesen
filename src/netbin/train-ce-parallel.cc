@@ -1,6 +1,7 @@
 // netbin/train-ce-parallel.cc
 
 // Copyright 2015   Yajie Miao
+//                  Guoli Ye
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -148,6 +149,9 @@ int main(int argc, char *argv[]) {
           target_host[r*cur_sequence_num + s] = labels_utt[s][r];
         }
       }        
+
+      // guoye: add here, I think I fix the bugs. Set the original lengths of utterances before padding
+      net.SetSeqLengths(frame_num_utt);
 
       // Propagation and CTC training
       net.Propagate(CuMatrix<BaseFloat>(feat_mat_host), &net_out);

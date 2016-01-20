@@ -109,10 +109,17 @@ class BlockSoftmax : public Layer {
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
 	for (int32 bl = 0; bl < block_dims.size(); bl++) {
+			//KALDI_LOG << "index: " << bl;;
       CuSubMatrix<BaseFloat> in_bl = in.ColRange(block_offset[bl], block_dims[bl]);
       CuSubMatrix<BaseFloat> out_bl = out->ColRange(block_offset[bl], block_dims[bl]);
+			//KALDI_LOG << "FUCK BEFORE";
+			//KALDI_LOG << in_bl;
 	    // y = e^x_j/sum_j(e^x_j)
 	    out_bl.ApplySoftMaxPerRow(in_bl);
+
+			//KALDI_LOG << "FUCK AFTER";
+      //KALDI_LOG << out_bl;
+
     }
   }
 

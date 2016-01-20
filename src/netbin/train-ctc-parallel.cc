@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
           num_no_tgt_mat++;
           continue;
         }
-				//KALDI_LOG << "working on \t\t\t\t\t" << utt;
+				
         // Get feature / target pair
         Matrix<BaseFloat> mat = feature_reader.Value();
         std::vector<int32> targets = targets_reader.Value(utt);
@@ -174,7 +174,8 @@ int main(int argc, char *argv[]) {
 			// KALDI_LOG << feat_mat_host.NumRows();
       // Propagation and CTC training
       net.Propagate(CuMatrix<BaseFloat>(feat_mat_host), &net_out);
-	
+
+
 			// I moved the Resize outside the EvalParallel for the block softmax to be convenient 
       obj_diff.Resize(net_out.NumRows(), net_out.NumCols());
 			obj_diff.Set(0);
@@ -186,24 +187,30 @@ int main(int argc, char *argv[]) {
 					std::vector< std::vector<int> > labels_utt_block(cur_sequence_num);
 					std::vector<int> frame_num_utt_block(cur_sequence_num);
 					// for now, we assume that the original labels use the whole index, so we need to change them to be relative to the current softmax
+					int zero_seq = 0;
+					
 					for(int s = 0; s < cur_sequence_num; s++){
-					// we need to check if this sequence belongs to this block
-						if(labels_utt[s].size() > 0 && labels_utt[s][0] > startIdx && labels_utt[s][0] < startIdx + block_softmax_dims[i]){
+					// we need to check if this sequence belongs to this block	
+						if(labels_utt[s].size() > 0 && labels_utt[s][0] >= startIdx && labels_utt[s][0] < startIdx + block_softmax_dims[i]){
 								frame_num_utt_block[s] = frame_num_utt[s];
 								for(int r = 0; r < labels_utt[s].size(); r++){
 									labels_utt_block[s].push_back(labels_utt[s][r] - startIdx);
 								}
 						}else{
 							frame_num_utt_block[s] = 0;
+							zero_seq++;
 						}
 					}
-					
-					CuSubMatrix<BaseFloat> net_out_block = net_out.ColRange(startIdx, block_softmax_dims[i]);
-					CuSubMatrix<BaseFloat> obj_diff_block = obj_diff.ColRange(startIdx, block_softmax_dims[i]);
+					if(zero_seq < cur_sequence_num)
+					{
+						CuSubMatrix<BaseFloat> net_out_block = net_out.ColRange(startIdx, block_softmax_dims[i]);
+						CuSubMatrix<BaseFloat> obj_diff_block = obj_diff.ColRange(startIdx, block_softmax_dims[i]);
 
-					ctc.EvalParallel(frame_num_utt_block, net_out_block, labels_utt_block, &obj_diff_block);
-				  // Error rates
-				  ctc.ErrorRateMSeq(frame_num_utt_block, net_out_block, labels_utt_block);
+						ctc.EvalParallel(frame_num_utt_block, net_out_block, labels_utt_block, &obj_diff_block);
+					  // Error rates
+					  ctc.ErrorRateMSeq(frame_num_utt_block, net_out_block, labels_utt_block);
+
+					}
 					startIdx += block_softmax_dims[i];
 				}
       } else {

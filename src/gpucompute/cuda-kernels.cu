@@ -1515,6 +1515,7 @@ static void _compute_ctc_error_one_sequence(Real* mat_error, MatrixDim dim_error
   }
 }
 
+
 // mat_prob are in probability scale.
 template<typename Real>
 __global__
@@ -1530,7 +1531,8 @@ static void _compute_ctc_error_multiple_sequence(Real* mat_error, int32_cuda seq
 
   Real err = NumericLimits<Real>::log_zero_;
   int32_cuda index_error = i * dim_error.stride + j;
-  for(int s = 0; s < dim_alpha.cols; s++) {
+  
+	for(int s = 0; s < dim_alpha.cols; s++) {
     int32_cuda index_label = s + seqX * dim_label_stride;
     if (labels[index_label] == -1) {continue;}
     if (labels[index_label] == j) {  //
@@ -1540,6 +1542,41 @@ static void _compute_ctc_error_multiple_sequence(Real* mat_error, int32_cuda seq
   }
   Real val = ExpA(SubAB(err, AddAB(pzx[seqX], mat_prob[index_error] == 0? NumericLimits<Real>::log_zero_ : 2*log(mat_prob[index_error]))));
   mat_error[index_error] = -1.0 * val;
+}
+
+
+
+
+// This version of _compute_ctc_error_multiple_sequence2 allows the mat_prob to have different MatrixDim (specifically, we care about the stride)
+template<typename Real>
+__global__
+static void _compute_ctc_error_multiple_sequence2(Real* mat_error, int32_cuda sequence_num, MatrixDim dim_error, const Real* mat_alpha, const Real* mat_beta, MatrixDim dim_alpha, const Real* mat_prob, MatrixDim dim_prob, const int32_cuda* labels, int32_cuda dim_label_stride, const int32_cuda* seq_lengths, const Real* pzx) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x; // row index
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y; // column index
+  if (i >= dim_error.rows || j >= dim_error.cols) return;
+
+  int32_cuda seqX = i % sequence_num;
+  int32_cuda rowX = i / sequence_num;
+
+  if (rowX >= seq_lengths[seqX]) return;
+
+  Real err = NumericLimits<Real>::log_zero_;
+  int32_cuda index_error = i * dim_error.stride + j;
+	int32_cuda index_prob = i * dim_prob.stride + j;
+  
+	for(int s = 0; s < dim_alpha.cols; s++) {
+    int32_cuda index_label = s + seqX * dim_label_stride;
+    if (labels[index_label] == -1) {continue;}
+    if (labels[index_label] == j) {  //
+      int32_cuda index_alpha = i * dim_alpha.stride + s;
+      err = LogAPlusB(err, AddAB(mat_alpha[index_alpha], mat_beta[index_alpha]));
+    }
+  }
+	mat_error[index_error] = mat_prob[index_prob];
+// == 0? NumericLimits<Real>::log_zero_ : 2*log(mat_prob[index_error]);
+//AddAB(pzx[seqX], mat_prob[index_error] == 0? NumericLimits<Real>::log_zero_ : 2*log(mat_prob[index_error]));
+  //Real val = ExpA(SubAB(err, AddAB(pzx[seqX], mat_prob[index_error] == 0? NumericLimits<Real>::log_zero_ : 2*log(mat_prob[index_error]))));
+  //mat_error[index_error] = -1.0 * val;
 }
 
 template<typename Real>
@@ -1606,10 +1643,14 @@ void cudaF_compute_ctc_alpha_multiple_sequence(dim3 Gr, dim3 Bl, float *alpha, i
 void cudaF_compute_ctc_beta_multiple_sequence(dim3 Gr, dim3 Bl, float *beta, int seq_num, int row_idx, MatrixDim dim_beta, const float *prob, MatrixDim dim_prob, const int *labels, int dim_label_stride, const int *seq_lengths, const int *label_lengths) {
   _compute_ctc_beta_multiple_sequence<<<Gr, Bl>>>(beta, seq_num, row_idx, dim_beta, prob, dim_prob, labels, dim_label_stride, seq_lengths, label_lengths);
 }
+
 void cudaF_compute_ctc_error_multiple_sequence(dim3 Gr, dim3 Bl, float *error, int seq_num, MatrixDim dim_error, const float *alpha, const float *beta, MatrixDim dim_alpha, const float *prob, const int *labels, int dim_label_stride, const int *seq_lengths, const float *pzx) {
   _compute_ctc_error_multiple_sequence<<<Gr, Bl>>>(error, seq_num, dim_error, alpha, beta, dim_alpha, prob, labels, dim_label_stride, seq_lengths, pzx);
 }
 
+void cudaF_compute_ctc_error_multiple_sequence2(dim3 Gr, dim3 Bl, float *error, int seq_num, MatrixDim dim_error, const float *alpha, const float *beta, MatrixDim dim_alpha, const float *prob, MatrixDim dim_prob, const int *labels, int dim_label_stride, const int *seq_lengths, const float *pzx) {
+  _compute_ctc_error_multiple_sequence2<<<Gr, Bl>>>(error, seq_num, dim_error, alpha, beta, dim_alpha, prob, dim_prob, labels, dim_label_stride, seq_lengths, pzx);
+}
 
 void cudaD_compute_ctc_alpha(dim3 Gr, dim3 Bl, double *alpha, int row_idx, MatrixDim dim_alpha, const double *prob, MatrixDim dim_prob, const int *labels) {
   _compute_ctc_alpha_one_sequence<<<Gr, Bl>>>(alpha, row_idx, dim_alpha, prob, dim_prob, labels);
@@ -1642,3 +1683,7 @@ void cudaD_compute_ctc_error_multiple_sequence(dim3 Gr, dim3 Bl, double *error, 
   _compute_ctc_error_multiple_sequence<<<Gr, Bl>>>(error, seq_num, dim_error, alpha, beta, dim_alpha, prob, labels, dim_label_stride, seq_lengths, pzx);
 }
 
+
+void cudaD_compute_ctc_error_multiple_sequence2(dim3 Gr, dim3 Bl, double *error, int seq_num, MatrixDim dim_error, const double *alpha, const double *beta, MatrixDim dim_alpha, const double *prob, MatrixDim dim_prob, const int *labels, int dim_label_stride, const int *seq_lengths, const double *pzx) {
+  _compute_ctc_error_multiple_sequence2<<<Gr, Bl>>>(error, seq_num, dim_error, alpha, beta, dim_alpha, prob, dim_prob, labels, dim_label_stride, seq_lengths, pzx);
+}

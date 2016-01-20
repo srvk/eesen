@@ -105,7 +105,7 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
 
   int32 num_sequence = frame_num_utt.size();  // number of sequences
   int32 num_frames = net_out.NumRows();
- 
+	
 	KALDI_ASSERT(num_frames % num_sequence == 0);  // after padding, number of frames is a multiple of number of sequences
 
   int32 num_frames_per_sequence = num_frames / num_sequence;
@@ -120,90 +120,97 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
   int32 exp_len_labels = 2*max_label_len + 1;
   label_expand_.resize(0);
   label_expand_.resize(num_sequence * exp_len_labels, -1);
+	int nonzero_seq = 0;
   for (int32 s = 0; s < num_sequence; s++) {
     std::vector<int32> label_s = label[s];
     if(frame_num_utt[s] > 0){
 			label_lengths_utt[s] = 2 * label_s.size() + 1;
 			for (int32 l = 0; l < label_s.size(); l++) {
         label_expand_[s*exp_len_labels + 2*l] = 0;
-				// KALDI_ASSERT(label_s[l] > 0); // if you need to debug any messy block-softmax
+				//KALDI_ASSERT(label_s[l] > 0); // if you need to debug any messy block-softmax
         label_expand_[s*exp_len_labels + 2*l + 1] = label_s[l];
       }
       label_expand_[s*exp_len_labels + 2*label_s.size()] = 0;
+			nonzero_seq++;
 		} else {
 			label_lengths_utt[s] = 0;
 		}
   }
-
-
-  // convert into the log scale
-  CuMatrix<BaseFloat> log_nnet_out(net_out);
-  log_nnet_out.ApplyLog();
-
-  // do the forward and backward pass, to compute alpha and beta values
-  alpha_.Resize(num_frames, exp_len_labels);
-  beta_.Resize(num_frames, exp_len_labels);
-  alpha_.Set(NumericLimits<BaseFloat>::log_zero_);
-  beta_.Set(NumericLimits<BaseFloat>::log_zero_);
 	
-  for (int t = 0; t < num_frames_per_sequence; t++) {
-    alpha_.ComputeCtcAlphaMSeq(log_nnet_out, t, label_expand_, frame_num_utt);
-  }
+	//	if(nonzero_seq > 0) { // means that this block actually has non-zero sequences
+	  // convert into the log scale
+	  CuMatrix<BaseFloat> log_nnet_out(net_out);
+		log_nnet_out.ApplyLog();
+
+	  // do the forward and backward pass, to compute alpha and beta values
+	  alpha_.Resize(num_frames, exp_len_labels);
+	  beta_.Resize(num_frames, exp_len_labels);
+	  alpha_.Set(NumericLimits<BaseFloat>::log_zero_);
+	  beta_.Set(NumericLimits<BaseFloat>::log_zero_);
 	
-  for (int t = (num_frames_per_sequence - 1); t >= 0; t--) {
-    beta_.ComputeCtcBetaMSeq(log_nnet_out, t, label_expand_, frame_num_utt, label_lengths_utt);
-  }
-  CuVector<BaseFloat> pzx(num_sequence, kSetZero);
+	  for (int t = 0; t < num_frames_per_sequence; t++) {
+	    alpha_.ComputeCtcAlphaMSeq(log_nnet_out, t, label_expand_, frame_num_utt);
+	 }
 	
-  for (int s = 0; s < num_sequence; s++) {
-		if(frame_num_utt[s] > 0){
-	   int label_len = 2* label[s].size() + 1;
-	   int frame_num = frame_num_utt[s];
-	   BaseFloat tmp1 = alpha_((frame_num-1)*num_sequence + s, label_len - 1);
-	   BaseFloat tmp2 = alpha_((frame_num-1)*num_sequence + s, label_len-2);
-	   pzx(s) = tmp1 + log(1 + ExpA(tmp2 - tmp1));
+	 for (int t = (num_frames_per_sequence - 1); t >= 0; t--) {
+	   beta_.ComputeCtcBetaMSeq(log_nnet_out, t, label_expand_, frame_num_utt, label_lengths_utt);
+	 }
+	 CuVector<BaseFloat> pzx(num_sequence, kSetZero);
+	
+		for (int s = 0; s < num_sequence; s++) {
+			if(frame_num_utt[s] > 0){
+			 int label_len = 2* label[s].size() + 1;
+		   int frame_num = frame_num_utt[s];
+		   BaseFloat tmp1 = alpha_((frame_num-1)*num_sequence + s, label_len - 1);
+			 BaseFloat tmp2 = alpha_((frame_num-1)*num_sequence + s, label_len-2);
+		   pzx(s) = tmp1 + log(1 + ExpA(tmp2 - tmp1));
+  		}
+	  }
+
+		
+	  // gradients from CTC
+	  ctc_err_.Resize(num_frames, num_classes, kSetZero);
+	  ctc_err_.ComputeCtcErrorMSeq(alpha_, beta_, net_out, label_expand_, frame_num_utt, pzx);  // here should use the original ??
+
+	  // back-propagate the errors through the softmax layer
+	  ctc_err_.MulElements(net_out);
+	  CuVector<BaseFloat> row_sum(num_frames, kSetZero);
+	  row_sum.AddColSumMat(1.0, ctc_err_, 0.0);
+
+	  CuMatrix<BaseFloat> net_out_tmp(net_out);
+	  net_out_tmp.MulRowsVec(row_sum);
+
+	  diff->CopyFromMat(ctc_err_);
+
+	  diff->AddMat(-1.0, net_out_tmp);
+	
+	  // update registries
+
+	  obj_progress_ += pzx.Sum();
+	  sequences_progress_ += nonzero_seq;
+	  sequences_num_ += nonzero_seq;
+	  for (int s = 0; s < num_sequence; s++) {
+	    if(frame_num_utt[s] > 0){
+				frames_progress_ += frame_num_utt[s];
+				frames_ += frame_num_utt[s];
+			}
+	  }
+	
+		// progressive reporting
+	  {
+	    if (sequences_progress_ >= report_step_) {
+	      KALDI_VLOG(1) << "After " << sequences_num_ << " sequences (" << frames_/(100.0 * 3600) << "Hr): "
+	                    << "Obj(log[Pzx]) = " << obj_progress_/sequences_progress_
+	                    << "   TokenAcc = " << 100.0*(1.0 - error_num_progress_/ref_num_progress_) << "%";
+	      // reset
+	      sequences_progress_ = 0;
+	      frames_progress_ = 0;
+	      obj_progress_ = 0.0;
+	      error_num_progress_ = 0;
+	      ref_num_progress_ = 0;
+	    }
 		}
-  }
-	
-  // gradients from CTC
-  ctc_err_.Resize(num_frames, num_classes, kSetZero);
-  ctc_err_.ComputeCtcErrorMSeq(alpha_, beta_, net_out, label_expand_, frame_num_utt, pzx);  // here should use the original ??
-
-  // back-propagate the errors through the softmax layer
-  ctc_err_.MulElements(net_out);
-  CuVector<BaseFloat> row_sum(num_frames, kSetZero);
-  row_sum.AddColSumMat(1.0, ctc_err_, 0.0);
-
-  CuMatrix<BaseFloat> net_out_tmp(net_out);
-  net_out_tmp.MulRowsVec(row_sum);
-  diff->CopyFromMat(ctc_err_);
-
-  diff->AddMat(-1.0, net_out_tmp);
-	
-  // update registries
-  obj_progress_ += pzx.Sum();
-  sequences_progress_ += num_sequence;
-  sequences_num_ += num_sequence;
-  for (int s = 0; s < num_sequence; s++) {
-    frames_progress_ += frame_num_utt[s];
-    frames_ += frame_num_utt[s];
-  }
-	
-  // progressive reporting
-  {
-    if (sequences_progress_ > report_step_) {
-      KALDI_VLOG(1) << "After " << sequences_num_ << " sequences (" << frames_/(100.0 * 3600) << "Hr): "
-                    << "Obj(log[Pzx]) = " << obj_progress_/sequences_progress_
-                    << "   TokenAcc = " << 100.0*(1.0 - error_num_progress_/ref_num_progress_) << "%";
-      // reset
-      sequences_progress_ = 0;
-      frames_progress_ = 0;
-      obj_progress_ = 0.0;
-      error_num_progress_ = 0;
-      ref_num_progress_ = 0;
-    }
-  }
-
+	//}
 }
   
 void Ctc::ErrorRate(const CuMatrixBase<BaseFloat> &net_out, const std::vector<int32> &label, float* err_rate, std::vector<int32> *hyp) {

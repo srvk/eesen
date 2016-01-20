@@ -274,6 +274,16 @@ inline void cuda_compute_ctc_error_multiple_sequence(dim3 Gr, dim3 Bl, double *e
   cudaD_compute_ctc_error_multiple_sequence(Gr, Bl, error, seq_num, dim_error, alpha, beta, dim_alpha, prob, labels, dim_label_stride, seq_lengths, pzx);
 }
 
+
+inline void cuda_compute_ctc_error_multiple_sequence2(dim3 Gr, dim3 Bl, float *error, int seq_num, MatrixDim dim_error, const float *alpha, const float *beta, MatrixDim dim_alpha, const float *prob, MatrixDim dim_prob, const int *labels, int dim_label_stride, const int *seq_lengths, const float *pzx) {
+  cudaF_compute_ctc_error_multiple_sequence2(Gr, Bl, error, seq_num, dim_error, alpha, beta, dim_alpha, prob, dim_prob, labels, dim_label_stride, seq_lengths, pzx);
+}
+inline void cuda_compute_ctc_error_multiple_sequence2(dim3 Gr, dim3 Bl, double *error, int seq_num, MatrixDim dim_error, const double *alpha, const double *beta, MatrixDim dim_alpha, const double *prob, MatrixDim dim_prob, const int *labels, int dim_label_stride, const int *seq_lengths, const double *pzx) {
+  cudaD_compute_ctc_error_multiple_sequence2(Gr, Bl, error, seq_num, dim_error, alpha, beta, dim_alpha, prob, dim_prob, labels, dim_label_stride, seq_lengths, pzx);
+}
+
+
+
 } // namespace eesen
 
 

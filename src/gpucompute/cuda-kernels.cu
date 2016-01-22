@@ -1572,11 +1572,8 @@ static void _compute_ctc_error_multiple_sequence2(Real* mat_error, int32_cuda se
       err = LogAPlusB(err, AddAB(mat_alpha[index_alpha], mat_beta[index_alpha]));
     }
   }
-	mat_error[index_error] = mat_prob[index_prob];
-// == 0? NumericLimits<Real>::log_zero_ : 2*log(mat_prob[index_error]);
-//AddAB(pzx[seqX], mat_prob[index_error] == 0? NumericLimits<Real>::log_zero_ : 2*log(mat_prob[index_error]));
-  //Real val = ExpA(SubAB(err, AddAB(pzx[seqX], mat_prob[index_error] == 0? NumericLimits<Real>::log_zero_ : 2*log(mat_prob[index_error]))));
-  //mat_error[index_error] = -1.0 * val;
+  Real val = ExpA(SubAB(err, AddAB(pzx[seqX], mat_prob[index_prob] == 0? NumericLimits<Real>::log_zero_ : 2*log(mat_prob[index_prob]))));
+  mat_error[index_error] = -1.0 * val;
 }
 
 template<typename Real>

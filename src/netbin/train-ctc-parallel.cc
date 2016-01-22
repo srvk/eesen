@@ -187,7 +187,7 @@ int main(int argc, char *argv[]) {
 					std::vector< std::vector<int> > labels_utt_block(cur_sequence_num);
 					std::vector<int> frame_num_utt_block(cur_sequence_num);
 					// for now, we assume that the original labels use the whole index, so we need to change them to be relative to the current softmax
-					int zero_seq = 0;
+					int nonzero_seq = 0;
 					
 					for(int s = 0; s < cur_sequence_num; s++){
 					// we need to check if this sequence belongs to this block	
@@ -196,20 +196,18 @@ int main(int argc, char *argv[]) {
 								for(int r = 0; r < labels_utt[s].size(); r++){
 									labels_utt_block[s].push_back(labels_utt[s][r] - startIdx);
 								}
+								nonzero_seq++;
 						}else{
 							frame_num_utt_block[s] = 0;
-							zero_seq++;
 						}
 					}
-					if(zero_seq < cur_sequence_num)
+					if(nonzero_seq > 0)
 					{
 						CuSubMatrix<BaseFloat> net_out_block = net_out.ColRange(startIdx, block_softmax_dims[i]);
 						CuSubMatrix<BaseFloat> obj_diff_block = obj_diff.ColRange(startIdx, block_softmax_dims[i]);
-
 						ctc.EvalParallel(frame_num_utt_block, net_out_block, labels_utt_block, &obj_diff_block);
 					  // Error rates
 					  ctc.ErrorRateMSeq(frame_num_utt_block, net_out_block, labels_utt_block);
-
 					}
 					startIdx += block_softmax_dims[i];
 				}

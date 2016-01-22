@@ -137,7 +137,6 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
 		}
   }
 	
-	//	if(nonzero_seq > 0) { // means that this block actually has non-zero sequences
 	  // convert into the log scale
 	  CuMatrix<BaseFloat> log_nnet_out(net_out);
 		log_nnet_out.ApplyLog();
@@ -190,7 +189,7 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
 	  sequences_progress_ += nonzero_seq;
 	  sequences_num_ += nonzero_seq;
 	  for (int s = 0; s < num_sequence; s++) {
-	    if(frame_num_utt[s] > 0){
+	    if(frame_num_utt[s] > 0){ // stupid test?
 				frames_progress_ += frame_num_utt[s];
 				frames_ += frame_num_utt[s];
 			}
@@ -210,7 +209,6 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
 	      ref_num_progress_ = 0;
 	    }
 		}
-	//}
 }
   
 void Ctc::ErrorRate(const CuMatrixBase<BaseFloat> &net_out, const std::vector<int32> &label, float* err_rate, std::vector<int32> *hyp) {

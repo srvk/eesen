@@ -1,7 +1,7 @@
 // net/net.h
 
 // Copyright 2011-2013  Brno University of Technology (Author: Karel Vesely)
-//                2015  Yajie Miao, Hang Su
+//                2015  Yajie Miao, Hang Su, Mohammad Gowayyed
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -136,6 +136,8 @@ class Net {
         layers_[i]->SetSeqLengths(sequence_lengths);
     }
   }
+
+	std::vector<int>  GetBlockSoftmaxDims();
 
  private:
   /// Vector which contains all the layers composing the neural network,

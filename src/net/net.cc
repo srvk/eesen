@@ -26,7 +26,7 @@
 #include "net/softmax-layer.h"
 #include "net/affine-trans-layer.h"
 #include "net/utils-functions.h"
-
+#include "util/text-utils.h"
 
 namespace eesen {
 
@@ -194,6 +194,11 @@ void Net::GetParams(Vector<BaseFloat>* wei_copy) const {
   KALDI_ASSERT(pos == NumParams());
 }
 
+std::vector<int> Net::GetBlockSoftmaxDims() {
+		KALDI_ASSERT(layers_[layers_.size()-1]->GetType() == Layer::l_BlockSoftmax);
+		return dynamic_cast<const BlockSoftmax*>(layers_[layers_.size()-1])->block_dims;
+  }
+
 void Net::AppendLayer(Layer* dynamically_allocated_layer) {
   // append,
   layers_.push_back(dynamically_allocated_layer);
@@ -217,6 +222,7 @@ int32 Net::NumParams() const {
 void Net::Init(const std::string &file) {
   Input in(file);
   std::istream &is = in.Stream();
+	KALDI_LOG << "Initializing Network";
   // do the initialization with config lines,
   std::string conf_line, token;
   while (!is.eof()) {
@@ -249,12 +255,14 @@ void Net::Read(const std::string &file) {
 void Net::Read(std::istream &is, bool binary) {
   // get the network layers from a factory
   Layer *layer;
+	// TMP
+	KALDI_LOG << "READING THE NETWORK";
   while (NULL != (layer = Layer::Read(is, binary))) {
     if (NumLayers() > 0 && layers_.back()->OutputDim() != layer->InputDim()) {
       KALDI_ERR << "Dimensionality mismatch!"
                 << " Previous layer output:" << layers_.back()->OutputDim()
                 << " Current layer input:" << layer->InputDim();
-    }
+		}	
     layers_.push_back(layer);
   }
   // create empty buffers

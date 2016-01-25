@@ -950,11 +950,11 @@ void CuMatrixBase<Real>::ComputeCtcErrorMSeq(const CuMatrixBase<Real> &alpha,
     CuArray<MatrixIndexT> cuda_labels(labels);
     CuArray<MatrixIndexT> cuda_frame_nums(frame_num_utt);
     int32 seq_num = frame_num_utt.size();
-
+	
     Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK), n_blocks(NumCols(), CU2DBLOCK));
-    cuda_compute_ctc_error_multiple_sequence(dimGrid, dimBlock, data_, seq_num, Dim(), alpha.data_, beta.data_, alpha.Dim(), prob.data_, cuda_labels.Data(), alpha.NumCols(), cuda_frame_nums.Data(), pzx.Data());
+    cuda_compute_ctc_error_multiple_sequence2(dimGrid, dimBlock, data_, seq_num, Dim(), alpha.data_, beta.data_, alpha.Dim(), prob.data_, prob.Dim(), cuda_labels.Data(), alpha.NumCols(), cuda_frame_nums.Data(), pzx.Data());
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());

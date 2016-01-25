@@ -7,6 +7,9 @@ stage=1
 wsj0=/path/to/LDC93S6B
 wsj1=/path/to/LDC94S13B
 
+wsj0=/oasis/projects/nsf/cmu131/fmetze/LDC93S6B
+wsj1=/oasis/projects/nsf/cmu131/fmetze/LDC94S13B
+
 . parse_options.sh
 
 if [ $stage -le 1 ]; then
@@ -47,6 +50,8 @@ if [ $stage -le 2 ]; then
     steps/compute_cmvn_stats.sh data/$set exp/make_fbank/$set $fbankdir || exit 1;
   done
 fi
+
+exit 0
 
 if [ $stage -le 3 ]; then
   echo =====================================================================

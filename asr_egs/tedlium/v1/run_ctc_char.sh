@@ -7,7 +7,7 @@
 stage=0
 . parse_options.sh
 
-if [ $stage -le 1 ]; then
+if [ $stage -eq 1 ]; then
   echo =====================================================================
   echo "             Data Preparation and FST Construction                 "
   echo =====================================================================
@@ -19,13 +19,13 @@ if [ $stage -le 1 ]; then
   local/tedlium_prepare_data.sh || exit 1
 
   # Construct the phoneme-based lexicon
-  local/tedlium_prepare_phn_dict.sh || exit 1;
+  local/tedlium_prepare_char_dict.sh || exit 1;
 
   # Compile the lexicon and token FSTs
-  utils/ctc_compile_dict_token.sh data/local/dict_phn data/local/lang_phn_tmp data/lang_phn || exit 1;
+  utils/ctc_compile_dict_token.sh data/local/dict_char data/local/lang_char_tmp data/lang_char || exit 1;
 
   # Compose the decoding graph
-  local/tedlium_decode_graph.sh data/lang_phn || exit 1;
+  local/tedlium_decode_graph.sh data/lang_char || exit 1;
 fi
 
 if [ $stage -le 2 ]; then
@@ -73,7 +73,9 @@ if [ $stage -le 3 ]; then
     --learn-rate 0.00004 --report-step 1000 --halving-after-epoch 12 \
     --feats-tmpdir $dir/XXXXX \
     data/train_tr95 data/train_cv05 $dir || exit 1;
+fi
 
+if [ $stage -le 4 ]; then
   echo =====================================================================
   echo "                            Decoding                               "
   echo =====================================================================

@@ -9,10 +9,14 @@
 *.o
 
 # Compiled Static and Dynamic libraries
-*.a *.so
+*.a
+*.so
 
 # Make dependencies
 .depend.mk
 
 # /src/
 /src/config.mk
+
+# backups
+*~

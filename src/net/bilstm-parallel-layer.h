@@ -173,6 +173,15 @@ public:
       YR_RB.Resize((T+2)*S, 2 * cell_dim_, kSetZero);
       YR_RB.ColRange(0, cell_dim_).CopyFromMat(propagate_buf_fw_.ColRange(6 * cell_dim_, cell_dim_));
       YR_RB.ColRange(cell_dim_, cell_dim_).CopyFromMat(propagate_buf_bw_.ColRange(6 * cell_dim_, cell_dim_));
+      
+      if (drop_factor_ != 0.0) {
+        drop_mask_.Resize(T*S, 2 * cell_dim_, kUndefined);
+        drop_mask_.SetRandUniform();  
+        drop_mask_.Add(-drop_factor_);
+        drop_mask_.ApplyHeaviside();
+        YR_RB.RowRange(S,T*S).MulElements(drop_mask_);
+      }
+
       out->CopyFromMat(YR_RB.RowRange(S,T*S));
     }
 
@@ -182,6 +191,13 @@ public:
       KALDI_ASSERT(in.NumRows() % nstream_ == 0);
       int32 T = in.NumRows() / nstream_;
       int32 S = nstream_;
+
+      CuMatrix<BaseFloat> out_diff_drop;
+      out_diff_drop.Resize(out_diff.NumRows(), out_diff.NumCols());
+      out_diff_drop.CopyFromMat(out_diff);
+      if (drop_factor_ != 0.0) {
+        out_diff_drop.MulElements(drop_mask_);
+      }
  
       // initialize the back-propagation buffer
       backpropagate_buf_fw_.Resize((T+2)*S, 7 * cell_dim_, kSetZero);
@@ -209,7 +225,7 @@ public:
         CuSubMatrix<BaseFloat> DGIFO(backpropagate_buf_fw_.ColRange(0, 4 * cell_dim_));
 
         //  assume that the fist half of out_diff is about the forward layer
-        DM.RowRange(1*S,T*S).CopyFromMat(out_diff.ColRange(0, cell_dim_));
+        DM.RowRange(1*S,T*S).CopyFromMat(out_diff_drop.ColRange(0, cell_dim_));
 
         for (int t = T; t >= 1; t--) {
           // variables representing activations of invidivual units/gates
@@ -300,7 +316,7 @@ public:
         CuSubMatrix<BaseFloat> DGIFO(backpropagate_buf_bw_.ColRange(0, 4 * cell_dim_));
     
         // the second half of the error vector corresponds to the backward layer
-        DM.RowRange(1*S, T*S).CopyFromMat(out_diff.ColRange(cell_dim_, cell_dim_));
+        DM.RowRange(1*S, T*S).CopyFromMat(out_diff_drop.ColRange(cell_dim_, cell_dim_));
 
         for (int t = 1; t <= T; t++) {
           // variables representing activations of invidivual units/gates

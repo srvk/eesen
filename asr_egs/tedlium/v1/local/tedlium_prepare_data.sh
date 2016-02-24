@@ -6,7 +6,10 @@
 
 # To be run from one directory above this script.
 
+data_dir=db/TEDLIUM_release1
+
 . path.sh
+. parse_options.sh || exit 1;
 
 export LC_ALL=C
 
@@ -35,14 +38,14 @@ for set in dev test train; do
 ;; LABEL "female" "Female" "Female Talkers"
 ;;'
     # Process the STMs
-    cat db/TEDLIUM_release1/$set/stm/*.stm | sort -k1,1 -k2,2 -k4,4n | \
+    cat ${data_dir}/$set/stm/*.stm | sort -k1,1 -k2,2 -k4,4n | \
       sed -e 's:<F0_M>:<o,f0,male>:' \
           -e 's:<F0_F>:<o,f0,female>:' \
           -e 's:([0-9])::g' \
           -e 's:<sil>::g' \
           -e 's:([^ ]*)$::' | \
       awk '{ $2 = "A"; print $0; }'
-  } | local/join_suffix.py db/TEDLIUM_release1/TEDLIUM.150K.dic > data/$set/stm 
+  } | local/join_suffix.py ${data_dir}/TEDLIUM.*.dic > data/$set/stm 
 
   # Prepare 'text' file
   # - {NOISE} -> [NOISE] : map the tags to match symbols in dictionary
@@ -58,7 +61,7 @@ for set in dev test train; do
   cat $dir/utt2spk | utils/utt2spk_to_spk2utt.pl > $dir/spk2utt
   
   # Prepare 'wav.scp', 'reco2file_and_channel' 
-  cat $dir/spk2utt | awk -v set=$set -v pwd=$PWD -v sph2pipe=$sph2pipe '{ printf("%s %s -f wav -p %s/db/TEDLIUM_release1/%s/sph/%s.sph |\n", $1, sph2pipe, pwd, set, $1); }' > $dir/wav.scp
+  cat $dir/spk2utt | awk -v set=$set -v pwd=$PWD -v sph2pipe=$sph2pipe -v d=$data_dir '{ printf("%s %s -f wav -p %s/%s/%s/sph/%s.sph |\n", $1, sph2pipe, pwd, d, set, $1); }' > $dir/wav.scp
   cat $dir/wav.scp | awk '{ print $1, $1, "A"; }' > $dir/reco2file_and_channel
   
   # Create empty 'glm' file

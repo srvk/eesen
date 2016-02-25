@@ -53,6 +53,9 @@ void cudaD_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val, MatrixDi
 void cudaF_apply_ceiling(dim3 Gr, dim3 Bl, float* mat, float ceiling_val, MatrixDim d);
 void cudaD_apply_ceiling(dim3 Gr, dim3 Bl, double* mat, double ceiling_val, MatrixDim d);
 
+void cudaF_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);
+void cudaD_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);
+
 void cudaF_set_const(dim3 Gr, dim3 Bl, float *mat, float value, MatrixDim d);
 void cudaD_set_const(dim3 Gr, dim3 Bl, double *mat, double value, MatrixDim d);
 

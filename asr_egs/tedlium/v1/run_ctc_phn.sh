@@ -1,13 +1,22 @@
 #!/bin/bash
 
-. ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
-           ## This relates to the queue.
+### for CMU rocks cluster ###
+#PBS -q standard
+#PBS -j oe
+#PBS -o log
+#PBS -d .
+#PBS -V
+#PBS -l walltime=48:00:00,nodes=1:ppn=12
+
+. cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
+         ## This relates to the queue.
 . path.sh
 
 stage=0
+
 . parse_options.sh
 
-if [ $stage -eq 1 ]; then
+if [ $stage -le 1 ]; then
   echo =====================================================================
   echo "             Data Preparation and FST Construction                 "
   echo =====================================================================
@@ -73,9 +82,7 @@ if [ $stage -le 3 ]; then
     --learn-rate 0.00004 --report-step 1000 --halving-after-epoch 12 \
     --feats-tmpdir $dir/XXXXX \
     data/train_tr95 data/train_cv05 $dir || exit 1;
-fi
 
-if [ $stage -le 4 ]; then
   echo =====================================================================
   echo "                            Decoding                               "
   echo =====================================================================

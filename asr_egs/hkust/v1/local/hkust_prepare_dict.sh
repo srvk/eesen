@@ -54,7 +54,7 @@ gawk 'NR==FNR{words[$1]; next;} ($1 in words)' \
 wc -l $dict_dir/vocab-en-oov.txt
 wc -l $dict_dir/lexicon-en-iv.txt
 
-pyver=`python --version 2>&1 | sed -e 's:.*\([2-3]\.[0-9]\+\).*:\1:g'`
+pyver=`python --version 2>&1 | sed -e 's:^[A-Za-z ]*\([2-3]\.[0-9]\+\).*:\1:g'`
 export PYTHONPATH=$PYTHONPATH:`pwd`/tools/g2p/lib/python${pyver}/site-packages
 if [ ! -f tools/g2p/lib/python${pyver}/site-packages/g2p.py ]; then
   echo "--- Downloading Sequitur G2P ..."
@@ -195,7 +195,7 @@ cat $dict_dir/lexicon-ch-oov.txt |\
   ' > $dict_dir/lexicon-ch-oov1.txt
 
 cat $dict_dir/lexicon-ch-oov1.txt $dict_dir/lexicon-ch-iv.txt |\
-  awk '{if (NF > 1) print $0;}' > $dict_dir/lexicon-ch.txt 
+  awk '{if (NF > 1) print $0;}' | grep [A-Z] > $dict_dir/lexicon-ch.txt 
 
 cat $dict_dir/lexicon-ch.txt | sed -e 's/U:/V/g' | sed -e 's/ R\([0-9]\)/ ER\1/g'|\
   utils/pinyin_map.pl conf/pinyin2cmu > $dict_dir/lexicon-ch-cmu.txt

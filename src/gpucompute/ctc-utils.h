@@ -20,7 +20,8 @@
 #ifndef EESEN_GPUCOMPUTE_CTC_UTILS_H_
 #define EESEN_GPUCOMPUTE_CTC_UTILS_H_
 
-#if HAVE_CUDA == 1
+//#if HAVE_CUDA == 1
+#pragma GCC diagnostic warning "-fpermissive"
 
 /*
  * Some numeric limits and operations. These limits and operations
@@ -47,6 +48,7 @@ struct NumericLimits<double>
   static const double max_ = 1.7976931348623157e+308;
 };
 
+#if HAVE_CUDA == 1
 
 // a + b, where a and b are assumed to be in the log scale 
 template <typename T>
@@ -92,6 +94,15 @@ static inline __host__ __device__ T LogAPlusB(T a, T b) // x and y are in log sc
     else
       return AddAB(b, log(1 + ExpA(SubAB(a, b))));
   }
+
+#else
+
+// exp(a)
+template <typename T>
+static inline T ExpA(T a)
+{
+  return exp(a);
+}
 
 #endif // HAVE_CUDA
 

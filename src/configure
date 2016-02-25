@@ -729,7 +729,7 @@ if [ "`uname`" == "Linux" ]; then
         linux_configure_debian7 || \
         linux_configure_redhat 64 || \
         linux_configure_redhat || \
-        linux_atlas_failure "Failed to configure ATLAS lbiraries";
+        linux_atlas_failure "Failed to configure ATLAS libraries";
     else
       # Prefer dynamic to static math.
       linux_configure_dynamic || \
@@ -739,7 +739,7 @@ if [ "`uname`" == "Linux" ]; then
         linux_configure_debian7 || \
         linux_configure_redhat 64 || \
         linux_configure_redhat || \
-        linux_atlas_failure "Failed to configure ATLAS lbiraries";
+        linux_atlas_failure "Failed to configure ATLAS libraries";
     fi
 
   elif [ "$MATHLIB" == "MKL" ]; then

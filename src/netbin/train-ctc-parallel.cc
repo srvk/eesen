@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Perform one iteration of CTC training by SGD.\n"
-        "The updates are done per-utternace and by processing multiple utterances in parallel.\n"
+        "The updates are done per-utterance and by processing multiple utterances in parallel.\n"
         "\n"
         "Usage: train-ctc-parallel [options] <feature-rspecifier> <labels-rspecifier> <model-in> [<model-out>]\n"
         "e.g.: \n"

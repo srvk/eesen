@@ -60,8 +60,8 @@ int main(int argc, char *argv[]) {
         energy.CopyColFromMat(feats,0);	
 	kaldi_writer.Write(kaldi_reader.Key(),energy);
     }
-    //KALDI_LOG << "Copied " << num_done << " feature matrices.";
-    return 1;
+    KALDI_LOG << "Copied " << num_done << " feature matrices.";
+    return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

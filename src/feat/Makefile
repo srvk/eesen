@@ -1,5 +1,4 @@
 
-
 all:
 
 include ../config.mk
@@ -17,4 +16,3 @@ LIBNAME = feat
 ADDLIBS = ../util/util.a ../cpucompute/cpucompute.a ../base/base.a
 
 include ../makefiles/default_rules.mk
-

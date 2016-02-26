@@ -1,4 +1,4 @@
-# This is the top-level Makefile for Kaldi.
+# This is the top-level Makefile for Eesen.
 # Also see config.mk which supplies options and some rules
 # used by the Makefiles in the subdirectories.
 

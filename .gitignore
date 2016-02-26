@@ -11,6 +11,8 @@
 # Compiled Static and Dynamic libraries
 *.a
 *.so
+*.dylib
+*.dSYM
 
 # Make dependencies
 .depend.mk
@@ -20,3 +22,5 @@
 
 # backups
 *~
+*.bak
+project.xcworkspace

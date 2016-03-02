@@ -69,7 +69,7 @@ openfst: openfst_compiled openfst-$(OPENFST_VERSION)/lib
 .PHONY: openfst_compiled
 openfst_compiled: openfst-$(OPENFST_VERSION)/Makefile
 	cd openfst-$(OPENFST_VERSION)/ && \
-	$(MAKE) install
+	$(MAKE) -j -k install || $(MAKE) install
 
 openfst-$(OPENFST_VERSION)/lib: | openfst-$(OPENFST_VERSION)/Makefile
 	-cd openfst-$(OPENFST_VERSION) && [ -d lib64 ] && [ ! -d lib ] && ln -s lib64 lib

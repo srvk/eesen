@@ -8,7 +8,7 @@ SHELL := /bin/bash
 SUBDIRS = base cpucompute util feat \
           fstext lm decoder lat gpucompute net \
           fstbin featbin \
-          netbin decoderbin latbin hmm tree #matrix gmm
+          netbin decoderbin latbin
 
 MEMTESTDIRS = base cpucompute util feat \
           fstext lm decoder lat net \
@@ -140,7 +140,7 @@ $(EXT_SUBDIRS) : mklibdir
 #1)The tools depend on all the libraries
 
 fstbin featbin netbin latbin decoderbin: \
- base cpucompute util feat fstext lm decoder lat gpucompute net hmm tree
+ base cpucompute util feat fstext lm decoder lat gpucompute net
 
 #2)The libraries have inter-dependencies
 base:
@@ -150,9 +150,8 @@ feat: base cpucompute util
 fstext: base util cpucompute
 lm: base util fstext
 decoder: base util cpucompute lat
-lat: base util hmm
+lat: base util
 gpucompute: base util cpucompute	
 net: base util cpucompute gpucompute
-hmm: tree cpucompute util base
-tree: util cpucompute base
+
 

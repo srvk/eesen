@@ -43,12 +43,14 @@ int main(int argc, char *argv[]) {
         " steps/get_train_ctm.sh\n";
     
     ParseOptions po(usage);
-    BaseFloat acoustic_scale = 1.0, inv_acoustic_scale = 1.0, lm_scale = 1.0;
+    BaseFloat acoustic_scale = 1.0, inv_acoustic_scale = 1.0, lm_scale = 1.0, ascale_factor = 0.1;
     bool decode_mbr = true;
     BaseFloat frame_shift = 0.01;
 
     std::string word_syms_filename;
-    po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for "
+    po.Register("ascale_factor", &ascale_factor, "Scaling factor multiplier for "
+                "acoustic likelihoods");
+    po.Register("acoustic-scale", &acoustic_scale, "Integer based scaling for "
                 "acoustic likelihoods");
     po.Register("inv-acoustic-scale", &inv_acoustic_scale, "An alternative way "
                 "of setting the acoustic scale: you can set its inverse.");
@@ -96,7 +98,7 @@ int main(int argc, char *argv[]) {
       std::string key = clat_reader.Key();
       CompactLattice clat = clat_reader.Value();
       clat_reader.FreeCurrent();
-      fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &clat);
+      fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale * ascale_factor), &clat);
 
       MinimumBayesRisk mbr(clat, decode_mbr);
       

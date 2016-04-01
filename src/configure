@@ -638,12 +638,12 @@ echo "Doing OS specific configurations ..."
 # which crashes on Darwin. Also the linear algebra libraries on Macs are
 # used differently (through the Accelerate framework) than on Linux.
 if [ "`uname`" == "Darwin"  ]; then
- $use_cuda && linux_configure_cuda
+  $use_cuda && linux_configure_cuda
   echo "On Darwin: checking for Accelerate framework ..."
   if [ ! -e /System/Library/Frameworks/Accelerate.framework ]; then
     failure "Need the Accelerate.framework to compile on Darwin."
   fi
-  if [ ! -f $FSTROOT/lib/libfst.a ]; then
+  if [ $static_fst != false -a ! -f $FSTROOT/src/lib/libfst.a ]; then
     failure "Static OpenFST library not found:  See ../tools/INSTALL"
   fi
   # posix_memalign and gcc -rdynamic options not present on OS X 10.5.*
@@ -667,6 +667,9 @@ if [ "`uname`" == "Darwin"  ]; then
   elif [ "$osx_ver" == "10.10" ]; then
     check_exists makefiles/darwin_10_10.mk
     cat makefiles/darwin_10_10.mk >> config.mk
+  elif [ "$osx_ver" == "10.11" ]; then
+    check_exists makefiles/darwin_10_11.mk
+    cat makefiles/darwin_10_11.mk >> config.mk
   else 
     failure "OS X version '$osx_ver' not supported"
   fi

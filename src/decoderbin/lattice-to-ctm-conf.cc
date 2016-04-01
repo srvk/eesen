@@ -1,6 +1,7 @@
 // latbin/lattice-to-ctm-conf.cc
 
 // Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey)
+//                2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -28,6 +29,7 @@ int main(int argc, char *argv[]) {
     typedef eesen::int32 int32;
 
     const char *usage =
+<<<<<<< HEAD
         "Generate 1-best from lattices and convert into ctm with confidences.\n"
         "If --decode-mbr=true, does Minimum Bayes Risk decoding, else normal\n"
         "Maximum A Posteriori (but works out the confidences based on posteriors\n"
@@ -42,27 +44,68 @@ int main(int argc, char *argv[]) {
         "See also: lattice-mbr-decode, and the scripts steps/get_ctm.sh and\n"
         " steps/get_train_ctm.sh\n";
     
+=======
+        "This tool turns a lattice into a ctm with confidences, based on the\n"
+        "posterior probabilities in the lattice.  The word sequence in the\n"
+        "ctm is determined as follows.  Firstly we determine the initial word\n"
+        "sequence.  In the 3-argument form, we read it from the\n"
+        "<1best-rspecifier> input; otherwise it is the 1-best of the lattice.\n"
+        "Then, if --decode-mbr=true, we iteratively refine the hypothesis\n"
+        "using Minimum Bayes Risk decoding.  If you don't need confidences,\n"
+        "you can do lattice-1best and pipe to nbest-to-ctm. The ctm this\n"
+        "program produces will be relative to the utterance-id; a standard\n"
+        "ctm relative to the filename can be obtained using\n"
+        "utils/convert_ctm.pl.  The times produced by this program will only\n"
+        "be meaningful if you do lattice-align-words on the input.  The\n"
+        "<1-best-rspecifier> could be the output of utils/int2sym.pl or\n"
+        "nbest-to-linear.\n"
+        "\n"
+        "Usage: lattice-to-ctm-conf [options]  <lattice-rspecifier> \\\n"
+        "                                          <ctm-wxfilename>\n"
+        "Usage: lattice-to-ctm-conf [options]  <lattice-rspecifier> \\\n"
+        "                     [<1best-rspecifier>] <ctm-wxfilename>\n"
+        " e.g.: lattice-to-ctm-conf --acoustic-scale=0.1 ark:1.lats 1.ctm\n"
+        "   or: lattice-to-ctm-conf --acoustic-scale=0.1 --decode-mbr=false\\\n"
+        "                                      ark:1.lats ark:1.1best 1.ctm\n"
+        "See also: lattice-mbr-decode, nbest-to-ctm, steps/get_ctm.sh,\n"
+        "          steps/get_train_ctm.sh and utils/convert_ctm.sh.\n";
+
+>>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0, inv_acoustic_scale = 1.0, lm_scale = 1.0, ascale_factor = 1.0;
     bool decode_mbr = true;
     BaseFloat frame_shift = 0.01;
 
     std::string word_syms_filename;
+<<<<<<< HEAD
     po.Register("ascale_factor", &ascale_factor, "Scaling factor multiplier for "
                 "acoustic likelihoods");
     po.Register("acoustic-scale", &acoustic_scale, "Integer based scaling for "
                 "acoustic likelihoods");
+=======
+    po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for "
+                "acoustic likelihoods");
+    po.Register("ascale-factor", &ascale_factor, "Scaling factor for acoustic_scale.");
+>>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
     po.Register("inv-acoustic-scale", &inv_acoustic_scale, "An alternative way "
                 "of setting the acoustic scale: you can set its inverse.");
     po.Register("lm-scale", &lm_scale, "Scaling factor for language model "
                 "probabilities");
     po.Register("decode-mbr", &decode_mbr, "If true, do Minimum Bayes Risk "
                 "decoding (else, Maximum a Posteriori)");
+<<<<<<< HEAD
     po.Register("frame-shift", &frame_shift, "Time in seconds between frames.\n");
     
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
+=======
+    po.Register("frame-shift", &frame_shift, "Time in seconds between frames.");
+    
+    po.Read(argc, argv);
+
+    if (po.NumArgs() != 2 && po.NumArgs() != 3) {
+>>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
       po.PrintUsage();
       exit(1);
     }
@@ -70,10 +113,27 @@ int main(int argc, char *argv[]) {
     KALDI_ASSERT(acoustic_scale == 1.0 || inv_acoustic_scale == 1.0);
     if (inv_acoustic_scale != 1.0)
       acoustic_scale = 1.0 / inv_acoustic_scale;
+<<<<<<< HEAD
     acoustic_scale *= ascale_factor;
     
     std::string lats_rspecifier = po.GetArg(1),
         ctm_wxfilename = po.GetArg(2);
+=======
+    
+    acoustic_scale *= ascale_factor;
+
+    std::string lats_rspecifier, one_best_rspecifier, ctm_wxfilename;
+
+    if (po.NumArgs() == 2) {
+      lats_rspecifier = po.GetArg(1);
+      one_best_rspecifier = "";
+      ctm_wxfilename = po.GetArg(2);
+    } else if (po.NumArgs() == 3) {
+      lats_rspecifier = po.GetArg(1);
+      one_best_rspecifier = po.GetArg(2);
+      ctm_wxfilename = po.GetArg(3);
+    }
+>>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
     
     // Ensure the output ctm file is not a wspecifier
     WspecifierType ctm_wx_type; 
@@ -86,6 +146,11 @@ int main(int argc, char *argv[]) {
 
     // Read as compact lattice.
     SequentialCompactLatticeReader clat_reader(lats_rspecifier);
+<<<<<<< HEAD
+=======
+ 
+    RandomAccessInt32VectorReader one_best_reader(one_best_rspecifier);
+>>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
 
     Output ko(ctm_wxfilename, false); // false == non-binary writing mode.
     ko.Stream() << std::fixed;  // Set to "fixed" floating point model, where precision() specifies
@@ -99,6 +164,7 @@ int main(int argc, char *argv[]) {
       std::string key = clat_reader.Key();
       CompactLattice clat = clat_reader.Value();
       clat_reader.FreeCurrent();
+<<<<<<< HEAD
       fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale * ascale_factor), &clat);
 
       MinimumBayesRisk mbr(clat, decode_mbr);
@@ -107,6 +173,27 @@ int main(int argc, char *argv[]) {
       const std::vector<int32> &words = mbr.GetOneBest();
       const std::vector<std::pair<BaseFloat, BaseFloat> > &times =
           mbr.GetOneBestTimes();
+=======
+      fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &clat);
+
+      MinimumBayesRisk *mbr = NULL;
+
+      if (one_best_rspecifier == "") {
+        mbr = new MinimumBayesRisk(clat, decode_mbr);
+      } else {
+        if (!one_best_reader.HasKey(key)) {
+          KALDI_WARN << "No 1-best present for utterance " << key;
+          continue;
+        }
+        const std::vector<int32> &one_best = one_best_reader.Value(key);
+        mbr = new MinimumBayesRisk(clat, one_best, decode_mbr);
+      }
+      
+      const std::vector<BaseFloat> &conf = mbr->GetOneBestConfidences();
+      const std::vector<int32> &words = mbr->GetOneBest();
+      const std::vector<std::pair<BaseFloat, BaseFloat> > &times =
+          mbr->GetOneBestTimes();
+>>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
       KALDI_ASSERT(conf.size() == words.size() && words.size() == times.size());
       for (size_t i = 0; i < words.size(); i++) {
         KALDI_ASSERT(words[i] != 0); // Should not have epsilons.
@@ -114,12 +201,23 @@ int main(int argc, char *argv[]) {
                     << (frame_shift * (times[i].second-times[i].first)) << ' '
                     << words[i] << ' ' << conf[i] << '\n';
       }
+<<<<<<< HEAD
       KALDI_LOG << "For utterance " << key << ", Bayes Risk " << mbr.GetBayesRisk()
                 << ", avg. confidence per-word " 
                 << std::accumulate(conf.begin(),conf.end(),0.0) / words.size();
       n_done++;
       n_words= mbr.GetOneBest().size();
       tot_bayes_risk= mbr.GetBayesRisk();
+=======
+      KALDI_LOG << "For utterance " << key << ", Bayes Risk "
+                << mbr->GetBayesRisk() << ", avg. confidence per-word " 
+                << std::accumulate(conf.begin(),conf.end(),0.0) / words.size();
+      n_done++;
+      n_words += mbr->GetOneBest().size();
+      tot_bayes_risk += mbr->GetBayesRisk();
+      if (mbr != NULL)
+        delete mbr;
+>>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
     }
 
     KALDI_LOG << "Done " << n_done << " lattices.";

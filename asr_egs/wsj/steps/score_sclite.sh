@@ -58,11 +58,10 @@ fi
 if [ $stage -le 1 ]; then
   # Remove some stuff we don't want to score, from the ctm.
   for x in $dir/score_*/$name.ctm; do
-    cp $x $dir/tmpf
+    cp $x $dir/tmpf;
     cat $dir/tmpf | grep -i -v -E '\[BREATH|NOISE|COUGH|SMACK|UM|UH\]' | \
       grep -i -v -E '<UNK>' > $x;
   done
-  rm $dir/tmpf
 fi
 
 # Score the set...

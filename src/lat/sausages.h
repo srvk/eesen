@@ -138,7 +138,7 @@ class MinimumBayesRisk {
     std::pair<const int32, double> pr(i, d);
     std::pair<std::map<int32, double>::iterator, bool> ret = gamma->insert(pr);
     if (!ret.second) // not inserted, so add to contents.
-      ret.first->second= d;
+      ret.first->second += d;
   }
     
   struct Arc {

@@ -29,22 +29,6 @@ int main(int argc, char *argv[]) {
     typedef eesen::int32 int32;
 
     const char *usage =
-<<<<<<< HEAD
-        "Generate 1-best from lattices and convert into ctm with confidences.\n"
-        "If --decode-mbr=true, does Minimum Bayes Risk decoding, else normal\n"
-        "Maximum A Posteriori (but works out the confidences based on posteriors\n"
-        "in the lattice, using the MBR code).  Note: if you don't need confidences,\n"
-        "you can do lattice-1best and pipe to nbest-to-ctm. \n"
-        "Note: the ctm this produces will be relative to the utterance-id.\n"
-        "Note: the times will only be correct if you do lattice-align-words\n"
-        "on the input\n"
-        "\n"
-        "Usage: lattice-to-ctm-conf [options]  <lattice-rspecifier> <ctm-wxfilename>\n"
-        " e.g.: lattice-to-ctm-conf --acoustic-scale=0.1 ark:1.lats 1.ctm\n"
-        "See also: lattice-mbr-decode, and the scripts steps/get_ctm.sh and\n"
-        " steps/get_train_ctm.sh\n";
-    
-=======
         "This tool turns a lattice into a ctm with confidences, based on the\n"
         "posterior probabilities in the lattice.  The word sequence in the\n"
         "ctm is determined as follows.  Firstly we determine the initial word\n"
@@ -70,42 +54,26 @@ int main(int argc, char *argv[]) {
         "See also: lattice-mbr-decode, nbest-to-ctm, steps/get_ctm.sh,\n"
         "          steps/get_train_ctm.sh and utils/convert_ctm.sh.\n";
 
->>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0, inv_acoustic_scale = 1.0, lm_scale = 1.0, ascale_factor = 1.0;
     bool decode_mbr = true;
     BaseFloat frame_shift = 0.01;
 
     std::string word_syms_filename;
-<<<<<<< HEAD
-    po.Register("ascale_factor", &ascale_factor, "Scaling factor multiplier for "
-                "acoustic likelihoods");
-    po.Register("acoustic-scale", &acoustic_scale, "Integer based scaling for "
-                "acoustic likelihoods");
-=======
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for "
                 "acoustic likelihoods");
     po.Register("ascale-factor", &ascale_factor, "Scaling factor for acoustic_scale.");
->>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
     po.Register("inv-acoustic-scale", &inv_acoustic_scale, "An alternative way "
                 "of setting the acoustic scale: you can set its inverse.");
     po.Register("lm-scale", &lm_scale, "Scaling factor for language model "
                 "probabilities");
     po.Register("decode-mbr", &decode_mbr, "If true, do Minimum Bayes Risk "
                 "decoding (else, Maximum a Posteriori)");
-<<<<<<< HEAD
-    po.Register("frame-shift", &frame_shift, "Time in seconds between frames.\n");
-    
-    po.Read(argc, argv);
-
-    if (po.NumArgs() != 2) {
-=======
     po.Register("frame-shift", &frame_shift, "Time in seconds between frames.");
     
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2 && po.NumArgs() != 3) {
->>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
       po.PrintUsage();
       exit(1);
     }
@@ -113,12 +81,6 @@ int main(int argc, char *argv[]) {
     KALDI_ASSERT(acoustic_scale == 1.0 || inv_acoustic_scale == 1.0);
     if (inv_acoustic_scale != 1.0)
       acoustic_scale = 1.0 / inv_acoustic_scale;
-<<<<<<< HEAD
-    acoustic_scale *= ascale_factor;
-    
-    std::string lats_rspecifier = po.GetArg(1),
-        ctm_wxfilename = po.GetArg(2);
-=======
     
     acoustic_scale *= ascale_factor;
 
@@ -133,7 +95,6 @@ int main(int argc, char *argv[]) {
       one_best_rspecifier = po.GetArg(2);
       ctm_wxfilename = po.GetArg(3);
     }
->>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
     
     // Ensure the output ctm file is not a wspecifier
     WspecifierType ctm_wx_type; 
@@ -146,11 +107,8 @@ int main(int argc, char *argv[]) {
 
     // Read as compact lattice.
     SequentialCompactLatticeReader clat_reader(lats_rspecifier);
-<<<<<<< HEAD
-=======
  
     RandomAccessInt32VectorReader one_best_reader(one_best_rspecifier);
->>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
 
     Output ko(ctm_wxfilename, false); // false == non-binary writing mode.
     ko.Stream() << std::fixed;  // Set to "fixed" floating point model, where precision() specifies
@@ -164,16 +122,6 @@ int main(int argc, char *argv[]) {
       std::string key = clat_reader.Key();
       CompactLattice clat = clat_reader.Value();
       clat_reader.FreeCurrent();
-<<<<<<< HEAD
-      fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale * ascale_factor), &clat);
-
-      MinimumBayesRisk mbr(clat, decode_mbr);
-      
-      const std::vector<BaseFloat> &conf = mbr.GetOneBestConfidences();
-      const std::vector<int32> &words = mbr.GetOneBest();
-      const std::vector<std::pair<BaseFloat, BaseFloat> > &times =
-          mbr.GetOneBestTimes();
-=======
       fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &clat);
 
       MinimumBayesRisk *mbr = NULL;
@@ -193,7 +141,6 @@ int main(int argc, char *argv[]) {
       const std::vector<int32> &words = mbr->GetOneBest();
       const std::vector<std::pair<BaseFloat, BaseFloat> > &times =
           mbr->GetOneBestTimes();
->>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
       KALDI_ASSERT(conf.size() == words.size() && words.size() == times.size());
       for (size_t i = 0; i < words.size(); i++) {
         KALDI_ASSERT(words[i] != 0); // Should not have epsilons.
@@ -201,14 +148,6 @@ int main(int argc, char *argv[]) {
                     << (frame_shift * (times[i].second-times[i].first)) << ' '
                     << words[i] << ' ' << conf[i] << '\n';
       }
-<<<<<<< HEAD
-      KALDI_LOG << "For utterance " << key << ", Bayes Risk " << mbr.GetBayesRisk()
-                << ", avg. confidence per-word " 
-                << std::accumulate(conf.begin(),conf.end(),0.0) / words.size();
-      n_done++;
-      n_words= mbr.GetOneBest().size();
-      tot_bayes_risk= mbr.GetBayesRisk();
-=======
       KALDI_LOG << "For utterance " << key << ", Bayes Risk "
                 << mbr->GetBayesRisk() << ", avg. confidence per-word " 
                 << std::accumulate(conf.begin(),conf.end(),0.0) / words.size();
@@ -217,7 +156,6 @@ int main(int argc, char *argv[]) {
       tot_bayes_risk += mbr->GetBayesRisk();
       if (mbr != NULL)
         delete mbr;
->>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
     }
 
     KALDI_LOG << "Done " << n_done << " lattices.";

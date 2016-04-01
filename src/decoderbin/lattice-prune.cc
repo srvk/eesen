@@ -41,18 +41,12 @@ int main(int argc, char *argv[]) {
       
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
-<<<<<<< HEAD
-=======
     BaseFloat ascale_factor = 1.0;
->>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
     BaseFloat inv_acoustic_scale = 1.0;
     BaseFloat beam = 10.0;
     
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
-<<<<<<< HEAD
-=======
     po.Register("ascale-factor", &ascale_factor, "Scaling factor for acoustic_scale.");
->>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
     po.Register("inv-acoustic-scale", &inv_acoustic_scale, "An alternative way of setting the "
                 "acoustic scale: you can set its inverse.");
     po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling]");
@@ -67,11 +61,8 @@ int main(int argc, char *argv[]) {
     KALDI_ASSERT(acoustic_scale == 1.0 || inv_acoustic_scale == 1.0);
     if (inv_acoustic_scale != 1.0)
       acoustic_scale = 1.0 / inv_acoustic_scale;
-<<<<<<< HEAD
-=======
 
     acoustic_scale *= ascale_factor;
->>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
     
     std::string lats_rspecifier = po.GetArg(1),
         lats_wspecifier = po.GetArg(2);
@@ -79,11 +70,7 @@ int main(int argc, char *argv[]) {
 
     
     SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
-<<<<<<< HEAD
     CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
-=======
-    CompactLatticeWriter compact_lattice_writer(lats_wspecifier); 
->>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
 
     int32 n_done = 0, n_err = 0;
     int64 n_arcs_in = 0, n_arcs_out = 0,
@@ -98,29 +85,17 @@ int main(int argc, char *argv[]) {
       compact_lattice_reader.FreeCurrent();
       fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &clat);
       int64 narcs = NumArcs(clat), nstates = clat.NumStates();
-<<<<<<< HEAD
-      n_arcs_in= narcs;
-      n_states_in= nstates;
-=======
       n_arcs_in += narcs;
       n_states_in += nstates;
->>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
       CompactLattice pruned_clat(clat);
       if (!PruneLattice(beam, &pruned_clat)) {
         KALDI_WARN << "Error pruning lattice for utterance " << key;
         n_err++;
       }
-<<<<<<< HEAD
       int64 pruned_narcs = NumArcs(pruned_clat),
-          pruned_nstates = pruned_clat.NumStates();
-      n_arcs_out= pruned_narcs;
-      n_states_out= pruned_nstates;
-=======
-      int64 pruned_narcs = NumArcs(pruned_clat),          
           pruned_nstates = pruned_clat.NumStates();
       n_arcs_out += pruned_narcs;
       n_states_out += pruned_nstates;
->>>>>>> 8237c1c01a2d3b74ba7c113a7ccdaf4a77f7d404
       KALDI_LOG << "For utterance " << key << ", pruned #states from "
                 << nstates << " to " << pruned_nstates << " and #arcs from "
                 << narcs << " to " << pruned_narcs;

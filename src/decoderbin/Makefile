@@ -3,7 +3,7 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../config.mk
 
-BINFILES = analyze-counts arpa2fst compute-wer decode-faster latgen-faster lattice-best-path lattice-1best lattice-scale nbest-to-ctm
+BINFILES = analyze-counts arpa2fst compute-wer decode-faster latgen-faster lattice-best-path lattice-1best lattice-scale lattice-to-ctm-conf lattice-prune nbest-to-ctm
 
 OBJFILES =
 

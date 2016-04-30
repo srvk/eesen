@@ -7,7 +7,7 @@
 stage=0
 . parse_options.sh
 
-if [ $stage -eq 1 ]; then
+if [ $stage -le 1 ]; then
   echo =====================================================================
   echo "             Data Preparation and FST Construction                 "
   echo =====================================================================

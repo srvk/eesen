@@ -20,6 +20,9 @@
 # /src/
 /src/config.mk
 
+# swp files
+*.swp
+
 # backups
 *~
 *.bak

@@ -48,7 +48,7 @@ if [ ! -d $SWBD_DIR/transcriptions/swb_ms98_transcriptions ]; then
     cd $dir;
     if [ ! -d swb_ms98_transcriptions ]; then
       echo " *** Downloading trascriptions and dictionary ***" 
-      wget http://www.isip.piconepress.com/projects/switchboard/releases/switchboard_word_alignments.tar.gz
+      wget --no-check-certificate --quiet http://www.isip.piconepress.com/projects/switchboard/releases/switchboard_word_alignments.tar.gz
       tar -xf switchboard_word_alignments.tar.gz
     fi
   )

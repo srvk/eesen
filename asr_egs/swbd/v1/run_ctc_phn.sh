@@ -1,5 +1,15 @@
 #!/bin/bash
 
+### for XSede comet cluster ###
+### submit sbatch ---ignore-pbs train-2-gpu.sh
+#SBATCH --partition=compute
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=24
+#SBATCH --output=log/slurm-%j.out
+#SBATCH --export=ALL
+#SBATCH --time="48:00:00"
+#SBATCH --mem=100G
+
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . path.sh
@@ -10,6 +20,11 @@ stage=1
 swbd=/path/to/LDC97S62
 fisher_dirs="/path/to/LDC2004T19/fe_03_p1_tran/ /path/to/LDC2005T19/fe_03_p2_tran/" # Set to "" if you don't have the fisher corpus
 eval2000_dirs="/path/to/LDC2002S09/hub5e_00 /path/to/LDC2002T43"
+
+# Set paths to various datasets
+swbd="/oasis/projects/nsf/cmu131/fmetze/LDC97S62"
+fisher_dirs="/oasis/projects/nsf/cmu139/yajie/LDC/LDC2004T19/fe_03_p1_tran/ /oasis/projects/nsf/cmu131/fmetze/LDC2005T19/FE_03_P2_TRAN/" # Set to "" if you don't have the fisher corpus
+eval2000_dirs="/oasis/projects/nsf/cmu131/fmetze/LDC2002S09/hub5e_00 /oasis/projects/nsf/cmu139/yajie/LDC/LDC2002T43"
 
 # CMU Rocks
 #fisher_dirs="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/ /data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
@@ -30,7 +45,7 @@ if [ $stage -le 1 ]; then
   # Compile the lexicon and token FSTs
   utils/ctc_compile_dict_token.sh data/local/dict_phn data/local/lang_phn_tmp data/lang_phn || exit 1;
 
-  # Train and compile LMs. 
+  # Train and compile LMs.
   local/swbd1_train_lms.sh data/local/train/text data/local/dict_phn/lexicon.txt data/local/lm $fisher_dirs || exit 1;
 
   # Compile the language-model FST and the final decoding graph TLG.fst

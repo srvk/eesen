@@ -5,9 +5,13 @@
 
 . ./path.sh || exit 1;
 
+arpa_lm=db/cantab-TEDLIUM/cantab-TEDLIUM-pruned.lm3.gz
+oov_list=/dev/null
+
+. parse_options.sh || exit 1;
+
 langdir=$1
 
-arpa_lm=db/cantab-TEDLIUM/cantab-TEDLIUM-pruned.lm3.gz
 [ ! -f $arpa_lm ] && echo No such file $arpa_lm && exit 1;
 
 outlangdir=${langdir}_test
@@ -20,7 +24,7 @@ gunzip -c "$arpa_lm" | \
    grep -v '</s> <s>' | \
    grep -v '</s> </s>' | \
    arpa2fst - | fstprint | \
-   utils/remove_oovs.pl /dev/null | \
+   utils/remove_oovs.pl $oov_list | \
    utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$outlangdir/words.txt \
      --osymbols=$outlangdir/words.txt  --keep_isymbols=false --keep_osymbols=false | \
     fstrmepsilon | fstarcsort --sort_type=ilabel > $outlangdir/G.fst

@@ -1,0 +1,6 @@
+#!/bin/bash
+
+for x in exp/*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null
+
+%WER 19.6 | 507 17792 | 84.8 12.4 2.8 4.3 19.6 94.7 | exp/train_phn_l5_c320_s20/decode_dev/score_7/dev.ctm.filt.sys
+%WER 19.2 | 1155 27512 | 85.6 11.6 2.8 4.8 19.2 92.1 | exp/train_phn_l5_c320_s20/decode_test/score_8/test.ctm.filt.sys

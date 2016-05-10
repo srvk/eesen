@@ -9,15 +9,15 @@
 # Globals
 # 6 gives the best WER in default EESEN-tedlium
 lmweight=6
-experiment=train_l4_c320
-decode_folder=decode_test_pruned.lm3
+experiment=train_phn_l5_c320
+decode_folder=decode_test
 
 exp=`pwd`/../exp/$experiment
 testtext=`pwd`/../data/test/text
-scorefile=$exp/$decode_folder/score_${lmweight}_0/ctm.filt.filt.raw
+scorefile=$exp/$decode_folder/score_${lmweight}/test.ctm.filt.raw
 
 # Links
-ln -s ../data/local/dict_nosp/lexicon.txt .
+ln -s ../data/local/dict_phn/lexicon.txt .
 
 # unpack the .sph files in wav.scp as local .wav files
 while IFS=" " read -r -a myArray

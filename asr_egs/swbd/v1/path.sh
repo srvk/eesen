@@ -1,5 +1,5 @@
 export EESEN_ROOT=`pwd`/../../..
-export PATH=$PWD/utils/:$EESEN_ROOT/src/netbin:$EESEN_ROOT/src/featbin:$EESEN_ROOT/src/decoderbin:$EESEN_ROOT/src/fstbin:$EESEN_ROOT/tools/openfst/bin:$PWD:$PATH
+export PATH=$PWD/utils/:$EESEN_ROOT/src/netbin:$EESEN_ROOT/src/featbin:$EESEN_ROOT/src/decoderbin:$EESEN_ROOT/src/fstbin:$EESEN_ROOT/tools/openfst/bin:$EESEN_ROOT/../kaldi/src/featbin:$PWD:$PATH
 export LC_ALL=C
 export LD_LIBRARY_PATH=$EESEN_ROOT/tools/openfst/lib:$LD_LIBRARY_PATH
 
@@ -14,6 +14,10 @@ if [[ `uname -n` =~ compute-* ]]; then
 elif [[ `uname -n` =~ comet-* ]]; then
     # SDSC Comet cluster
     export TMPDIR=/scratch/$USER/$SLURM_JOBID
+
+elif [[ `uname -n` =~ bridges ]]; then
+    export TMPDIR=$LOCAL
+
 fi
 
 if [[ ! -z ${acwt+x} ]]; then

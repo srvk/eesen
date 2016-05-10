@@ -36,6 +36,7 @@ verbose=1
 
 # feature configs
 sort_by_len=true         # whether to sort the utterances by their lengths
+min_len=0                # minimal length of utterances to consider
 
 norm_vars=true           # whether to apply variance normalization when we do cmn
 add_deltas=true          # whether to add deltas
@@ -82,7 +83,7 @@ echo $add_deltas > $dir/add_deltas
 
 if $sort_by_len; then
   feat-to-len scp:$data_tr/feats.scp ark,t:- | awk '{print $2}' > $dir/len.tmp || exit 1;
-  paste -d " " $data_tr/feats.scp $dir/len.tmp | sort -k3 -n - | awk '{print $1 " " $2}' > $dir/train.scp || exit 1;
+  paste -d " " $data_tr/feats.scp $dir/len.tmp | sort -k3 -n - | awk -v m=$min_len '{ if ($3 >= m) {print $1 " " $2} }' > $dir/train.scp || exit 1;
   feat-to-len scp:$data_cv/feats.scp ark,t:- | awk '{print $2}' > $dir/len.tmp || exit 1;
   paste -d " " $data_cv/feats.scp $dir/len.tmp | sort -k3 -n - | awk '{print $1 " " $2}' > $dir/cv.scp || exit 1;
   rm -f $dir/len.tmp

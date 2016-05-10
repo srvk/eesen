@@ -18,6 +18,7 @@ frame_num_limit=1000000  # the number of frames to be processed at a time in tra
 
 # learning rate
 learn_rate=0.0001        # learning rate
+final_learn_rate=0.0     # final learning rate
 momentum=0.9             # momentum
 
 # learning rate schedule
@@ -28,7 +29,7 @@ start_epoch_num=1        # start from which epoch, used for resuming training fr
 start_halving_inc=0.5    # start halving learning rates when the accuracy improvement falls below this amount
 end_halving_inc=0.1      # terminate training when the accuracy improvement falls below this amount
 halving_factor=0.5       # learning rate decay factor
-halving_after_epoch=1    # halving bcomes enabled after this many epochs
+halving_after_epoch=1    # halving becomes enabled after this many epochs
 
 # logging
 report_step=100          # during training, the step (number of utterances) of reporting objective and accuracy
@@ -58,9 +59,9 @@ echo "$0 $@"  # Print the command line for logging
 . utils/parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
-   echo "Usage: $0 <data-tr> <data-cv> <exp-dir>"
-   echo " e.g.: $0 data/train_tr data/train_cv exp/train_phn"
-   exit 1;
+  echo "Usage: $0 <data-tr> <data-cv> <exp-dir>"
+  echo " e.g.: $0 data/train_tr data/train_cv exp/train_phn"
+  exit 1;
 fi
 
 data_tr=$1
@@ -96,11 +97,11 @@ echo $splice_feats > $dir/splice_feats
 echo $subsample_feats > $dir/subsample_feats
 
 if $sort_by_len; then
-  feat-to-len scp:$data_tr/feats.scp ark,t:- | awk '{print $2}' > $dir/len.tmp || exit 1;
-  paste -d " " $data_tr/feats.scp $dir/len.tmp | sort -k3 -n - | awk -v m=$min_len '{ if ($3 >= m) {print $1 " " $2} }' > $dir/train.scp || exit 1;
-  feat-to-len scp:$data_cv/feats.scp ark,t:- | awk '{print $2}' > $dir/len.tmp || exit 1;
-  paste -d " " $data_cv/feats.scp $dir/len.tmp | sort -k3 -n - | awk '{print $1 " " $2}' > $dir/cv.scp || exit 1;
-  rm -f $dir/len.tmp
+  feat-to-len scp:$data_tr/feats.scp ark,t:- | awk '{print $2}' | \
+    paste -d " " $data_tr/feats.scp - | sort -k3 -n - | awk -v m=$min_len '{ if ($3 >= m) {print $1 " " $2} }' > $dir/train.scp &
+  feat-to-len scp:$data_cv/feats.scp ark,t:- | awk '{print $2}' | \
+    paste -d " " $data_cv/feats.scp - | sort -k3 -n - | awk '{print $1 " " $2}' > $dir/cv.scp &
+  wait || exit 1;
 else
   cat $data_tr/feats.scp | utils/shuffle_list.pl --srand ${seed:-777} > $dir/train.scp
   cat $data_cv/feats.scp | utils/shuffle_list.pl --srand ${seed:-777} > $dir/cv.scp
@@ -131,18 +132,19 @@ if $subsample_feats; then
   copy-feats "$feats_cv subsample-feats --n=3 --offset=2 ark:- ark:- |" \
              ark,scp:$tmpdir/cv2.ark,$tmpdir/cv2local.scp || exit 1;
 
-  sed 's/^/0x/' $tmpdir/train0local.scp > $tmpdir/train_local.scp
-  sed 's/^/0x/' $tmpdir/cv0local.scp > $tmpdir/cv_local.scp
-  sed 's/^/1x/' $tmpdir/train1local.scp >> $tmpdir/train_local.scp
-  sed 's/^/1x/' $tmpdir/cv1local.scp >> $tmpdir/cv_local.scp
-  sed 's/^/2x/' $tmpdir/train2local.scp >> $tmpdir/train_local.scp
-  sed 's/^/2x/' $tmpdir/cv2local.scp >> $tmpdir/cv_local.scp
+  # this code is experimental - we may need to sort the data carefully
+  sed 's/^/0x/' $tmpdir/train0local.scp        > $tmpdir/train_local.scp
+  sed 's/^/0x/' $tmpdir/cv0local.scp           > $tmpdir/cv_local.scp
+  sed 's/^/1x/' $tmpdir/train1local.scp | tac >> $tmpdir/train_local.scp
+  sed 's/^/1x/' $tmpdir/cv1local.scp    | tac >> $tmpdir/cv_local.scp
+  sed 's/^/2x/' $tmpdir/train2local.scp       >> $tmpdir/train_local.scp
+  sed 's/^/2x/' $tmpdir/cv2local.scp          >> $tmpdir/cv_local.scp
   
   feats_tr="ark,s,cs:copy-feats scp:$tmpdir/train_local.scp ark:- |"
   feats_cv="ark,s,cs:copy-feats scp:$tmpdir/cv_local.scp ark:- |"
 
-  gzip -cd $dir/labels.tr.gz | sed 's/^/0x/' > $tmpdir/labels.tr
-  gzip -cd $dir/labels.cv.gz | sed 's/^/0x/' > $tmpdir/labels.cv
+  gzip -cd $dir/labels.tr.gz | sed 's/^/0x/'  > $tmpdir/labels.tr
+  gzip -cd $dir/labels.cv.gz | sed 's/^/0x/'  > $tmpdir/labels.cv
   gzip -cd $dir/labels.tr.gz | sed 's/^/1x/' >> $tmpdir/labels.tr
   gzip -cd $dir/labels.cv.gz | sed 's/^/1x/' >> $tmpdir/labels.cv
   gzip -cd $dir/labels.tr.gz | sed 's/^/2x/' >> $tmpdir/labels.tr
@@ -173,8 +175,8 @@ fi
 
 # Initialize model parameters
 if [ ! -f $dir/nnet/nnet.iter0 ]; then
-    echo "Initializing model as $dir/nnet/nnet.iter0"
-    net-initialize --binary=true $dir/nnet.proto $dir/nnet/nnet.iter0 >& $dir/log/initialize_model.log || exit 1;
+  echo "Initializing model as $dir/nnet/nnet.iter0"
+  net-initialize --binary=true $dir/nnet.proto $dir/nnet/nnet.iter0 >& $dir/log/initialize_model.log || exit 1;
 fi
 
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
@@ -232,6 +234,7 @@ for iter in $(seq $start_epoch_num $max_iters); do
     # do annealing
     if [ 1 == $halving ]; then
       learn_rate=$(awk "BEGIN{print($learn_rate*$halving_factor)}")
+      learn_rate=$(awk "BEGIN{if ($learn_rate<$final_learn_rate) {print $final_learn_rate} else {print $learn_rate}}")
     fi
     # save the status 
     echo $[$iter+1] > $dir/.epoch    # +1 because we save the epoch to start from

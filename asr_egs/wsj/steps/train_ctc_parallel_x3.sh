@@ -98,10 +98,9 @@ echo $subsample_feats > $dir/subsample_feats
 
 if $sort_by_len; then
   feat-to-len scp:$data_tr/feats.scp ark,t:- | awk '{print $2}' | \
-    paste -d " " $data_tr/feats.scp - | sort -k3 -n - | awk -v m=$min_len '{ if ($3 >= m) {print $1 " " $2} }' > $dir/train.scp &
+    paste -d " " $data_tr/feats.scp - | sort -k3 -n - | awk -v m=$min_len '{ if ($3 >= m) {print $1 " " $2} }' > $dir/train.scp
   feat-to-len scp:$data_cv/feats.scp ark,t:- | awk '{print $2}' | \
-    paste -d " " $data_cv/feats.scp - | sort -k3 -n - | awk '{print $1 " " $2}' > $dir/cv.scp &
-  wait || exit 1;
+    paste -d " " $data_cv/feats.scp - | sort -k3 -n - | awk '{print $1 " " $2}' > $dir/cv.scp
 else
   cat $data_tr/feats.scp | utils/shuffle_list.pl --srand ${seed:-777} > $dir/train.scp
   cat $data_cv/feats.scp | utils/shuffle_list.pl --srand ${seed:-777} > $dir/cv.scp
@@ -232,7 +231,6 @@ for iter in $(seq $start_epoch_num $max_iters); do
 
     # do annealing
     if [ 1 == $halving ]; then
-      learn_rate=$(awk "BEGIN{print($learn_rate*$halving_factor)}")
       learn_rate=$(awk "BEGIN{if ($learn_rate<$final_learn_rate) {print $final_learn_rate} else {print $learn_rate}}")
     fi
     # save the status 

@@ -7,7 +7,7 @@
 stage=0
 . parse_options.sh
 
-if [ $stage -eq 1 ]; then
+if [ $stage -le 1 ]; then
   echo =====================================================================
   echo "             Data Preparation and FST Construction                 "
   echo =====================================================================
@@ -18,13 +18,14 @@ if [ $stage -eq 1 ]; then
   # Use the same data preparation script from Kaldi
   local/tedlium_prepare_data.sh || exit 1
 
-  # Construct the phoneme-based lexicon
+  # Construct the character-based lexicon
   local/tedlium_prepare_char_dict.sh || exit 1;
 
   # Compile the lexicon and token FSTs
-  utils/ctc_compile_dict_token.sh data/local/dict_char data/local/lang_char_tmp data/lang_char || exit 1;
+  utils/ctc_compile_dict_token.sh --dict-type "char" --space-char "<SPACE>" \
+    data/local/dict_char data/local/lang_char_tmp data/lang_char || exit 1;
 
-  # Compose the decoding graph
+  # Compile the language-model FST and the final decoding graph TLG.fst
   local/tedlium_decode_graph.sh data/lang_char || exit 1;
 fi
 
@@ -47,17 +48,17 @@ fi
 
 if [ $stage -le 3 ]; then
   echo =====================================================================
-  echo "                Network Training with the 110-Hour Set             "
+  echo "                        Network Training                           "
   echo =====================================================================
   # Specify network structure and generate the network topology
   input_feat_dim=120   # dimension of the input features; we will use 40-dimensional fbanks with deltas and double deltas
   lstm_layer_num=5     # number of LSTM layers
   lstm_cell_dim=320    # number of memory cells in every LSTM layer
 
-  dir=exp/train_phn_l${lstm_layer_num}_c${lstm_cell_dim}
+  dir=exp/train_char_l${lstm_layer_num}_c${lstm_cell_dim}
   mkdir -p $dir
 
-  target_num=`cat data/lang_phn/units.txt | wc -l`; target_num=$[$target_num+1]; #  #targets = #labels + 1 (the blank)
+  target_num=`cat data/local/dict_char/units.txt | wc -l`; target_num=$[$target_num+1]; #  #targets = #labels + 1 (the blank)
 
   # Output the network topology
   utils/model_topo.py --input-feat-dim $input_feat_dim --lstm-layer-num $lstm_layer_num \
@@ -65,17 +66,17 @@ if [ $stage -le 3 ]; then
     --fgate-bias-init 1.0 > $dir/nnet.proto || exit 1;
 
   # Label sequences; simply convert words into their label indices
-  utils/prep_ctc_trans.py data/lang_phn/lexicon_numbers.txt data/train_tr95/text "<UNK>" | gzip -c - > $dir/labels.tr.gz
-  utils/prep_ctc_trans.py data/lang_phn/lexicon_numbers.txt data/train_cv05/text "<UNK>" | gzip -c - > $dir/labels.cv.gz
+  utils/prep_ctc_trans.py data/lang_char/lexicon_numbers.txt \
+    data/train_tr95/text "<UNK>" "<SPACE>" | gzip -c - > $dir/labels.tr.gz
+  utils/prep_ctc_trans.py data/lang_char/lexicon_numbers.txt \
+    data/train_cv05/text "<UNK>" "<SPACE>" | gzip -c - > $dir/labels.cv.gz
 
   # Train the network with CTC. Refer to the script for details about the arguments
   steps/train_ctc_parallel.sh --add-deltas true --num-sequence 20 --frame-num-limit 25000 \
     --learn-rate 0.00004 --report-step 1000 --halving-after-epoch 12 \
     --feats-tmpdir $dir/XXXXX \
     data/train_tr95 data/train_cv05 $dir || exit 1;
-fi
 
-if [ $stage -le 4 ]; then
   echo =====================================================================
   echo "                            Decoding                               "
   echo =====================================================================

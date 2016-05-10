@@ -8,6 +8,12 @@ export LD_LIBRARY_PATH=$EESEN_ROOT/tools/openfst/lib:$LD_LIBRARY_PATH
 if [[ `uname -n` =~ comet-* ]]; then
     # SDSC Comet cluster
     export TMPDIR=/scratch/$USER/$SLURM_JOBID
+
+elif [[ `uname -n` =~ compute-* ]]; then
+    # CMU Rocks cluster
+    module load python27
+    module load gcc-4.9.2
+    export TMPDIR=/scratch
 fi
 
 if [[ ! -z ${acwt+x} ]]; then

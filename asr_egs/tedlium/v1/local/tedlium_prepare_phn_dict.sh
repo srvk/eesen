@@ -9,6 +9,8 @@ mkdir -p $dir
 
 srcdict=db/cantab-TEDLIUM/cantab-TEDLIUM.dct
 
+. parse_options.sh
+
 [ ! -r $srcdict ] && echo "Missing $srcdict" && exit 1
 
 # Join dicts and fix some troubles

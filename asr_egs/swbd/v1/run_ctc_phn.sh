@@ -1,5 +1,12 @@
 #!/bin/bash
 
+#PBS -q standard
+#PBS -j oe
+#PBS -o log
+#PBS -d .
+#PBS -V
+#PBS -l nodes=1:ppn=1
+
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . path.sh
@@ -12,8 +19,9 @@ fisher_dirs="/path/to/LDC2004T19/fe_03_p1_tran/ /path/to/LDC2005T19/fe_03_p2_tra
 eval2000_dirs="/path/to/LDC2002S09/hub5e_00 /path/to/LDC2002T43"
 
 # CMU Rocks
-#fisher_dirs="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/ /data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
-#eval2000_dirs="/data/ASR4/babel/ymiao/CTS/LDC2002S09/hub5e_00 /data/ASR4/babel/ymiao/CTS/LDC2002T43"
+swbd=/data/ASR4/babel/ymiao/CTS/LDC97S62
+fisher_dirs="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/ /data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
+eval2000_dirs="/data/ASR4/babel/ymiao/CTS/LDC2002S09/hub5e_00 /data/ASR4/babel/ymiao/CTS/LDC2002T43"
 
 . parse_options.sh
 
@@ -21,7 +29,7 @@ if [ $stage -le 1 ]; then
   echo =====================================================================
   echo "             Data Preparation and FST Construction                 "
   echo =====================================================================
-  # Use the same datap prepatation script from Kaldi
+  # Use the same data preparation script from Kaldi
   local/swbd1_data_prep.sh $swbd  || exit 1;
 
   # Construct the phoneme-based lexicon
@@ -67,6 +75,8 @@ if [ $stage -le 2 ]; then
   # Finally the full training set, around 286 hours
   local/remove_dup_utts.sh 300 data/train_nodev data/train_nodup
 fi
+
+nvidia-smi || (echo not continuing because no gpu; exit 1)
 
 if [ $stage -le 3 ]; then
   echo =====================================================================

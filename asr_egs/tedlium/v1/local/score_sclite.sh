@@ -46,6 +46,15 @@ mkdir -p $dir/scoring/log
 
 # We are not using lattice-align-words, which may result in minor degradation 
 if [ $stage -le 0 ]; then
+if false; then
+  # This leads to slightly lower WERs on some tasks
+  $cmd ACWT=$min_acwt:$max_acwt $dir/scoring/log/get_ctm.ACWT.log \
+    mkdir -p $dir/score_ACWT/ '&&' \
+    lattice-to-ctm-conf --decode-mbr=true --acoustic-scale=ACWT --ascale-factor=$acwt_factor "ark:gunzip -c $dir/lat.*.gz|" - \| \
+    utils/int2sym.pl -f 5 $symtab  \| \
+    utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
+    '>' $dir/score_ACWT/$name.ctm || exit 1;
+else
   $cmd ACWT=$min_acwt:$max_acwt $dir/scoring/log/get_ctm.ACWT.log \
     mkdir -p $dir/score_ACWT/ '&&' \
     lattice-1best --acoustic-scale=ACWT --ascale-factor=$acwt_factor "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
@@ -53,6 +62,7 @@ if [ $stage -le 0 ]; then
     utils/int2sym.pl -f 5 $symtab  \| \
     utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
     '>' $dir/score_ACWT/$name.ctm || exit 1;
+fi
 fi
 
 if [ $stage -le 1 ]; then

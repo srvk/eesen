@@ -532,6 +532,22 @@ static void _vec_apply_floor(Real *v, Real floor_val, float *count, int dim) {
 // at the time. [dan]
 template<typename Real>
 __global__
+static void _apply_heaviside(Real* mat, MatrixDim d) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int index = i * d.stride + j;
+
+  if (i < d.rows && j < d.cols) {
+    mat[index] = (mat[index] > 0.0 ? 1.0 : 0.0);
+  }
+}
+
+
+// Caution, here i/block{idx,dim}.x is the row index and j/block{idx,dim}.y is the col index.
+// this is for no reason, really, I just happened to prefer this
+// at the time. [dan]
+template<typename Real>
+__global__
 static void _apply_pow(Real* mat, Real power, MatrixDim d) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -894,6 +910,13 @@ void cudaD_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val, MatrixDi
   _apply_floor<<<Gr,Bl>>>(mat, floor_val, d);
 }
 
+void cudaF_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
+  _apply_heaviside<<<Gr,Bl>>>(mat, d);
+
+}
+void cudaD_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
+  _apply_heaviside<<<Gr,Bl>>>(mat, d);
+}
 
 void cudaF_apply_ceiling(dim3 Gr, dim3 Bl, float* mat, float ceiling_val, MatrixDim d) {
   _apply_ceiling<<<Gr,Bl>>>(mat, ceiling_val, d);

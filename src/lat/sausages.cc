@@ -1,7 +1,8 @@
 // lat/sausages.cc
 
-// Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
-//           2015  Guoguo Chen
+// Copyright 2012       Johns Hopkins University (Author: Daniel Povey)
+//           2015       Guoguo Chen
+// Copyright 2016       Carnegie Mellon University (author: Florian Metze, Yajie Miao)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -361,4 +362,4 @@ MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in,
   MbrDecode();
 }
 
-}  // namespace kaldi
+}  // namespace eesen

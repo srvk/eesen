@@ -12,8 +12,11 @@ if [ $stage -le 1 ]; then
   echo =====================================================================
   echo "             Data Preparation and FST Construction                 "
   echo =====================================================================
-  # Use the same datap prepatation script from Kaldi
-  local/wsj_data_prep.sh $wsj0/??-{?,??}.? $wsj1/??-{?,??}.?  || exit 1;
+
+  if [ ! -f data/local/dict_phn/lexicon2_raw_nosil.txt ]; then
+     echo "Could not find data/local/dict_phn/lexicon2_raw_nosil.txt. Execute stage 1 of run_ctc_phn.sh before running this script";
+     exit 1;
+  fi
 
   # Represent word spellings using a dictionary-like format
   local/wsj_prepare_char_dict.sh || exit 1;

@@ -15,4 +15,3 @@ TESTFILES =
 ADDLIBS = ../feat/feat.a ../cpucompute/cpucompute.a ../util/util.a ../base/base.a
 
 include ../makefiles/default_rules.mk
-

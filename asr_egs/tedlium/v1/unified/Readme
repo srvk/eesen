@@ -1,0 +1,14 @@
+Readme
+------
+
+* Pre-requisite: You should have completed a training run and generated a tri2b model (see ../exp/tri2b directory).
+
+* Run ./RunMe.sh
+
+Outputs:
+1. features.csv   [Contains the extracted features from the audio data]
+
+filename,originalduration,speakingduration,begintime,endtime,gradelevel,intensity,f0,f1,f2,f3,snr,spr,score,accuracy,insertion,deletion,substitution,words
+
+spr is speaking rate computed as average time to pronounce a phoneme
+score is word error rate

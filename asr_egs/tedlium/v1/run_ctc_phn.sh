@@ -13,9 +13,9 @@ if [ $stage -le 1 ]; then
   echo =====================================================================
   # If you have downloaded the data (e.g., for Kaldi systems), then you can
   # simply link the db directory to here and skip this step
-  local/tedlium_download_data.sh || exit 1;
+#  local/tedlium_download_data.sh || exit 1;
 
-  # Use the same data preparation script from Kaldi
+  # Use the same datap prepatation script from Kaldi
   local/tedlium_prepare_data.sh || exit 1
 
   # Construct the phoneme-based lexicon
@@ -25,6 +25,7 @@ if [ $stage -le 1 ]; then
   utils/ctc_compile_dict_token.sh data/local/dict_phn data/local/lang_phn_tmp data/lang_phn || exit 1;
 
   # Compose the decoding graph
+  # this step may require > 8GB RAM
   local/tedlium_decode_graph.sh data/lang_phn || exit 1;
 fi
 
@@ -36,7 +37,9 @@ if [ $stage -le 2 ]; then
 
   # Generate the fbank features; by default 40-dimensional fbanks on each frame
   for set in train test dev; do
-    steps/make_fbank.sh --cmd "$train_cmd" --nj 20 data/$set exp/make_fbank/$set $fbankdir || exit 1;
+    # Ram requirements slightly exceed the formula #CPUs x 4
+    # The nj setting of 7 fits on a machine with 8 cpus giving RAM to spare
+    steps/make_fbank.sh --cmd "$train_cmd" --nj 7 data/$set exp/make_fbank/$set $fbankdir || exit 1;
     utils/fix_data_dir.sh data/$set || exit;
     steps/compute_cmvn_stats.sh data/$set exp/make_fbank/$set $fbankdir || exit 1;
   done
@@ -45,16 +48,22 @@ if [ $stage -le 2 ]; then
   utils/subset_data_dir_tr_cv.sh --cv-spk-percent 5 data/train data/train_tr95 data/train_cv05 || exit 1
 fi
 
+# Specify network structure and generate the network topology
+input_feat_dim=120   # dimension of the input features; we will use 40-dimensional fbanks with deltas and double deltas
+lstm_layer_num=5     # number of LSTM layers
+lstm_cell_dim=320    # number of memory cells in every LSTM layer
+dir=exp/train_phn_l${lstm_layer_num}_c${lstm_cell_dim}
+
 if [ $stage -le 3 ]; then
   echo =====================================================================
   echo "                Network Training with the 110-Hour Set             "
   echo =====================================================================
   # Specify network structure and generate the network topology
-  input_feat_dim=120   # dimension of the input features; we will use 40-dimensional fbanks with deltas and double deltas
-  lstm_layer_num=5     # number of LSTM layers
-  lstm_cell_dim=320    # number of memory cells in every LSTM layer
+#  input_feat_dim=120   # dimension of the input features; we will use 40-dimensional fbanks with deltas and double deltas
+#  lstm_layer_num=5     # number of LSTM layers
+#  lstm_cell_dim=320    # number of memory cells in every LSTM layer
 
-  dir=exp/train_phn_l${lstm_layer_num}_c${lstm_cell_dim}
+#  dir=exp/train_phn_l${lstm_layer_num}_c${lstm_cell_dim}
   mkdir -p $dir
 
   target_num=`cat data/lang_phn/units.txt | wc -l`; target_num=$[$target_num+1]; #  #targets = #labels + 1 (the blank)
@@ -69,17 +78,21 @@ if [ $stage -le 3 ]; then
   utils/prep_ctc_trans.py data/lang_phn/lexicon_numbers.txt data/train_cv05/text "<UNK>" | gzip -c - > $dir/labels.cv.gz
 
   # Train the network with CTC. Refer to the script for details about the arguments
-  steps/train_ctc_parallel.sh --add-deltas true --num-sequence 20 --frame-num-limit 25000 \
+  steps/train_ctc_parallel.sh --add-deltas true --num-sequence 20 --frame-num-limit 15000 \
     --learn-rate 0.00004 --report-step 1000 --halving-after-epoch 12 \
     --feats-tmpdir $dir/XXXXX \
     data/train_tr95 data/train_cv05 $dir || exit 1;
+fi
 
+if [ $stage -le 4 ]; then
   echo =====================================================================
   echo "                            Decoding                               "
   echo =====================================================================
   # decoding
-  steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 8 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.6 \
+  # er1k: lowered nj from the defaults in this script
+  # not enough RAM on AWS g2 compute node
+  steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 7 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.6 \
     data/lang_phn_test data/dev $dir/decode_dev || exit 1;
-  steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 11 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.6 \
+  steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 7 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.6 \
     data/lang_phn_test data/test $dir/decode_test || exit 1;
 fi

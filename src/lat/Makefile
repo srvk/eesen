@@ -10,12 +10,12 @@ TESTFILES = kaldi-lattice-test push-lattice-test minimize-lattice-test \
 
 OBJFILES = kaldi-lattice.o lattice-functions.o \
        push-lattice.o minimize-lattice.o \
-       determinize-lattice-pruned.o confidence.o
+       determinize-lattice-pruned.o confidence.o \
+       sausages.o
 
 LIBNAME = lat
 
 ADDLIBS = ../cpucompute/cpucompute.a \
           ../util/util.a ../base/base.a
-
 
 include ../makefiles/default_rules.mk

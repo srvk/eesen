@@ -46,7 +46,7 @@ mkdir -p $dir/scoring/log
 
 # We are not using lattice-align-words, which may result in minor degradation 
 if [ $stage -le 0 ]; then
-if false; then
+if true; then
   # This leads to slightly lower WERs on some tasks
   $cmd ACWT=$min_acwt:$max_acwt $dir/scoring/log/get_ctm.ACWT.log \
     mkdir -p $dir/score_ACWT/ '&&' \

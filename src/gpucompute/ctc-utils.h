@@ -30,6 +30,7 @@
 template <typename T>
 struct NumericLimits;
 
+// some compilers (Mac) require the following 8 "const" to be "constexpr"?
 template <>
 struct NumericLimits<float>
 {

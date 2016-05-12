@@ -98,7 +98,7 @@ feats_cv="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_cv/utt2
 
 if [ $nj -eq 1 ]; then
   feats_tr=$(echo $feats_tr | sed 's#JOB#1#')
-  feats_tr=$(echo $feats_cv | sed 's#JOB#1#')
+  feats_cv=$(echo $feats_cv | sed 's#JOB#1#')
 fi
 
 if $add_deltas; then

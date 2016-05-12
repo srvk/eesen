@@ -54,6 +54,12 @@ if __name__ == '__main__':
     --fgate-bias-init : float
         Initial value of the forget-gate bias. Not specifying this option means the forget-gate bias
         will be initialized randomly, in the same way as the other parameters. 
+    --input-dim : int
+        Reduce the input feature to a given dimensionality before passing to the LSTM.
+        Optional.
+    --projection-dim : int
+        Project the feature vector down to a given dimensionality between LSTM layers.
+        Optional.
 
     """
 
@@ -74,26 +80,48 @@ if __name__ == '__main__':
     if arguments.has_key('param_range'):
         param_range = arguments['param_range']
 
+    actual_cell_dim = 2*lstm_cell_dim
     model_type = '<BiLstmParallel>'   # by default
     if arguments.has_key('lstm_type') and arguments['lstm_type'] == 'uni':
+        actual_cell_dim = lstm_cell_dim
         model_type = '<LstmParallel>'
 
-    print '<Nnet>'
-    lstm_comm = ' <ParamRange> ' + param_range + ' <LearnRateCoef> 1.0 <MaxGrad> 50.0'
-
     # add the option to set the initial value of the forget-gate bias
+    lstm_comm = ' <ParamRange> ' + param_range + ' <LearnRateCoef> 1.0 <MaxGrad> 50.0'
     if arguments.has_key('fgate_bias_init'):
         lstm_comm = lstm_comm + ' <FgateBias> ' + arguments['fgate_bias_init']
 
-    actual_cell_dim = 2*lstm_cell_dim
-    if model_type == '<LstmParallel>':
-        actual_cell_dim = lstm_cell_dim 
+    # add the option to specify projection layers
+    if arguments.has_key('projection_dim'):
+        proj_dim = arguments['projection_dim']
+    else:
+        proj_dim = 0
+
+    # add the option to reduce the dimensionality of the input features
+    if arguments.has_key('input_dim'):
+        input_dim = arguments['input_dim']
+    else:
+        input_dim = 0
+
+
+    # pre-amble
+    print '<Nnet>'
+
+    # optional dimensionality reduction layer
+    if input_dim > 0:
+        print '<AffineTransform> <InputDim> ' + str(input_feat_dim) + ' <OutputDim> ' + str(input_dim) + ' <ParamRange> ' + param_range
+        input_feat_dim = input_dim
 
     # the first layer takes input features
     print model_type + ' <InputDim> ' + str(input_feat_dim) + ' <CellDim> ' + str(actual_cell_dim) + lstm_comm
     # the following bidirectional LSTM layers
     for n in range(1, lstm_layer_num):
-         print model_type + ' <InputDim> ' + str(actual_cell_dim) + ' <CellDim> ' + str(actual_cell_dim) + lstm_comm
+        if proj_dim > 0:
+            print '<AffineTransform> <InputDim> ' + str(actual_cell_dim) + ' <OutputDim> ' + str(proj_dim) + ' <ParamRange> ' + param_range
+            print model_type + ' <InputDim> ' +        str(proj_dim) + ' <CellDim> ' + str(actual_cell_dim) + lstm_comm
+        else:
+            print model_type + ' <InputDim> ' + str(actual_cell_dim) + ' <CellDim> ' + str(actual_cell_dim) + lstm_comm
+
     # the final affine-transform and softmax layer
     print '<AffineTransform> <InputDim> ' + str(actual_cell_dim) + ' <OutputDim> ' + str(target_num) + ' <ParamRange> ' + param_range
     print '<Softmax> <InputDim> ' + str(target_num) + ' <OutputDim> ' + str(target_num)

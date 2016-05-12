@@ -132,6 +132,7 @@ if $subsample_feats; then
   copy-feats "$feats_cv subsample-feats --n=3 --offset=2 ark:- ark:- |" \
              ark,scp:$tmpdir/cv2.ark,$tmpdir/cv2local.scp || exit 1;
 
+  # this code is experimental - we may need to sort the data carefully
   sed 's/^/0x/' $tmpdir/train0local.scp        > $tmpdir/train_local.scp
   sed 's/^/0x/' $tmpdir/cv0local.scp           > $tmpdir/cv_local.scp
   sed 's/^/1x/' $tmpdir/train1local.scp | tac >> $tmpdir/train_local.scp

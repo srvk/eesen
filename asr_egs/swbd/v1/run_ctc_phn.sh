@@ -91,8 +91,6 @@ if [ $stage -le 2 ]; then
   local/remove_dup_utts.sh 300 data/train_nodev data/train_nodup
 fi
 
-nvidia-smi || (echo not continuing because no gpu; exit 1)
-
 if [ $stage -le 3 ]; then
   echo =====================================================================
   echo "                Network Training with the 110-Hour Set             "

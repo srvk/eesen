@@ -15,6 +15,7 @@ OBJFILES = srfft.o cmvn.o feature-functions.o feature-mfcc.o feature-plp.o featu
 LIBNAME = feat
 
 ADDLIBS = ../util/util.a ../cpucompute/cpucompute.a ../base/base.a
+# ../thread/thread.a
 
 include ../makefiles/default_rules.mk
 

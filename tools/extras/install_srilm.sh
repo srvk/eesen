@@ -23,6 +23,7 @@ cp Makefile tmpf
 cat tmpf | awk -v pwd=`pwd` '/SRILM =/{printf("SRILM = %s\n", pwd); next;} {print;}' \
   > Makefile || exit 1;
 
+rm tmpf
 make
 
 cd ..

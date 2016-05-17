@@ -5,7 +5,8 @@ include ../config.mk
 
 BINFILES = compute-mfcc-feats compute-plp-feats compute-fbank-feats \
     compute-cmvn-stats add-deltas apply-cmvn copy-feats extract-segments feat-to-len feat-to-dim \
-    compute-kaldi-pitch-feats process-kaldi-pitch-feats paste-feats
+    compute-kaldi-pitch-feats process-kaldi-pitch-feats paste-feats \
+    get-energy-from-mfcc get-energy-statistics get-weight-from-ali get-weight-from-energy
 
 OBJFILES = 
 
@@ -14,4 +15,3 @@ TESTFILES =
 ADDLIBS = ../feat/feat.a ../cpucompute/cpucompute.a ../util/util.a ../base/base.a
 
 include ../makefiles/default_rules.mk
-

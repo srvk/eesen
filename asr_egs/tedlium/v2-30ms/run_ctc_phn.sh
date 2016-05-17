@@ -25,7 +25,7 @@ if [ $stage -le 1 ]; then
   local/tedlium_download_data.sh || exit 1;
 
   # Use the same data preparation script from Kaldi
-  local/tedlium_prepare_data.sh || exit 1
+  local/tedlium_prepare_data.sh --data-dir db/TEDLIUM_release2 || exit 1
 
   # Construct the phoneme-based lexicon
   local/tedlium_prepare_phn_dict.sh || exit 1;

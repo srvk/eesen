@@ -46,15 +46,6 @@ mkdir -p $dir/scoring/log
 
 # We are not using lattice-align-words, which may result in minor degradation 
 if [ $stage -le 0 ]; then
-if true; then
-  # This leads to slightly lower WERs on some tasks
-  $cmd ACWT=$min_acwt:$max_acwt $dir/scoring/log/get_ctm.ACWT.log \
-    mkdir -p $dir/score_ACWT/ '&&' \
-    lattice-to-ctm-conf --decode-mbr=true --acoustic-scale=ACWT --ascale-factor=$acwt_factor "ark:gunzip -c $dir/lat.*.gz|" - \| \
-    utils/int2sym.pl -f 5 $symtab  \| \
-    utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
-    '>' $dir/score_ACWT/$name.ctm || exit 1;
-else
   $cmd ACWT=$min_acwt:$max_acwt $dir/scoring/log/get_ctm.ACWT.log \
     mkdir -p $dir/score_ACWT/ '&&' \
     lattice-1best --acoustic-scale=ACWT --ascale-factor=$acwt_factor "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
@@ -63,16 +54,14 @@ else
     utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
     '>' $dir/score_ACWT/$name.ctm || exit 1;
 fi
-fi
 
 if [ $stage -le 1 ]; then
   # Remove some stuff we don't want to score, from the ctm.
   for x in $dir/score_*/$name.ctm; do
-    cp $x $dir/tmpf
+    cp $x $dir/tmpf;
     cat $dir/tmpf | grep -i -v -E '\[BREATH|NOISE|COUGH|SMACK|UM|UH\]' | \
       grep -i -v -E '<UNK>' > $x;
   done
-  rm $dir/tmpf
 fi
 
 # Score the set...

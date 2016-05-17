@@ -1,0 +1,142 @@
+
+--- a/src/include/fst/minimize.h
++++ b/src/include/fst/minimize.h
+@@ -124,7 +124,14 @@
+   typedef typename A::Weight Weight;
+   typedef ReverseArc<A> RevA;
+ 
+-  CyclicMinimizer(const ExpandedFst<A>& fst) {
++  CyclicMinimizer(const ExpandedFst<A>& fst):
++      // tell the Partition data-member to expect multiple repeated
++      // calls to SplitOn with the same element if we are non-deterministic.
++      P_(fst.Properties(kIDeterministic, true) == 0) {
++    if(fst.Properties(kIDeterministic, true) == 0)
++      CHECK(Weight::Properties() & kIdempotent); // this minimization
++    // algorithm for non-deterministic FSTs can only work with idempotent
++    // semirings.
+     Initialize(fst);
+     Compute(fst);
+   }
+@@ -296,7 +303,13 @@
+   typedef typename A::StateId ClassId;
+   typedef typename A::Weight Weight;
+ 
+-  AcyclicMinimizer(const ExpandedFst<A>& fst) {
++  AcyclicMinimizer(const ExpandedFst<A>& fst):
++      // tell the Partition data-member to expect multiple repeated
++      // calls to SplitOn with the same element if we are non-deterministic.
++      partition_(fst.Properties(kIDeterministic, true) == 0) {
++    if(fst.Properties(kIDeterministic, true) == 0)
++      CHECK(Weight::Properties() & kIdempotent); // minimization for
++    // non-deterministic FSTs can only work with idempotent semirings.
+     Initialize(fst);
+     Refine(fst);
+   }
+@@ -500,13 +513,7 @@
+ template <class A>
+ void Minimize(MutableFst<A>* fst, MutableFst<A>* sfst = 0,
+               float delta = kDelta) {
+-  uint64 props = fst->Properties(
+-      kAcceptor | kIDeterministic | kWeighted | kUnweighted, true);
+-  if (!(props & kIDeterministic)) {
+-    FSTERROR() << "Fst is not deterministic";
+-    fst->SetProperties(kError, kError);
+-    return;
+-  }
++  uint64 props = fst->Properties(kAcceptor | kWeighted | kUnweighted, true);
+ 
+   if (!(props & kAcceptor)) {  // weighted transducer
+     VectorFst<GallicArc<A, GALLIC_LEFT>> gfst;
+--- a/src/include/fst/partition.h
++++ b/src/include/fst/partition.h
+@@ -36,9 +36,13 @@
+   };
+ 
+  public:
+-  Partition() {}
++  Partition(bool allow_repeated_split):
++      allow_repeated_split_(allow_repeated_split) {}
+ 
+-  Partition(T num_states) { Initialize(num_states); }
++  Partition(bool allow_repeated_split, T num_states):
++     allow_repeated_split_(allow_repeated_split) {
++     Initialize(num_states);
++   }
+ 
+   ~Partition() {
+     for (size_t i = 0; i < elements_.size(); ++i) delete elements_[i];
+@@ -117,15 +121,17 @@
+     if (class_size_[class_id] == 1) return;
+ 
+     // first time class is split
+-    if (split_size_[class_id] == 0) visited_classes_.push_back(class_id);
++    if (split_size_[class_id] == 0) {
++      visited_classes_.push_back(class_id);
++      class_split_[class_id] = classes_[class_id];
++    }
+ 
+     // increment size of split (set of element at head of chain)
+     split_size_[class_id]++;
+ 
+     // update split point
+-    if (class_split_[class_id] == 0)
+-      class_split_[class_id] = classes_[class_id];
+-    if (class_split_[class_id] == elements_[element_id])
++    if (class_split_[class_id] != 0
++        && class_split_[class_id] == elements_[element_id])
+       class_split_[class_id] = elements_[element_id]->next;
+ 
+     // move to head of chain in same class
+@@ -136,23 +142,29 @@
+   // class indices of the newly created class. Returns the new_class id
+   // or -1 if no new class was created.
+   T SplitRefine(T class_id) {
++    Element* split_el = class_split_[class_id];
+     // only split if necessary
+-    if (class_size_[class_id] == split_size_[class_id]) {
+-      class_split_[class_id] = 0;
++    //if (class_size_[class_id] == split_size_[class_id]) {
++    if(split_el == NULL) { // we split on everything...
+       split_size_[class_id] = 0;
+       return -1;
+     } else {
+       T new_class = AddClass();
++      if(allow_repeated_split_) { // split_size_ is possibly
++        // inaccurate, so work it out exactly.
++        size_t split_count;  Element *e;
++        for(split_count=0,e=classes_[class_id];
++            e != split_el; split_count++, e=e->next);
++        split_size_[class_id] = split_count;
++      }
+       size_t remainder = class_size_[class_id] - split_size_[class_id];
+       if (remainder < split_size_[class_id]) {  // add smaller
+-        Element* split_el = class_split_[class_id];
+         classes_[new_class] = split_el;
+-        class_size_[class_id] = split_size_[class_id];
+-        class_size_[new_class] = remainder;
+         split_el->prev->next = 0;
+         split_el->prev = 0;
++        class_size_[class_id] = split_size_[class_id];
++        class_size_[new_class] = remainder;
+       } else {
+-        Element* split_el = class_split_[class_id];
+         classes_[new_class] = classes_[class_id];
+         class_size_[class_id] = remainder;
+         class_size_[new_class] = split_size_[class_id];
+@@ -212,10 +224,16 @@
+   std::vector<T> class_size_;
+ 
+   // size of split for each class
++  // in the nondeterministic case, split_size_ is actually an upper
++  // bound on the size of split for each class.
+   std::vector<T> split_size_;
+ 
+   // set of visited classes to be used in split refine
+   std::vector<T> visited_classes_;
++
++  // true if input fst was deterministic: we can make
++  // certain assumptions in this case that speed up the algorithm.
++  bool allow_repeated_split_;
+ };
+ 
+ // iterate over members of a class in a partition

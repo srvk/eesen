@@ -24,6 +24,9 @@
 #include "gpucompute/cuda-device.h"
 #include "net/communicator.h"
 
+using namespace eesen;
+typedef eesen::int32 int32;
+
 int main(int argc, char *argv[]) {
   using namespace eesen;
   typedef eesen::int32 int32;  
@@ -83,9 +86,15 @@ int main(int argc, char *argv[]) {
     if (!crossvalidate) {
       target_model_filename = po.GetArg(4);
     }
+    std::string base_done_filename = crossvalidate ? model_filename + ".cv" : target_model_filename + ".tr";
+    std::string done_filename = comm_done_filename(base_done_filename, job_id);
 
-    using namespace eesen;
-    typedef eesen::int32 int32;
+    if (FileExist(done_filename.c_str())) {
+      KALDI_WARN << "Done file already exists! (From a previous run?) Removing.";
+      if (std::remove(done_filename.c_str())) {
+        KALDI_WARN << "Failed: " << std::strerror(errno);
+      }
+    }
 
     //Select the GPU
 #if HAVE_CUDA==1
@@ -133,15 +142,27 @@ int main(int argc, char *argv[]) {
         Matrix<BaseFloat> mat = feature_reader.Value();
         std::vector<int32> targets = targets_reader.Value(utt);
 
-        if (max_frame_num < mat.NumRows()) max_frame_num = mat.NumRows();
+        if (mat.NumRows() > frame_limit) {
+          KALDI_WARN << utt << ", has too many frames; ignoring: " << mat.NumRows() << " > " << frame_limit;
+          continue;
+        }
+
+        int new_max_frame_num = max_frame_num;
+        if (mat.NumRows() > new_max_frame_num) {
+          new_max_frame_num = mat.NumRows();
+        }
+        if (new_max_frame_num * (frame_num_utt.size() + 1) > frame_limit) {  // then this utterance doesn't fit in this batch
+          break;
+        }
+        max_frame_num = new_max_frame_num;
+
         feats_utt[sequence_index] = mat;
         labels_utt[sequence_index] = targets;
         frame_num_utt.push_back(mat.NumRows());
         sequence_index++;
-        // If the total number of frames reaches frame_limit, then stop adding more sequences, regardless of whether
-        // the number of utterances reaches num_sequence or not.
-        if (frame_num_utt.size() == num_sequence || frame_num_utt.size() * max_frame_num > frame_limit) {
-            feature_reader.Next(); break;
+        if (frame_num_utt.size() == num_sequence) {
+            feature_reader.Next();
+            break;
         }
       }
       int32 cur_sequence_num = frame_num_utt.size();
@@ -169,7 +190,7 @@ int main(int argc, char *argv[]) {
       if (!crossvalidate) {
         net.Backpropagate(obj_diff, NULL);
         if (num_jobs != 1 && (num_done + cur_sequence_num) / utts_per_avg != num_done / utts_per_avg) {
-          comm_avg_weights(net, job_id, num_jobs, avg_count, target_model_filename);
+          comm_avg_weights(net, job_id, num_jobs, avg_count, target_model_filename, base_done_filename);
           avg_count++;
         }
       }
@@ -182,14 +203,19 @@ int main(int argc, char *argv[]) {
 
     if (num_jobs != 1) {
       if (!crossvalidate) {
-        comm_avg_weights(net, job_id, num_jobs, avg_count, target_model_filename);
-        std::string avg_model_name = comm_avg_model_name(target_model_filename, avg_count);
-        rename(avg_model_name.c_str(), target_model_filename.c_str());
+        comm_avg_weights(net, job_id, num_jobs, avg_count, target_model_filename, base_done_filename);
       }
-      std::string base_done_filename = crossvalidate ? model_filename + ".cv" : target_model_filename + ".tr";
+
       comm_touch_done(ctc, job_id, num_jobs, base_done_filename);
-      avg_count++;
-      KALDI_LOG << "Total average operations: " << avg_count;
+
+      KALDI_LOG << "Total average operations: " << (avg_count + 1);
+
+      if (job_id == 1 && !crossvalidate) {
+        std::string avg_model_name = comm_avg_model_name(target_model_filename, avg_count);
+        if (std::rename(avg_model_name.c_str(), target_model_filename.c_str())) {
+          KALDI_LOG << "Failed to rename " << avg_model_name << " to " << target_model_filename << "; reason: " << std::strerror(errno);
+        }
+      }
     }
      
     // Print statistics of gradients when training finishes 

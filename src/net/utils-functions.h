@@ -63,11 +63,11 @@ std::string MomentStatistics(const VectorBase<Real> &vec) {
   // - zero : symmetric
   vec_aux.MulElements(vec_no_mean); // (vec-mean)^3
   Real skewness = vec_aux.Sum() / pow(variance, 3.0/2.0) / vec.Dim();
-  // kurtosis (peakedness)
+  // kurtosis (tailedness)
   // - makes sense for symmetric distributions (skewness is zero)
-  // - positive : 'sharper peak' than Normal distribution
-  // - negative : 'heavier tails' than Normal distribution
-  // - zero : same peakedness as the Normal distribution
+  // - negative : 'lighter tails' than Normal distribution
+  // - positive : 'heavier tails' than Normal distribution
+  // - zero : same as the Normal distribution
   vec_aux.MulElements(vec_no_mean); // (vec-mean)^4
   Real kurtosis = vec_aux.Sum() / (variance * variance) / vec.Dim() - 3.0;
   // send the statistics to stream,

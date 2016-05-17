@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright 2015  Yajie Miao    (Carnegie Mellon University)
+#           2016  Florian Metze (Carnegie Mellon University)
 # Apache 2.0
 
 # This script trains acoustic models based on CTC and using SGD. 

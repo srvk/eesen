@@ -2,6 +2,7 @@
 
 // Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey)
 //                2015  Guoguo Chen
+//                2016  Carnegie Mellon University (author: Florian Metze)
 
 // See ../../COPYING for clarification regarding multiple authors
 //

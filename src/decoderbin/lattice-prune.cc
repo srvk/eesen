@@ -2,6 +2,7 @@
 
 // Copyright 2009-2013  Microsoft Corporation
 //                      Johns Hopkins University (author: Daniel Povey)
+//                2016  Carnegie Mellon University (author: Florian Metze)
 
 // See ../../COPYING for clarification regarding multiple authors
 //

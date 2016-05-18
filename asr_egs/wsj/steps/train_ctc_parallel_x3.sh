@@ -31,6 +31,7 @@ start_halving_inc=0.5    # start halving learning rates when the accuracy improv
 end_halving_inc=0.1      # terminate training when the accuracy improvement falls below this amount
 halving_factor=0.5       # learning rate decay factor
 halving_after_epoch=1    # halving becomes enabled after this many epochs
+force_halving_epoch=     # force halving after this epoch
 
 # logging
 report_step=100          # during training, the step (number of utterances) of reporting objective and accuracy
@@ -120,15 +121,16 @@ if $subsample_feats; then
   tmpdir=$(mktemp -d $feats_tmpdir);
 
   copy-feats "$feats_tr subsample-feats --n=3 --offset=0 ark:- ark:- |" \
-             ark,scp:$tmpdir/train0.ark,$tmpdir/train0local.scp || exit 1;
+             ark,scp:$tmpdir/train0.ark,$tmpdir/train0local.scp &
+  copy-feats "$feats_tr subsample-feats --n=3 --offset=1 ark:- ark:- |" \
+             ark,scp:$tmpdir/train1.ark,$tmpdir/train1local.scp &
+  copy-feats "$feats_tr subsample-feats --n=3 --offset=2 ark:- ark:- |" \
+             ark,scp:$tmpdir/train2.ark,$tmpdir/train2local.scp &
+  wait
   copy-feats "$feats_cv subsample-feats --n=3 --offset=0 ark:- ark:- |" \
              ark,scp:$tmpdir/cv0.ark,$tmpdir/cv0local.scp || exit 1;
-  copy-feats "$feats_tr subsample-feats --n=3 --offset=1 ark:- ark:- |" \
-             ark,scp:$tmpdir/train1.ark,$tmpdir/train1local.scp || exit 1;
   copy-feats "$feats_cv subsample-feats --n=3 --offset=1 ark:- ark:- |" \
              ark,scp:$tmpdir/cv1.ark,$tmpdir/cv1local.scp || exit 1;
-  copy-feats "$feats_tr subsample-feats --n=3 --offset=2 ark:- ark:- |" \
-             ark,scp:$tmpdir/train2.ark,$tmpdir/train2local.scp || exit 1;
   copy-feats "$feats_cv subsample-feats --n=3 --offset=2 ark:- ark:- |" \
              ark,scp:$tmpdir/cv2.ark,$tmpdir/cv2local.scp || exit 1;
 
@@ -229,7 +231,12 @@ for iter in $(seq $start_epoch_num $max_iters); do
         halving=1
       fi
     fi
-
+    if [[ "$force_halving_epoch" != "" ]]; then
+      if [ $iter -gt $force_halving_epoch ]; then
+	halving=1
+      fi
+    fi
+    
     # do annealing
     if [ 1 == $halving ]; then
       learn_rate=$(awk "BEGIN{if ($learn_rate<$final_learn_rate) {print $final_learn_rate} else {print $learn_rate}}")

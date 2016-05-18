@@ -20,6 +20,9 @@
 #ifndef EESEN_GPUCOMPUTE_CTC_UTILS_H_
 #define EESEN_GPUCOMPUTE_CTC_UTILS_H_
 
+//#if HAVE_CUDA == 1
+#pragma GCC diagnostic warning "-fpermissive"
+
 /*
  * Some numeric limits and operations. These limits and operations
  * are used in CTC computation/evaluation.
@@ -27,22 +30,23 @@
 template <typename T>
 struct NumericLimits;
 
+// some compilers (Mac) require the following 8 "const" to be "constexpr"?
 template <>
 struct NumericLimits<float>
 {
-  static constexpr float log_zero_ = -1e30f;
-  static constexpr float exp_limit_ = 88.722839f;
-  static constexpr float log_inf_ = 1e30f;
-  static constexpr float max_ = 3.4028235e+038f;
+  static const float log_zero_ = -1e30f;
+  static const float exp_limit_ = 88.722839f;
+  static const float log_inf_ = 1e30f;
+  static const float max_ = 3.4028235e+038f;
 };
 
 template <>
 struct NumericLimits<double>
 {
-  static constexpr double log_zero_ = -1e100;
-  static constexpr double exp_limit_ = 709.78271289338397;
-  static constexpr double log_inf_ = 1e100;
-  static constexpr double max_ = 1.7976931348623157e+308;
+  static const double log_zero_ = -1e100;
+  static const double exp_limit_ = 709.78271289338397;
+  static const double log_inf_ = 1e100;
+  static const double max_ = 1.7976931348623157e+308;
 };
 
 #if HAVE_CUDA == 1

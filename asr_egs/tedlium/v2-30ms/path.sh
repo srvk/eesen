@@ -25,8 +25,8 @@ elif [[ `uname -n` =~ compute- ]]; then
   export CUDA_VISIBLE_DEVICES=`qstat -n $PBS_JOBID|awk ' END { split ($NF, a, "/"); printf ("%s\n", a[2]) } '`
 
 else
-  # where are we?
-  exit 1;
+  # continue running on local node or VM
+  echo "Running locally"
 fi
 
 if [[ ! -z ${acwt+x} ]]; then

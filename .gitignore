@@ -27,3 +27,6 @@ project.xcworkspace
 
 # swp files
 *.swp
+
+# Emacs tag files 
+TAGS

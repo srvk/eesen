@@ -8,7 +8,7 @@
 
 ## Begin configuration section
 train_tool=train-ctc-parallel  # the command for training; by default, we use the
-                # parallel version which processes multiple utterances at the same time 
+         # parallel version which processes multiple utterances at the same time 
 
 # configs for multiple sequences
 num_sequence=5           # during training, how many utterances to be processed in parallel
@@ -18,7 +18,7 @@ frame_num_limit=1000000  # the number of frames to be processed at a time in tra
          # number of training examples is decided by if num_sequence or frame_num_limit is reached first. 
 
 # learning rate
-learn_rate=0.0001        # learning rate
+learn_rate=4e-5          # learning rate
 final_learn_rate=0.0     # final learning rate
 momentum=0.9             # momentum
 
@@ -34,7 +34,7 @@ halving_after_epoch=1    # halving becomes enabled after this many epochs
 force_halving_epoch=     # force halving after this epoch
 
 # logging
-report_step=100          # during training, the step (number of utterances) of reporting objective and accuracy
+report_step=1000         # during training, the step (number of utterances) of reporting objective and accuracy
 verbose=1
 
 # feature configs
@@ -46,7 +46,7 @@ subsample_feats=false    # whether to subsample features
 norm_vars=true           # whether to apply variance normalization when we do cmn
 add_deltas=true          # whether to add deltas
 copy_feats=true          # whether to copy features into a local dir (on the GPU machine)
-feats_tmpdir=            # the tmp dir to save the copied features, when copy_feats=true
+feats_tmpdir=""          # the tmp dir to save the copied features, when copy_feats=true
 
 # status of learning rate schedule; useful when training is resumed from a break point
 cvacc=0
@@ -100,10 +100,9 @@ echo $subsample_feats > $dir/subsample_feats
 
 if $sort_by_len; then
   feat-to-len scp:$data_tr/feats.scp ark,t:- | awk '{print $2}' | \
-    paste -d " " $data_tr/feats.scp - | sort -k3 -n - | awk -v m=$min_len '{ if ($3 >= m) {print $1 " " $2} }' > $dir/train.scp &
+    paste -d " " $data_tr/feats.scp - | sort -k3 -n - | awk -v m=$min_len '{ if ($3 >= m) {print $1 " " $2} }' > $dir/train.scp || exit 1;
   feat-to-len scp:$data_cv/feats.scp ark,t:- | awk '{print $2}' | \
-    paste -d " " $data_cv/feats.scp - | sort -k3 -n - | awk '{print $1 " " $2}' > $dir/cv.scp &
-  wait || exit 1;
+    paste -d " " $data_cv/feats.scp - | sort -k3 -n - | awk '{print $1 " " $2}' > $dir/cv.scp || exit 1;
 else
   cat $data_tr/feats.scp | utils/shuffle_list.pl --srand ${seed:-777} > $dir/train.scp
   cat $data_cv/feats.scp | utils/shuffle_list.pl --srand ${seed:-777} > $dir/cv.scp
@@ -118,31 +117,26 @@ if $splice_feats; then
 fi
 
 if $subsample_feats; then
-  #tmpdir=$(mktemp -d --tmpdir=$feats_tmpdir);
-  tmpdir=$(mktemp -d $feats_tmpdir);
+  tmpdir=$(mktemp -dp "$feats_tmpdir");
 
-  copy-feats "$feats_tr subsample-feats --n=3 --offset=0 ark:- ark:- |" \
-             ark,scp:$tmpdir/train0.ark,$tmpdir/train0local.scp &
-  copy-feats "$feats_tr subsample-feats --n=3 --offset=1 ark:- ark:- |" \
-             ark,scp:$tmpdir/train1.ark,$tmpdir/train1local.scp &
-  copy-feats "$feats_tr subsample-feats --n=3 --offset=2 ark:- ark:- |" \
-             ark,scp:$tmpdir/train2.ark,$tmpdir/train2local.scp &
-  wait
-  copy-feats "$feats_cv subsample-feats --n=3 --offset=0 ark:- ark:- |" \
-             ark,scp:$tmpdir/cv0.ark,$tmpdir/cv0local.scp || exit 1;
-  copy-feats "$feats_cv subsample-feats --n=3 --offset=1 ark:- ark:- |" \
-             ark,scp:$tmpdir/cv1.ark,$tmpdir/cv1local.scp || exit 1;
-  copy-feats "$feats_cv subsample-feats --n=3 --offset=2 ark:- ark:- |" \
-             ark,scp:$tmpdir/cv2.ark,$tmpdir/cv2local.scp || exit 1;
-
-  # this code is experimental - we may need to sort the data carefully
+  copy-feats "$feats_tr" "ark:-" | tee     $tmpdir/tr.tmp.ark | \
+      subsample-feats --n=3 --offset=0 ark:-                  ark,scp:$tmpdir/train0.ark,$tmpdir/train0local.scp || exit 1;
+      subsample-feats --n=3 --offset=1 ark:$tmpdir/tr.tmp.ark ark,scp:$tmpdir/train1.ark,$tmpdir/train1local.scp || exit 1;
+      subsample-feats --n=3 --offset=2 ark:$tmpdir/tr.tmp.ark ark,scp:$tmpdir/train2.ark,$tmpdir/train2local.scp || exit 1;  
+  copy-feats "$feats_cv" "ark:-" | tee     $tmpdir/cv.tmp.ark | \
+      subsample-feats --n=3 --offset=0 ark:-                  ark,scp:$tmpdir/cv0.ark,$tmpdir/cv0local.scp || exit 1;
+      subsample-feats --n=3 --offset=1 ark:$tmpdir/cv.tmp.ark ark,scp:$tmpdir/cv1.ark,$tmpdir/cv1local.scp || exit 1;
+      subsample-feats --n=3 --offset=2 ark:$tmpdir/cv.tmp.ark ark,scp:$tmpdir/cv2.ark,$tmpdir/cv2local.scp || exit 1;
+  rm $tmpdir/tr.tmp.ark $tmpdir/cv.tmp.ark
+  
+  # this code is experimental - we may need to sort the data more carefully
   sed 's/^/0x/' $tmpdir/train0local.scp        > $tmpdir/train_local.scp
   sed 's/^/0x/' $tmpdir/cv0local.scp           > $tmpdir/cv_local.scp
   sed 's/^/1x/' $tmpdir/train1local.scp | tac >> $tmpdir/train_local.scp
   sed 's/^/1x/' $tmpdir/cv1local.scp    | tac >> $tmpdir/cv_local.scp
   sed 's/^/2x/' $tmpdir/train2local.scp       >> $tmpdir/train_local.scp
   sed 's/^/2x/' $tmpdir/cv2local.scp          >> $tmpdir/cv_local.scp
-  
+
   feats_tr="ark,s,cs:copy-feats scp:$tmpdir/train_local.scp ark:- |"
   feats_cv="ark,s,cs:copy-feats scp:$tmpdir/cv_local.scp ark:- |"
 
@@ -152,16 +146,17 @@ if $subsample_feats; then
   gzip -cd $dir/labels.cv.gz | sed 's/^/1x/' >> $tmpdir/labels.cv
   gzip -cd $dir/labels.tr.gz | sed 's/^/2x/' >> $tmpdir/labels.tr
   gzip -cd $dir/labels.cv.gz | sed 's/^/2x/' >> $tmpdir/labels.cv
-  
+
   labels_tr="ark:cat $tmpdir/labels.tr|"
   labels_cv="ark:cat $tmpdir/labels.cv|"
-  
+
   trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls -l $tmpdir; rm -r $tmpdir" EXIT
+
 else
 
   # Save the features to a local dir on the GPU machine. On Linux, this usually points to /tmp
   if $copy_feats; then
-    tmpdir=$(mktemp -d $feats_tmpdir);
+    tmpdir=$(mktemp -dp "$feats_tmpdir");
     copy-feats "$feats_tr" ark,scp:$tmpdir/train.ark,$tmpdir/train_local.scp || exit 1;
     copy-feats "$feats_cv" ark,scp:$tmpdir/cv.ark,$tmpdir/cv_local.scp || exit 1;
     feats_tr="ark,s,cs:copy-feats scp:$tmpdir/train_local.scp ark:- |"
@@ -204,10 +199,8 @@ for iter in $(seq $start_epoch_num $max_iters); do
 
     # validation
     $train_tool --report-step=$report_step --num-sequence=$valid_num_sequence --frame-limit=$frame_num_limit \
-        --cross-validate=true \
-        --learn-rate=$learn_rate \
-        --momentum=$momentum \
-        --verbose=$verbose \
+        --learn-rate=$learn_rate --momentum=$momentum \
+        --verbose=$verbose --cross-validate=true \
         "$feats_cv" "$labels_cv" $dir/nnet/nnet.iter${iter} \
         >& $dir/log/cv.iter$iter.log || exit 1;
 
@@ -215,28 +208,23 @@ for iter in $(seq $start_epoch_num $max_iters); do
     echo "VALID ACCURACY $(printf "%.4f" $cvacc)%"
 
     # stopping criterion
+    intre='^[0-9]+$'
     rel_impr=$(bc <<< "($cvacc-$cvacc_prev)")
     if [ 1 == $halving -a 1 == $(bc <<< "$rel_impr < $end_halving_inc") ]; then
-      if [[ "$min_iters" != "" ]]; then
-        if [ $min_iters -gt $iter ]; then
-          echo we were supposed to finish, but we continue as min_iters : $min_iters
-          continue
-        fi
+      if [[ ( "$min_iters" =~ $intre ) && ( $min_iters -gt $iter ) ]]; then
+        echo we were supposed to finish, but we continue as min_iters : $min_iters
+      else
+        echo finished, too small rel. improvement $rel_impr
+        break
       fi
-      echo finished, too small rel. improvement $rel_impr
-      break
     fi
 
     # start annealing when improvement is low
-    if [ 1 == $(bc <<< "$rel_impr < $start_halving_inc") ]; then
-      if [ $iter -gt $halving_after_epoch ]; then
-        halving=1
-      fi
+    if [ 1 == $(bc <<< "$rel_impr < $start_halving_inc") -a $iter -ge $halving_after_epoch ]; then
+      halving=1
     fi
-    if [[ "$force_halving_epoch" != "" ]]; then
-      if [ $iter -gt $force_halving_epoch ]; then
-	halving=1
-      fi
+    if [[ ( "$force_halving_epoch" =~ $intre ) && ( $iter -ge $force_halving_epoch ) ]]; then
+      halving=1
     fi
     
     # do annealing

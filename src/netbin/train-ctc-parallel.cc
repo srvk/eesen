@@ -50,6 +50,9 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary, "Write model  in binary mode");
     po.Register("cross-validate", &crossvalidate, "Perform cross-validation (no backpropagation)");
 
+    std::string sequence_out_file="";
+    po.Register("sequence-out-file", &sequence_out_file, "output file for the generated sequence");
+
     int32 num_sequence = 5;
     po.Register("num-sequence", &num_sequence, "Number of sequences processed in parallel");
 
@@ -119,7 +122,11 @@ int main(int argc, char *argv[]) {
 
     Timer time;
     KALDI_LOG << (crossvalidate?"CROSS-VALIDATION":"TRAINING") << " STARTED";
-
+    if (sequence_out_file.length()) {
+      KALDI_LOG << "Sequences will be written to " << sequence_out_file << " order from feature file";
+      std::remove(sequence_out_file.c_str());
+    }
+    
     std::vector< Matrix<BaseFloat> > feats_utt(num_sequence);  // Feature matrix of every utterance
     std::vector< std::vector<int> > labels_utt(num_sequence);  // Label vector of every utterance
     int32 feat_dim = net.InputDim();
@@ -182,9 +189,8 @@ int main(int argc, char *argv[]) {
       net.Propagate(CuMatrix<BaseFloat>(feat_mat_host), &net_out);
       ctc.EvalParallel(frame_num_utt, net_out, labels_utt, &obj_diff);
 
-      // Error rates
-      ctc.ErrorRateMSeq(frame_num_utt, net_out, labels_utt);
-
+      // Error rates and output
+      ctc.ErrorRateMSeq(frame_num_utt, net_out, labels_utt, sequence_out_file);
 
       // Backward pass
       if (!crossvalidate) {

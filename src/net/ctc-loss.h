@@ -48,7 +48,7 @@ class Ctc {
   void ErrorRate(const CuMatrixBase<BaseFloat> &net_out, const std::vector<int32> &label, float* err, std::vector<int32> *hyp);
 
   /// Compute token error rate over multiple sequences. 
-  void ErrorRateMSeq(const std::vector<int> &frame_num_utt, const CuMatrixBase<BaseFloat> &net_out, std::vector< std::vector<int> > &label);
+  void ErrorRateMSeq(const std::vector<int> &frame_num_utt, const CuMatrixBase<BaseFloat> &net_out, std::vector< std::vector<int> > &label, std::string &out);
 
   /// Set the step of reporting
   void SetReportStep(int32 report_step) { report_step_ = report_step;  }

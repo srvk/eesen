@@ -69,9 +69,19 @@ echo $nj > $dir/num_jobs
 for f in $graphdir/TLG.fst $srcdir/label.counts $data/feats.scp; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
+if [ -f $mdl -a `strings $mdl | grep -c "<BiLstmParallel>"` -gt 0 ]; then
+    tmpdir=`mktemp -d`
+    echo model $mdl appears parallel, converting in $tmpdir
+    format-to-nonparallel $mdl $tmpdir/model.nnet
+    mdl=$tmpdir/model.nnet
+    trap "rm -rf $tmpdir" EXIT
+else
+    mdl=$srcdir/$mdl
+fi
+
 
 ## Set up the features
-echo "$0: feature: norm_vars(${norm_vars}) add_deltas(${add_deltas})"
+echo "$0: feature: norm_vars(${norm_vars}) add_deltas(${add_deltas}) subsample_feats(${subsample_feats}) splice_feats(${splice_feats})"
 feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
 $add_deltas && feats="$feats add-deltas ark:- ark:- |"
 $splice_feats && feats="$feats splice-feats --left-context=1 --right-context=1 ark:- ark:- |"
@@ -80,8 +90,8 @@ $subsample_feats && feats="$feats subsample-feats --n=3 --offset=0 ark:- ark:- |
 
 # Decode for each of the acoustic scales
 $cmd JOB=1:$nj $dir/log/decode.JOB.log \
-  net-output-extract --class-frame-counts=$srcdir/label.counts --apply-log=true $srcdir/$mdl "$feats" ark:- \| \
-  latgen-faster  --max-active=$max_active --max-mem=$max_mem --beam=$beam --lattice-beam=$lattice_beam \
+  net-output-extract --class-frame-counts=$srcdir/label.counts --apply-log=true $mdl "$feats" ark:- \| \
+  latgen-faster --max-active=$max_active --max-mem=$max_mem --beam=$beam --lattice-beam=$lattice_beam \
   --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
   $graphdir/TLG.fst ark:- "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 

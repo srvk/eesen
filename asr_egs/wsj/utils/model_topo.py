@@ -29,14 +29,16 @@ def common_args(n=-1, type="bilstm"):
     a = ' <ParamRange> ' + param_range
     
     if n >= 0:
-        s = 1.0-(int(n)-0.5*int(lstm_layer_num)+0.5)*float(learn_rate_slope)
+        s = 1.0-(int(n)-0.5*int(lstm_layer_num)+0.5)*learn_rate_slope
+        if type != "lstm" and type != "bilstm":
+            s *= affine_learn_rate
         a += ' <LearnRateCoef> ' + str(s)
 
     if type == "lstm" or type == "bilstm":
         a += ' <MaxGrad> 50.0'
         if arguments.has_key('fgate_bias_init'):
             a += ' <FgateBias> ' + arguments['fgate_bias_init']
-
+        
     return a
 
 
@@ -74,6 +76,9 @@ if __name__ == '__main__':
     --projection-dim : int
         Project the feature vector down to a given dimensionality between LSTM layers.
         Optional.
+    --affine-learn-rate : float
+        Scale the learning rate by this amount for affine layers.
+        Optional.
     --learn-rate-slope : float
         Change the learning rate by this amount per layer.
         Optional.
@@ -106,7 +111,10 @@ if __name__ == '__main__':
     # add the option to specify variable learning rates
     learn_rate_slope = 0.0
     if arguments.has_key('learn_rate_slope'):
-        learn_rate_slope = arguments['learn_rate_slope']
+        learn_rate_slope = float(arguments['learn_rate_slope'])
+    affine_learn_rate = 0.0
+    if arguments.has_key('affine_learn_rate'):
+        affine_learn_rate = float(arguments['affine_learn_rate'])
 
     # add the option to specify projection layers
     if arguments.has_key('projection_dim'):

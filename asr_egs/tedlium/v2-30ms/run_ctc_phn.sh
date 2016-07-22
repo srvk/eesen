@@ -8,6 +8,14 @@
 #PBS -V
 #PBS -l walltime=48:00:00,nodes=1:ppn=12
 
+### for XSede comet cluster ###
+### submit sbatch ---ignore-pbs train-2-gpu.sh
+#SBATCH --partition=RM
+#SBATCH --nodes=1
+#SBATCH --output=log/slurm-%j.out
+#SBATCH --export=ALL
+#SBATCH --time="48:00:00"
+
 . cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
          ## This relates to the queue.
 . path.sh

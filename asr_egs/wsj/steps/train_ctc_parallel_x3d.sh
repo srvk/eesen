@@ -51,6 +51,7 @@ norm_vars=true           # whether to apply variance normalization when we do cm
 add_deltas=true          # whether to add deltas
 copy_feats=true          # whether to copy features into a local dir (on the GPU machine)
 feats_tmpdir=""          # the tmp dir to save the copied features, when copy_feats=true
+cache_dir=""             # get the data from this directory (rather than re-generate it)
 
 # status of learning rate schedule; useful when training is resumed from a break point
 cvacc=0
@@ -59,6 +60,8 @@ halving=0
 ## End configuration section
 
 echo "$0 $@"  # Print the command line for logging
+cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
+echo "SETUP STARTS [$cur_time]"
 
 [ -f path.sh ] && . ./path.sh; 
 
@@ -122,33 +125,43 @@ if $splice_feats; then
   feats_cv="$feats_cv splice-feats --left-context=1 --right-context=1 ark:- ark:- |"
 fi
 
-if $subsample_feats; then
+if [ ! -z "$cache_dir" ]; then
+  # Get the features from a previously saved directory
+  if $copy_feats; then
+    tmpdir=$(mktemp -dp "$feats_tmpdir")
+    trap "echo \"Trying to move tmpdir $(hostname):$tmpdir to `pwd`\"; mv $tmpdir ." EXIT
+    cp $cache_dir/labels.* $tmpdir
+
+    copy-feats scp:$cache_dir/train_local.scp ark,scp:$tmpdir/train.ark,$tmpdir/train_local.scp || exit 1;
+    copy-feats scp:$cache_dir/cv_local.scp ark,scp:$tmpdir/cv.ark,$tmpdir/cv_local.scp || exit 1;
+
+    feats_tr="ark,s,cs:copy-feats scp:$tmpdir/train_local.scp ark:- |"
+    feats_cv="ark,s,cs:copy-feats scp:$tmpdir/cv_local.scp ark:- |"
+    labels_tr="ark:cat $tmpdir/labels.tr|"
+    labels_cv="ark:cat $tmpdir/labels.cv|"
+  else
+    feats_tr="ark,s,cs:copy-feats scp:$cache_dir/train_local.scp ark:- |"
+    feats_cv="ark,s,cs:copy-feats scp:$cache_dir/cv_local.scp ark:- |"
+    labels_tr="ark:cat $cache_dir/labels.tr|"
+    labels_cv="ark:cat $cache_dir/labels.cv|"	
+  fi
+    
+elif $subsample_feats; then
+  #Sub-sample the features 2 or 3 frames
   tmpdir=$(mktemp -dp "$feats_tmpdir")
   trap "echo \"Trying to move tmpdir $(hostname):$tmpdir to `pwd`\"; mv $tmpdir ." EXIT
-
-  if $safe_mode; then
-      echo "Discrete (safe mode) processing."
-      if $splice_feats; then
-	  sort $dir/train.scp > $dir/train.sort
-	  apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_tr/utt2spk scp:$data_tr/cmvn.scp scp:$dir/train.sort ark:$tmpdir/cmvn.ark
-	  splice-feats --left-context=1 --right-context=1 ark:$tmpdir/cmvn.ark ark:$tmpdir/tr.tmp.ark
-	  rm -f $tmpdir/cmvn.ark
-      else
-	  apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_tr/utt2spk scp:$data_tr/cmvn.scp scp:$dir/train.scp ark:$tmpdir/tr.tmp.ark
-      fi  
-      subsample-feats --n=3 --offset=0 ark:$tmpdir/tr.tmp.ark ark,scp:$tmpdir/train0.ark,$tmpdir/train0local.scp || exit 1;
-      subsample-feats --n=3 --offset=1 ark:$tmpdir/tr.tmp.ark ark,scp:$tmpdir/train1.ark,$tmpdir/train1local.scp || exit 1;
-      subsample-feats --n=3 --offset=2 ark:$tmpdir/tr.tmp.ark ark,scp:$tmpdir/train2.ark,$tmpdir/train2local.scp || exit 1;
-  else
-      copy-feats "$feats_tr" ark:$tmpdir/tr.tmp.ark || exit 1;
-      subsample-feats --n=3 --offset=0 ark:$tmpdir/tr.tmp.ark ark,scp:$tmpdir/train0.ark,$tmpdir/train0local.scp || exit 1;
-      subsample-feats --n=3 --offset=1 ark:$tmpdir/tr.tmp.ark ark,scp:$tmpdir/train1.ark,$tmpdir/train1local.scp || exit 1;
-      subsample-feats --n=3 --offset=2 ark:$tmpdir/tr.tmp.ark ark,scp:$tmpdir/train2.ark,$tmpdir/train2local.scp || exit 1;  
+  if [ ! $copy_feats ]; then
+    echo "WARNING: subsample_feats implies copy_feats - if features have already been sub-sampled, set to 'false'"
   fi
-  copy-feats "$feats_cv" ark:$tmpdir/cv.tmp.ark || exit 1;
-  subsample-feats --n=3 --offset=0 ark:$tmpdir/cv.tmp.ark ark,scp:$tmpdir/cv0.ark,$tmpdir/cv0local.scp || exit 1;
-  subsample-feats --n=3 --offset=1 ark:$tmpdir/cv.tmp.ark ark,scp:$tmpdir/cv1.ark,$tmpdir/cv1local.scp || exit 1;
-  subsample-feats --n=3 --offset=2 ark:$tmpdir/cv.tmp.ark ark,scp:$tmpdir/cv2.ark,$tmpdir/cv2local.scp || exit 1;
+  
+  #copy-feats "$feats_tr" ark:$tmpdir/tr.tmp.ark || exit 1;
+  subsample-feats --n=3 --offset=0 "$feats_tr" ark,scp:$tmpdir/train0.ark,$tmpdir/train0local.scp || exit 1;
+  subsample-feats --n=3 --offset=1 "$feats_tr" ark,scp:$tmpdir/train1.ark,$tmpdir/train1local.scp || exit 1;
+  subsample-feats --n=3 --offset=2 "$feats_tr" ark,scp:$tmpdir/train2.ark,$tmpdir/train2local.scp || exit 1;  
+
+  subsample-feats --n=3 --offset=0 "$feats_cv" ark,scp:$tmpdir/cv0.ark,$tmpdir/cv0local.scp || exit 1;
+  subsample-feats --n=3 --offset=1 "$feats_cv" ark,scp:$tmpdir/cv1.ark,$tmpdir/cv1local.scp || exit 1;
+  subsample-feats --n=3 --offset=2 "$feats_cv" ark,scp:$tmpdir/cv2.ark,$tmpdir/cv2local.scp || exit 1;
   rm -f $tmpdir/tr.tmp.ark $tmpdir/cv.tmp.ark
 
   sed 's/^/0x/' $tmpdir/train0local.scp        > $tmpdir/train_local.scp
@@ -158,11 +171,11 @@ if $subsample_feats; then
 #  paste -d '\n' <(sed 's/^/0x/' $tmpdir/train0local.scp) \
 #	<(sed 's/^/1x/' $tmpdir/train1local.scp) \
 #	<(sed 's/^/2x/' $tmpdir/train2local.scp) | \
-  #      tee >(awk '!(NR%2)' >> $tmpdir/train_local.scp) | awk '(NR%2)' | tac >> $tmpdir/train_local.scp
+#      tee >(awk '!(NR%2)' >> $tmpdir/train_local.scp) | awk '(NR%2)' | tac >> $tmpdir/train_local.scp
   sed 's/^/0x/' $tmpdir/cv0local.scp        > $tmpdir/cv_local.scp
   sed 's/^/1x/' $tmpdir/cv1local.scp | tac >> $tmpdir/cv_local.scp
   sed 's/^/2x/' $tmpdir/cv2local.scp       >> $tmpdir/cv_local.scp
-      
+
   feats_tr="ark,s,cs:copy-feats scp:$tmpdir/train_local.scp ark:- |"
   feats_cv="ark,s,cs:copy-feats scp:$tmpdir/cv_local.scp ark:- |"
 
@@ -175,16 +188,17 @@ if $subsample_feats; then
 
   labels_tr="ark:cat $tmpdir/labels.tr|"
   labels_cv="ark:cat $tmpdir/labels.cv|"
-else
 
+else
   # Save the features to a local dir on the GPU machine. On Linux, this usually points to /tmp
   if $copy_feats; then
     tmpdir=$(mktemp -dp "$feats_tmpdir")
+    trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
+
     copy-feats "$feats_tr" ark,scp:$tmpdir/train.ark,$tmpdir/train_local.scp || exit 1;
     copy-feats "$feats_cv" ark,scp:$tmpdir/cv.ark,$tmpdir/cv_local.scp || exit 1;
     feats_tr="ark,s,cs:copy-feats scp:$tmpdir/train_local.scp ark:- |"
     feats_cv="ark,s,cs:copy-feats scp:$tmpdir/cv_local.scp ark:- |"
-    trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
   fi
 fi
 

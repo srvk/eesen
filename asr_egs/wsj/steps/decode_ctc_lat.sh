@@ -21,6 +21,7 @@ mdl=final.nnet
 
 skip_scoring=false # whether to skip WER scoring
 scoring_opts="--min-acwt 5 --max-acwt 10 --acwt-factor 0.1"
+score_with_conf=false
 
 # feature configurations; will be read from the training dir if not provided
 norm_vars=
@@ -88,8 +89,13 @@ $cmd JOB=1:$nj $dir/log/decode.JOB.log \
 # Scoring
 if ! $skip_scoring ; then
   if [ -f $data/stm ]; then # use sclite scoring.
-    [ ! -x local/score_sclite.sh ] && echo "Not scoring because local/score_sclite.sh does not exist or not executable." && exit 1;
-    local/score_sclite.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir || exit 1;
+    if $score_with_conf ; then
+      [ ! -x local/score_sclite_conf.sh ] && echo "Not scoring because local/score_sclite_conf.sh does not exist or not executable." && exit 1;
+      local/score_sclite_conf.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir || exit 1;
+    else
+      [ ! -x local/score_sclite.sh ] && echo "Not scoring because local/score_sclite.sh does not exist or not executable." && exit 1;
+      local/score_sclite.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir || exit 1;
+    fi
   else
     [ ! -x local/score.sh ] && echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
     local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir || exit 1;

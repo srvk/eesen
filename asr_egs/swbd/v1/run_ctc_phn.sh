@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ### for XSede comet cluster ###
-### submit sbatch ---ignore-pbs train-2-gpu.sh
+### submit sbatch ---ignore-pbs run_ctc_phn.sh
 #SBATCH --partition=compute
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=24
@@ -162,7 +162,7 @@ if [ $stage -le 4 ]; then
   echo =====================================================================
   # decoding
   for lm_suffix in sw1_tg sw1_fsh_tgpr; do
-    steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 20 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.6 \
+    steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 20 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.6 --score-with-conf true \
       data/lang_phn_${lm_suffix} data/eval2000 $dir/decode_eval2000_${lm_suffix} || exit 1;
   done
 fi

@@ -1,5 +1,6 @@
 #!/bin/bash
 
+### for CMU rocks cluster ###
 #PBS -q standard
 #PBS -j oe
 #PBS -o log

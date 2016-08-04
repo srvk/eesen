@@ -229,6 +229,7 @@ for iter in $(seq $start_epoch_num $max_iters); do
     
     # do annealing
     if [ 1 == $halving ]; then
+      learn_rate=$(awk "BEGIN{print($learn_rate*$halving_factor)}")
       learn_rate=$(awk "BEGIN{if ($learn_rate<$final_learn_rate) {print $final_learn_rate} else {print $learn_rate}}")
     fi
     # save the status 

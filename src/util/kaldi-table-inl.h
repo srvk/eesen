@@ -1008,7 +1008,7 @@ class TableWriterBothImpl: public TableWriterImplBase<Holder> {
     script_output_.Stream() << key << ' ' << offset_rxfilename << '\n';
 
     if (!Holder::Write(archive_output_.Stream(), opts_.binary, value)) {
-      KALDI_WARN << "TableWriter: write failure to"
+      KALDI_WARN << "TableWriter: write failure to "
                  << PrintableWxfilename(archive_wxfilename_);
       state_ = kWriteError;
       return false;

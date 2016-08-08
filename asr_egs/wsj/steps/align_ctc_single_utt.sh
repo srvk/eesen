@@ -29,13 +29,13 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# != 5 ]; then
    echo "Wrong #arguments ($#, expected 3)"
-   echo "Usage: steps/decode_ctc.sh [options] <graph-dir> <data-dir> <decode-dir>"
-   echo " e.g.: steps/decode_ctc.sh data/lang data/test exp/train_l4_c320/decode"
+   echo "Usage: steps/align_ctc_single_utt.sh [options] <lang-dir> <data-dir> <uttdata-dir> <model-dir> <working-dir>"
+   echo " e.g.: steps/align_ctc_single_utt.sh  data/lang_phn data/train data/uttdata exp/train_phn_l5_c320 exp/train_phn_l5_c320/align"
    echo "main options (for others, see top of script file)"
    echo "  --stage                                  # starts from which stage"
    echo "  --nj <nj>                                # number of parallel jobs"
    echo "  --cmd <cmd>                              # command to run in parallel with"
-   echo "  --acoustic_scale                        # default 0.5 0.6 0.7 0.8 ... the values of acoustic scales to be used"
+   echo "  --acoustic_scale                        # default 0.6 the value of acoustic scale to be used"
    exit 1;
 fi
 

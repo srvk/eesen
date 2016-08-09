@@ -123,10 +123,10 @@ int main(int argc, char *argv[]) {
     Timer time;
     KALDI_LOG << (crossvalidate?"CROSS-VALIDATION":"TRAINING") << " STARTED";
     if (sequence_out_file.length()) {
-      KALDI_LOG << "Sequences will be written to " << sequence_out_file << " order from feature file";
+      KALDI_LOG << "Sequences will be written to " << sequence_out_file << " in order from feature file";
       std::remove(sequence_out_file.c_str());
     }
-    
+
     std::vector< Matrix<BaseFloat> > feats_utt(num_sequence);  // Feature matrix of every utterance
     std::vector< std::vector<int> > labels_utt(num_sequence);  // Label vector of every utterance
     int32 feat_dim = net.InputDim();

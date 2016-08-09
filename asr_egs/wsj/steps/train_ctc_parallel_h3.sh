@@ -234,7 +234,6 @@ for iter in $(seq $start_epoch_num $max_iters); do
     # stopping criterion
     intre='^[0-9]+$'
     rel_impr=$(bc <<< "($cvacc-$cvacc_prev)") || rel_impr=$start_halving_inc
-    echo vars $halving $rel_impr $end_halving_inc $start_halving_inc
     if [ 1 == $halving -a 1 == $(bc <<< "$rel_impr < $end_halving_inc") ]; then
       if [[ ( "$min_iters" =~ $intre ) && ( $min_iters -gt $iter ) ]]; then
         echo we were supposed to finish, but we continue as min_iters : $min_iters

@@ -67,7 +67,7 @@ void comm_avg_weights(Net &net, const int &job_id, const int &num_jobs, const in
           break;
         }
 
-        usleep(300);
+        usleep(300000);
       }
     }
     KALDI_LOG << "Found " << num_nets_added << " models to average.";
@@ -105,7 +105,7 @@ void comm_avg_weights(Net &net, const int &job_id, const int &num_jobs, const in
     // FIXME: Training data should be distributed evenly amongst jobs. Or something.
     KALDI_LOG << "Waiting for averaged model at " << avg_model_filename;
     while (!FileExist(avg_model_filename.c_str()) && !FileExist(main_done_filename.c_str())) {
-      usleep(500);
+      usleep(300000);
     }
     if (FileExist(main_done_filename.c_str())) {
       KALDI_WARN << "Main job finished; dropping this batch!";
@@ -135,7 +135,7 @@ void comm_touch_done(Ctc &ctc, const int &job_id, const int &num_jobs, const std
     for (int i = 1; i <= num_jobs; i++) {
       stats2collect.insert(stats2collect.end(), i);
     }
-    
+
     // Loop over all subjob outputs
     float tot_error_num_ = 0;
     int tot_ref_num_ = 0;
@@ -144,6 +144,7 @@ void comm_touch_done(Ctc &ctc, const int &job_id, const int &num_jobs, const std
       for (std::set<int>::iterator it = stats2collect.begin(); it != stats2collect.end(); it++) {
         std::string subjob_done_filename = comm_done_filename(base_done_filename, *it);
         if (FileExist(subjob_done_filename.c_str())) {
+	  usleep(300000);
           Input in(subjob_done_filename, &binary);
           std::string token;
           float error_num_ = 0;
@@ -155,14 +156,14 @@ void comm_touch_done(Ctc &ctc, const int &job_id, const int &num_jobs, const std
           in.Close();
           tot_error_num_ += error_num_;
           tot_ref_num_ += ref_num_;
-          
+
           stats2collect.erase(it);
           wait = false;
           break;
         }
       }
       if (wait)
-        usleep(300);
+        usleep(300000);
     }
     KALDI_LOG << "\nTOTAL TOKEN_ACCURACY >> " << 100.0*(1.0 - tot_error_num_ / tot_ref_num_) << "% <<";
   }

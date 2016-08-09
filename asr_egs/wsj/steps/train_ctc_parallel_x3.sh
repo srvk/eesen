@@ -150,7 +150,7 @@ if $subsample_feats; then
   labels_tr="ark:cat $tmpdir/labels.tr|"
   labels_cv="ark:cat $tmpdir/labels.cv|"
 
-  trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls -l $tmpdir; rm -r $tmpdir" EXIT
+#  trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls -l $tmpdir; rm -r $tmpdir" EXIT
 
 else
 
@@ -161,7 +161,7 @@ else
     copy-feats "$feats_cv" ark,scp:$tmpdir/cv.ark,$tmpdir/cv_local.scp || exit 1;
     feats_tr="ark,s,cs:copy-feats scp:$tmpdir/train_local.scp ark:- |"
     feats_cv="ark,s,cs:copy-feats scp:$tmpdir/cv_local.scp ark:- |"
-    trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
+#    trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
   fi
 fi
 

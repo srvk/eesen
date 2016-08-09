@@ -1,5 +1,4 @@
 
-
 all:
 
 include ../config.mk
@@ -18,4 +17,3 @@ ADDLIBS = ../util/util.a ../cpucompute/cpucompute.a ../base/base.a
 # ../thread/thread.a
 
 include ../makefiles/default_rules.mk
-

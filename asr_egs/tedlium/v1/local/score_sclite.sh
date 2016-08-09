@@ -12,6 +12,8 @@ acwt_factor=0.1   # the scaling factor for the acoustic scale. The scaling facto
                  # needs to be 0.5 ~1.0. However, the job submission script can only take integers as the
                  # job marker. That's why we set the acwt to be integers (5 ~ 10), but scale them with 0.1
                  # when they are actually used.
+ctm_with_conf=true # if we generate ctm files with confidence scores
+
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -46,13 +48,23 @@ mkdir -p $dir/scoring/log
 
 # We are not using lattice-align-words, which may result in minor degradation 
 if [ $stage -le 0 ]; then
-  $cmd ACWT=$min_acwt:$max_acwt $dir/scoring/log/get_ctm.ACWT.log \
-    mkdir -p $dir/score_ACWT/ '&&' \
-    lattice-1best --acoustic-scale=ACWT --ascale-factor=$acwt_factor "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
-    nbest-to-ctm ark:- - \| \
-    utils/int2sym.pl -f 5 $symtab  \| \
-    utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
-    '>' $dir/score_ACWT/$name.ctm || exit 1;
+  if $ctm_with_conf; then
+    # This leads to slightly lower WERs on some tasks
+    $cmd ACWT=$min_acwt:$max_acwt $dir/scoring/log/get_ctm.ACWT.log \
+      mkdir -p $dir/score_ACWT/ '&&' \
+      lattice-to-ctm-conf --decode-mbr=true --acoustic-scale=ACWT --ascale-factor=$acwt_factor "ark:gunzip -c $dir/lat.*.gz|" - \| \
+      utils/int2sym.pl -f 5 $symtab  \| \
+      utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
+      '>' $dir/score_ACWT/$name.ctm || exit 1;
+  else
+    $cmd ACWT=$min_acwt:$max_acwt $dir/scoring/log/get_ctm.ACWT.log \
+      mkdir -p $dir/score_ACWT/ '&&' \
+      lattice-1best --acoustic-scale=ACWT --ascale-factor=$acwt_factor "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+      nbest-to-ctm ark:- - \| \
+      utils/int2sym.pl -f 5 $symtab  \| \
+      utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
+      '>' $dir/score_ACWT/$name.ctm || exit 1;
+  fi
 fi
 
 if [ $stage -le 1 ]; then

@@ -10,6 +10,8 @@ srcdict=$srcdir/swb_ms98_transcriptions/sw-ms98-dict.text
 
 [ -f path.sh ] && . ./path.sh
 
+. utils/parse_options.sh
+
 [ ! -f "$srcdict" ] && echo "No such file $srcdict" && exit 1;
 
 # Raw dictionary preparation (lower-case, remove comments)

@@ -232,7 +232,7 @@ void Ctc::ErrorRate(const CuMatrixBase<BaseFloat> &net_out, const std::vector<in
   ref_num_progress_ += label.size();
 }
 
-void Ctc::ErrorRateMSeq(const std::vector<int> &frame_num_utt, const CuMatrixBase<BaseFloat> &net_out, std::vector< std::vector<int> > &label) {
+void Ctc::ErrorRateMSeq(const std::vector<int> &frame_num_utt, const CuMatrixBase<BaseFloat> &net_out, std::vector< std::vector<int> > &label, std::string &out) {
 
   // frame-level labels
   CuArray<int32> maxid(net_out.NumRows());
@@ -242,6 +242,11 @@ void Ctc::ErrorRateMSeq(const std::vector<int> &frame_num_utt, const CuMatrixBas
   std::vector<int32> data(dim);
   maxid.CopyToVec(&data);
 
+  std::ofstream output;
+  if (out.length()) {
+    output.open(out, std::ofstream::out | std::ofstream::app);
+  }
+  
   // compute errors sequence by sequence
   int32 num_seq = frame_num_utt.size();
   for (int32 s = 0; s < num_seq; s++) {
@@ -265,11 +270,22 @@ void Ctc::ErrorRateMSeq(const std::vector<int> &frame_num_utt, const CuMatrixBas
       }
     }
     int32 err, ins, del, sub;
-    err =  LevenshteinEditDistance(label[s], hyp_seq, &ins, &del, &sub);
+    err = LevenshteinEditDistance(label[s], hyp_seq, &ins, &del, &sub);
     error_num_ += err;
     ref_num_ += label[s].size();
     error_num_progress_ += err;
     ref_num_progress_ += label[s].size();
+    
+    if (out.length()) {
+      output << "dummy-utt";
+      for (size_t index = 0; index < hyp_seq.size(); index ++)
+	output << " " << hyp_seq[index];
+      output << "\n";
+    }
+  }
+  if (out.length()) {
+    // would be better to do these tests on the stream, rather than the file name
+    output.close();
   }
 }
 

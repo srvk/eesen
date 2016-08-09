@@ -112,6 +112,8 @@ class CuMatrixBase {
   void ApplyFloor(Real floor_val);
   /// If the elements > ceiling_val, set them to ceiling_val
   void ApplyCeiling(Real ceiling_val);
+  /// Element-wise x > 0 ? 1.0 : 0.0
+  void ApplyHeaviside();
   /// Find the id of the maximal element for each row
   void FindRowMaxId(CuArray<int32> *id) const;
   /// Set to random values drawn from Gaussian distribution 

@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
     Matrix<BaseFloat> net_out_host;
 
     Timer time;
-    double time_now = 0;
+    //double time_now = 0;
     int32 num_done = 0;
 
     // Iterate over all sequences

@@ -22,8 +22,8 @@ echo "$0 $@"  # Print the command line for logging
 . utils/parse_options.sh || exit 1;
 
 if [ $# != 6 ]; then
-  echo "Usage: "
-  echo " e.g.: "
+  echo "Usage: $0 <feat-tr> <feat-cv> <num-sequence> <frame-num-limit> <tmp-dir> <dir>"
+  echo " e.g.: $0 --nj 4 --cmd run.pl data/train_nodup/feats.scp data/train_dev/feats.scp 60 25000 exp/train_char_l5_c320_n60_f25000"
   exit 1
 fi
 

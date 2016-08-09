@@ -1064,6 +1064,25 @@ void CuMatrixBase<Real>::ApplyCeiling(Real ceiling_val) {
 }
 
 template<typename Real>
+void CuMatrixBase<Real>::ApplyHeaviside() {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK),
+                 n_blocks(NumCols(), CU2DBLOCK));
+
+    cuda_apply_heaviside(dimGrid, dimBlock, data_, Dim());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().ApplyHeaviside();
+  }
+}
+
+template<typename Real>
 void VectorBase<Real>::CopyRowsFromMat(const CuMatrixBase<Real> &mat) {
   KALDI_ASSERT(dim_ == mat.NumCols() * mat.NumRows());
 #if HAVE_CUDA == 1

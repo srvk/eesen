@@ -36,10 +36,12 @@ struct ClassPriorOptions {
   std::string class_frame_counts;
   BaseFloat prior_scale;
   BaseFloat prior_cutoff;
+  BaseFloat blank_scale;
 
   ClassPriorOptions() : class_frame_counts(""),
                       prior_scale(1.0),
-                      prior_cutoff(1e-10) {}
+                      prior_cutoff(1e-10),
+                      blank_scale(1.0) {}
 
   void Register(OptionsItf *po) {
     po->Register("class-frame-counts", &class_frame_counts,
@@ -50,6 +52,8 @@ struct ClassPriorOptions {
                  "Scaling factor to be applied on class-log-priors");
     po->Register("prior-cutoff", &prior_cutoff,
                  "Classes with priors lower than cutoff will have 0 likelihood");
+    po->Register("blank-scale", &blank_scale,
+                 "Scale probability of class 0 (blank) by this factor");
   }
 };
 

@@ -54,6 +54,10 @@ ClassPrior::ClassPrior(const ClassPriorOptions &opts)
                << " lower than " << opts.prior_cutoff;
   }
 
+  // scale the blank label
+  if (opts.blank_scale!=1.0)
+    tmp_priors(0)*=opts.blank_scale;
+  
   double sum = tmp_priors.Sum();
   tmp_priors.Scale(1.0 / sum);
   tmp_priors.ApplyLog();

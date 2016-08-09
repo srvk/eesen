@@ -30,7 +30,8 @@ public:
     BiLstm(int32 input_dim, int32 output_dim) :
         TrainableLayer(input_dim, output_dim),
         cell_dim_(output_dim/2),
-        learn_rate_coef_(1.0), max_grad_(0.0)
+        learn_rate_coef_(1.0), max_grad_(0.0),
+        drop_factor_(0.0)
     { }
 
     ~BiLstm()
@@ -40,11 +41,16 @@ public:
     LayerType GetType() const { return l_BiLstm; }
     LayerType GetTypeNonParal() const { return l_BiLstm; }   
  
+    void SetDropFactor(float drop_factor) {
+      drop_factor_ = drop_factor;
+    }
+
     void InitData(std::istream &is) {
       // define options
       float param_range = 0.02, max_grad = 0.0;
       float learn_rate_coef = 1.0; 
       float fgate_bias_init = 0.0;   // the initial value for the bias of the forget gates
+      float drop_factor = 0.0;
       // parse config
       std::string token;
       while (!is.eof()) {
@@ -53,6 +59,7 @@ public:
         else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef);
         else if (token == "<MaxGrad>") ReadBasicType(is, false, &max_grad);
         else if (token == "<FgateBias>") ReadBasicType(is, false, &fgate_bias_init); 
+        else if (token == "<DropFactor>") ReadBasicType(is, false, &drop_factor);
         else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                        << " (ParamRange|LearnRateCoef|BiasLearnRateCoef|MaxGrad)";
         is >> std::ws; // eat-up whitespace
@@ -86,7 +93,7 @@ public:
 
       //
       learn_rate_coef_ = learn_rate_coef;
-      max_grad_ = max_grad;
+      max_grad_ = max_grad; drop_factor_ = drop_factor;
     }
 
     void ReadData(std::istream &is, bool binary) {
@@ -98,6 +105,10 @@ public:
       if ('<' == Peek(is, binary)) {
         ExpectToken(is, binary, "<MaxGrad>");
         ReadBasicType(is, binary, &max_grad_);
+      }
+      if ('<' == Peek(is, binary)) {
+        ExpectToken(is, binary, "<DropFactor>");
+        ReadBasicType(is, binary, &drop_factor_);
       }
 
       // read parameters of forward layer
@@ -136,6 +147,8 @@ public:
       WriteBasicType(os, binary, learn_rate_coef_);
       WriteToken(os, binary, "<MaxGrad>");
       WriteBasicType(os, binary, max_grad_);
+      WriteToken(os, binary, "<DropFactor>");
+      WriteBasicType(os, binary, drop_factor_);
 
       // write parameters of the forward layer
       wei_gifo_x_fw_.Write(os, binary);
@@ -600,6 +613,9 @@ protected:
     int32 cell_dim_;
     BaseFloat learn_rate_coef_;
     BaseFloat max_grad_;
+    BaseFloat drop_factor_;
+
+    CuMatrix<BaseFloat> drop_mask_;
 
     // parameters of the forward layer
     CuMatrix<BaseFloat> wei_gifo_x_fw_;

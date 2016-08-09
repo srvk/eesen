@@ -5,9 +5,9 @@ CXX = g++
 
 # OPENFST_VERSION = 1.3.4
 # Uncomment the next line to build with OpenFst-1.4.1.
-#OPENFST_VERSION = 1.4.1
+OPENFST_VERSION = 1.4.1
 # Or with OpenFst-1.5.1
-OPENFST_VERSION = 1.5.1
+# OPENFST_VERSION = 1.5.1
 # Note: OpenFst >= 1.4 requires C++11 support, hence you will need to use a
 # relatively recent C++ compiler, e.g. gcc >= 4.6, clang >= 3.0.
 
@@ -69,7 +69,7 @@ openfst: openfst_compiled openfst-$(OPENFST_VERSION)/lib
 .PHONY: openfst_compiled
 openfst_compiled: openfst-$(OPENFST_VERSION)/Makefile
 	cd openfst-$(OPENFST_VERSION)/ && \
-	$(MAKE) install
+	$(MAKE) -j -k install || $(MAKE) install
 
 openfst-$(OPENFST_VERSION)/lib: | openfst-$(OPENFST_VERSION)/Makefile
 	-cd openfst-$(OPENFST_VERSION) && [ -d lib64 ] && [ ! -d lib ] && ln -s lib64 lib

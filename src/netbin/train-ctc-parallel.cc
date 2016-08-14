@@ -1,6 +1,6 @@
 // netbin/train-ctc-parallel.cc
 
-// Copyright 2015   Yajie Miao, Hang Su
+// Copyright 2015   Yajie Miao, Hang Su, Mohammad Gowayyed
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,6 +48,10 @@ int main(int argc, char *argv[]) {
     bool binary = true, 
          crossvalidate = false;
     po.Register("binary", &binary, "Write model  in binary mode");
+
+    bool block_softmax = false;
+    po.Register("block-softmax", &block_softmax, "Whether to use block-softmax or not (default is false). Note that you have to pass this parameter even if the provided model contains a BlockSoftmax layer.");
+
     po.Register("cross-validate", &crossvalidate, "Perform cross-validation (no backpropagation)");
 
     std::string sequence_out_file="";
@@ -132,6 +136,11 @@ int main(int argc, char *argv[]) {
     int32 feat_dim = net.InputDim();
 
     int32 num_done = 0, num_no_tgt_mat = 0, num_other_error = 0, avg_count = 0;
+
+    std::vector<int> block_softmax_dims(0);
+    if (block_softmax)
+      block_softmax_dims = net.GetBlockSoftmaxDims();
+
     while (1) {
 
       std::vector<int> frame_num_utt;
@@ -181,16 +190,53 @@ int main(int argc, char *argv[]) {
         for (int r = 0; r < frame_num_utt[s]; r++) {
           feat_mat_host.Row(r*cur_sequence_num + s).CopyFromVec(mat_tmp.Row(r));
         }
-      }        
+      }
+
       // Set the original lengths of utterances before padding
       net.SetSeqLengths(frame_num_utt);
 
       // Propagation and CTC training
       net.Propagate(CuMatrix<BaseFloat>(feat_mat_host), &net_out);
-      ctc.EvalParallel(frame_num_utt, net_out, labels_utt, &obj_diff);
+      // ctc.EvalParallel(frame_num_utt, net_out, labels_utt, &obj_diff);
 
-      // Error rates and output
-      ctc.ErrorRateMSeq(frame_num_utt, net_out, labels_utt, sequence_out_file);
+      // I moved the Resize outside the EvalParallel for the block softmax to be convenient
+      obj_diff.Resize(net_out.NumRows(), net_out.NumCols());
+      obj_diff.Set(0);
+
+      if (block_softmax && block_softmax_dims.size() > 0) {
+        int startIdx = 0;
+        for (int i = 0; i < block_softmax_dims.size(); i++) {
+          // we need to get the submatrix that corresponds to the current block
+	  std::vector< std::vector<int> > labels_utt_block(cur_sequence_num);
+	  std::vector<int> frame_num_utt_block(cur_sequence_num);
+	  // for now, we assume that the original labels use the whole index, so we need to change them to be relative to the current softmax
+	  int nonzero_seq = 0;
+
+	  for (int s = 0; s < cur_sequence_num; s++) {
+	    // we need to check if this sequence belongs to this block
+	    if (labels_utt[s].size() > 0 && labels_utt[s][0] >= startIdx && labels_utt[s][0] < startIdx + block_softmax_dims[i]) {
+	      frame_num_utt_block[s] = frame_num_utt[s];
+	      for (int r = 0; r < labels_utt[s].size(); r++)
+		labels_utt_block[s].push_back(labels_utt[s][r] - startIdx);
+	      nonzero_seq++;
+	    } else {
+	      frame_num_utt_block[s] = 0;
+	    }
+	  }
+	  if (nonzero_seq > 0) {
+	    CuSubMatrix<BaseFloat> net_out_block = net_out.ColRange(startIdx, block_softmax_dims[i]);
+	    CuSubMatrix<BaseFloat> obj_diff_block = obj_diff.ColRange(startIdx, block_softmax_dims[i]);
+	    ctc.EvalParallel(frame_num_utt_block, net_out_block, labels_utt_block, &obj_diff_block);
+	    // Error rates and output
+	    ctc.ErrorRateMSeq (frame_num_utt_block, net_out_block, labels_utt_block, sequence_out_file);
+	  }
+	  startIdx += block_softmax_dims[i];
+	}
+      } else {
+        ctc.EvalParallel(frame_num_utt, net_out, labels_utt, &obj_diff);
+        // Error rates and output
+        ctc.ErrorRateMSeq(frame_num_utt, net_out, labels_utt, sequence_out_file);
+      }
 
       // Backward pass
       if (!crossvalidate) {

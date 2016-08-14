@@ -1,6 +1,6 @@
 // net/ctc-loss.h
 
-// Copyright 2015  Yajie Miao, Hang Su
+// Copyright 2015  Yajie Miao, Hang Su, Mohammad Gowayyed
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ class Ctc {
 
   /// CTC training over multiple sequences. The errors are returned to [diff]
   void EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBase<BaseFloat> &net_out,
-                    std::vector< std::vector<int32> > &label, CuMatrix<BaseFloat> *diff);
+                    std::vector< std::vector<int32> > &label, CuMatrixBase<BaseFloat> *diff);
 
   /// Compute token error rate from the softmax-layer activations and the given labels. From the softmax activations,
   /// we get the frame-level labels, by selecting the label with the largest probability at each frame. Then, the frame

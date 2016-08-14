@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-# Copyright 2015       Yajie Miao    (Carnegie Mellon University)
+# Copyright 2015       Yajie Miao        (Carnegie Mellon University)
+#           2015       Mohammad Gowayyed (Carnegie Mellon University)
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+import sys, re
 
 def parse_arguments(arg_elements):
     args = {}
@@ -60,6 +61,8 @@ if __name__ == '__main__':
     --target-num : int
         Number of labels as the targets
         Required.
+    --block-softmax-dims
+	Generate <BlockSoftmax> with dims D1:D2:D3 [default: %default]
     --param-range : float
         Range to randomly draw the initial values of model parameters. For example, setting it to
         0.1 means model parameters are drawn uniformly from [-0.1, 0.1]
@@ -124,7 +127,13 @@ if __name__ == '__main__':
     if arguments.has_key('input_dim'):
         input_dim = arguments['input_dim']
 
-    # pre-amble
+    # manage multi-lingual training
+    ddims = ''
+    if arguments.has_key('block_softmax_dims') and arguments['block_softmax_dims'] != '':
+	ddims = map(int, re.split("[,:]", arguments['block_softmax_dims']))
+
+
+    # print pre-amble
     print '<Nnet>'
 
     # optional dimensionality reduction layer, if 'input_dim' is defined
@@ -145,7 +154,11 @@ if __name__ == '__main__':
         except:
             print model_type + ' <InputDim> ' + str(actual_cell_dim) + ' <CellDim> ' + str(actual_cell_dim) + common_args(n=n)
 
-    # the final affine-transform and softmax layer
+    # the final affine-transform and (block-)softmax layer
     print '<AffineTransform> <InputDim> ' + str(actual_cell_dim) + ' <OutputDim> ' + str(target_num) + common_args(n=lstm_layer_num-1,type="affine")
-    print '<Softmax> <InputDim> ' + str(target_num) + ' <OutputDim> ' + str(target_num)
+    if type(ddims) = list:
+	assert(sum(ddims) == target_num)
+	print '<BlockSoftmax> <InputDim> ' + str(target_num) + ' <OutputDim> ' + str(target_num) + ' <BlockDims> ' + arguments['block_softmax_dims']
+    else:
+        print '<Softmax> <InputDim> ' + str(target_num) + ' <OutputDim> ' + str(target_num)
     print '</Nnet>'

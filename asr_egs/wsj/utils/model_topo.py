@@ -143,8 +143,9 @@ if __name__ == '__main__':
     except:
         pass
     
-    # the first layer takes input features
+    # the first LSTM layer takes input features
     print model_type + ' <InputDim> ' + str(input_feat_dim) + ' <CellDim> ' + str(actual_cell_dim) + common_args(n=0)
+
     # the following bidirectional LSTM layers
     for n in range(1, lstm_layer_num):
         try:

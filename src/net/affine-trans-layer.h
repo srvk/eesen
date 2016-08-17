@@ -2,7 +2,7 @@
 
 // Copyright 2011-2014  Brno University of Technology (author: Karel Vesely)
 //                2015  Yajie Miao, Hang Su
-//                
+//
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -49,12 +49,17 @@ class AffineTransform : public TrainableLayer {
     // define options
     float param_range = 0.02;
     float learn_rate_coef = 1.0;
+    float bias_learn_rate_coef = 1.0;
     // parse config
-    std::string token; 
+    std::string token;
     while (!is.eof()) {
-      ReadToken(is, false, &token); 
+      ReadToken(is, false, &token);
       /**/ if (token == "<ParamRange>") ReadBasicType(is, false, &param_range);
       else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef);
+      else if (token == "<BiasLearnRateCoef>") {
+	ReadBasicType(is, false, &bias_learn_rate_coef);
+	KALDI_LOG << "BiasLearnRateCoef " << bias_learn_rate_coef << " carelessly ignored (FIXME)";
+      }
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (ParamStddev|BiasMean|BiasRange|LearnRateCoef|BiasLearnRateCoef)";
       is >> std::ws; // eat-up whitespace
@@ -72,6 +77,18 @@ class AffineTransform : public TrainableLayer {
     if ('<' == Peek(is, binary)) {
       ExpectToken(is, binary, "<LearnRateCoef>");
       ReadBasicType(is, binary, &learn_rate_coef_);
+    }
+    if ('<' == Peek(is, binary)) {
+      float a;
+      ExpectToken(is, binary, "<BiasLearnRateCoef>");
+      ReadBasicType(is, binary, &a);
+      KALDI_LOG << "BiasLearnRateCoef " << a << " carelessly ignored (FIXME)";
+    }
+    if ('<' == Peek(is, binary)) {
+      float a;
+      ExpectToken(is, binary, "<MaxNorm>");
+      ReadBasicType(is, binary, &a);
+      KALDI_LOG << "MaxNorm " << a << " carelessly ignored (FIXME)";
     }
     // weights
     linearity_.Read(is, binary);

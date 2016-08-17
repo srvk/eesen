@@ -935,7 +935,8 @@ void CuMatrixBase<Real>::ComputeCtcErrorMSeq(const CuMatrixBase<Real> &alpha,
                                          const CuMatrixBase<Real> &prob,
                                          const std::vector<int32> &labels,
                                          const std::vector<int32> &frame_num_utt,
-                                         const CuVector<Real> pzx) {
+					 const CuVector<Real> pzx,
+					 const bool block) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     KALDI_ASSERT(alpha.NumRows() == NumRows() && beta.NumRows() == NumRows() && prob.NumRows() == NumRows());
@@ -954,7 +955,11 @@ void CuMatrixBase<Real>::ComputeCtcErrorMSeq(const CuMatrixBase<Real> &alpha,
     Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK), n_blocks(NumCols(), CU2DBLOCK));
-    cuda_compute_ctc_error_multiple_sequence(dimGrid, dimBlock, data_, seq_num, Dim(), alpha.data_, beta.data_, alpha.Dim(), prob.data_, cuda_labels.Data(), alpha.NumCols(), cuda_frame_nums.Data(), pzx.Data());
+    // version "2" is for BlockSoftMax
+    if (!block)
+      cuda_compute_ctc_error_multiple_sequence(dimGrid, dimBlock, data_, seq_num, Dim(), alpha.data_, beta.data_, alpha.Dim(), prob.data_, cuda_labels.Data(), alpha.NumCols(), cuda_frame_nums.Data(), pzx.Data());
+    else
+      cuda_compute_ctc_error_multiple_sequence2(dimGrid, dimBlock, data_, seq_num, Dim(), alpha.data_, beta.data_, alpha.Dim(), prob.data_, prob.Dim(), cuda_labels.Data(), alpha.NumCols(), cuda_frame_nums.Data(), pzx.Data());
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());

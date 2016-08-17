@@ -99,8 +99,8 @@ void Ctc::Eval(const CuMatrixBase<BaseFloat> &net_out, const std::vector<int32> 
 }
 
 void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBase<BaseFloat> &net_out,
-                       std::vector< std::vector<int32> > &label, CuMatrixBase<BaseFloat> *diff) {
-  // assuming that diff is already Resized to the size of net_out
+    std::vector< std::vector<int32> > &label, CuMatrixBase<BaseFloat> *diff, const bool block) {
+  // assuming that diff is already sized to net_out
   //diff->Resize(net_out.NumRows(), net_out.NumCols());
 
   int32 num_sequence = frame_num_utt.size();  // number of sequences
@@ -163,7 +163,7 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
 
   // gradients from CTC
   ctc_err_.Resize(num_frames, num_classes, kSetZero);
-  ctc_err_.ComputeCtcErrorMSeq(alpha_, beta_, net_out, label_expand_, frame_num_utt, pzx);  // here should use the original ??
+  ctc_err_.ComputeCtcErrorMSeq(alpha_, beta_, net_out, label_expand_, frame_num_utt, pzx, block);  // here should use the original ??
 
   // back-propagate the errors through the softmax layer
   ctc_err_.MulElements(net_out);

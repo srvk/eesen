@@ -84,6 +84,12 @@ public:
         ReadBasicType(is, binary, &learn_rate_coef_);
       }
       if ('<' == Peek(is, binary)) {
+	float a;
+        ExpectToken(is, binary, "<BiasLearnRateCoef>");
+        ReadBasicType(is, binary, &a);
+	KALDI_LOG << "BiasLearnRateCoef " << a << " carelessly ignored (FIXME)";
+      }
+      if ('<' == Peek(is, binary)) {
         ExpectToken(is, binary, "<MaxGrad>");
         ReadBasicType(is, binary, &max_grad_);
       }

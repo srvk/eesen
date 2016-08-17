@@ -205,7 +205,8 @@ int main(int argc, char *argv[]) {
 
       if (block_softmax && block_softmax_dims.size() > 0) {
         int startIdx = 0;
-        for (int i = 0; i < block_softmax_dims.size(); i++) {
+
+	for (int i = 0; i < block_softmax_dims.size(); i++) {
           // we need to get the submatrix that corresponds to the current block
 	  std::vector< std::vector<int> > labels_utt_block(cur_sequence_num);
 	  std::vector<int> frame_num_utt_block(cur_sequence_num);
@@ -216,8 +217,10 @@ int main(int argc, char *argv[]) {
 	    // we need to check if this sequence belongs to this block
 	    if (labels_utt[s].size() > 0 && labels_utt[s][0] >= startIdx && labels_utt[s][0] < startIdx + block_softmax_dims[i]) {
 	      frame_num_utt_block[s] = frame_num_utt[s];
-	      for (int r = 0; r < labels_utt[s].size(); r++)
+	      for (int r = 0; r < labels_utt[s].size(); r++) {
+		KALDI_ASSERT (labels_utt[s][r] >= startIdx && labels_utt[s][r] < startIdx + block_softmax_dims[i]);
 		labels_utt_block[s].push_back(labels_utt[s][r] - startIdx);
+	      }
 	      nonzero_seq++;
 	    } else {
 	      frame_num_utt_block[s] = 0;
@@ -226,21 +229,24 @@ int main(int argc, char *argv[]) {
 	  if (nonzero_seq > 0) {
 	    CuSubMatrix<BaseFloat> net_out_block = net_out.ColRange(startIdx, block_softmax_dims[i]);
 	    CuSubMatrix<BaseFloat> obj_diff_block = obj_diff.ColRange(startIdx, block_softmax_dims[i]);
-	    ctc.EvalParallel(frame_num_utt_block, net_out_block, labels_utt_block, &obj_diff_block);
+            // BlockSoftMax=true may not strictly be needed (Gowayyed's "sequence2" CUDA kernel
+            // should work ok also for non-blocksoftmax cases), but just in case let's make this explicit
+	    ctc.EvalParallel(frame_num_utt_block, net_out_block, labels_utt_block, &obj_diff_block, true);
 	    // Error rates and output
 	    ctc.ErrorRateMSeq (frame_num_utt_block, net_out_block, labels_utt_block, sequence_out_file);
 	  }
 	  startIdx += block_softmax_dims[i];
 	}
       } else {
-        ctc.EvalParallel(frame_num_utt, net_out, labels_utt, &obj_diff);
+	// We explicitly state that BlockSoftMax=false (see above for the "true" case)
+        ctc.EvalParallel(frame_num_utt, net_out, labels_utt, &obj_diff, false);
         // Error rates and output
         ctc.ErrorRateMSeq(frame_num_utt, net_out, labels_utt, sequence_out_file);
       }
 
       // Backward pass
       if (!crossvalidate) {
-        net.Backpropagate(obj_diff, NULL);
+	net.Backpropagate(obj_diff, NULL);
         if (num_jobs != 1 && (num_done + cur_sequence_num) / utts_per_avg != num_done / utts_per_avg) {
           comm_avg_weights(net, job_id, num_jobs, avg_count, target_model_filename, base_done_filename);
           avg_count++;

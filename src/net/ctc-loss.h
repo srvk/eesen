@@ -38,7 +38,7 @@ class Ctc {
 
   /// CTC training over multiple sequences. The errors are returned to [diff]
   void EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBase<BaseFloat> &net_out,
-                    std::vector< std::vector<int32> > &label, CuMatrixBase<BaseFloat> *diff);
+                    std::vector< std::vector<int32> > &label, CuMatrixBase<BaseFloat> *diff, const bool block);
 
   /// Compute token error rate from the softmax-layer activations and the given labels. From the softmax activations,
   /// we get the frame-level labels, by selecting the label with the largest probability at each frame. Then, the frame

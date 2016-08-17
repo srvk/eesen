@@ -28,7 +28,7 @@ def parse_arguments(arg_elements):
 
 def common_args(n=-1, type="bilstm"):
     a = ' <ParamRange> ' + param_range
-    
+
     if n >= 0:
         s = 1.0-(int(n)-0.5*int(lstm_layer_num)+0.5)*learn_rate_slope
         if type != "lstm" and type != "bilstm":
@@ -39,7 +39,7 @@ def common_args(n=-1, type="bilstm"):
         a += ' <MaxGrad> 50.0'
         if arguments.has_key('fgate_bias_init'):
             a += ' <FgateBias> ' + arguments['fgate_bias_init']
-        
+
     return a
 
 
@@ -156,7 +156,7 @@ if __name__ == '__main__':
 
     # the final affine-transform and (block-)softmax layer
     print '<AffineTransform> <InputDim> ' + str(actual_cell_dim) + ' <OutputDim> ' + str(target_num) + common_args(n=lstm_layer_num-1,type="affine")
-    if type(ddims) = list:
+    if type(ddims) == list:
 	assert(sum(ddims) == target_num)
 	print '<BlockSoftmax> <InputDim> ' + str(target_num) + ' <OutputDim> ' + str(target_num) + ' <BlockDims> ' + arguments['block_softmax_dims']
     else:

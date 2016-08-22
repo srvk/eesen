@@ -1,5 +1,13 @@
 #!/bin/bash
 
+### for CMU rocks cluster ###
+#PBS -q standard
+#PBS -j oe
+#PBS -o log
+#PBS -d .
+#PBS -V
+#PBS -l nodes=1:ppn=1
+
 ### for XSede comet cluster ###
 ### submit sbatch ---ignore-pbs train-2-gpu.sh
 #SBATCH --partition=compute
@@ -9,14 +17,6 @@
 #SBATCH --export=ALL
 #SBATCH --time="48:00:00"
 #SBATCH --mem=100G
-
-### for CMU rocks cluster ###
-#PBS -q standard
-#PBS -j oe
-#PBS -o log
-#PBS -d .
-#PBS -V
-#PBS -l nodes=1:ppn=1
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
@@ -91,8 +91,6 @@ if [ $stage -le 2 ]; then
   # Finally the full training set, around 286 hours
   local/remove_dup_utts.sh 300 data/train_nodev data/train_nodup
 fi
-
-nvidia-smi || (echo not continuing because no gpu; exit 1)
 
 if [ $stage -le 3 ]; then
   echo =====================================================================

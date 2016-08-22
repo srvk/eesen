@@ -191,7 +191,8 @@ class CuMatrixBase {
                            const CuMatrixBase<Real> &prob,
                            const std::vector<int32> &labels,
                            const std::vector<int32> &frame_num_utt,
-                           const CuVector<Real> pzx);
+                           const CuVector<Real> pzx,
+			   const bool block);
 
 
   /////////////////////////////////////////////////////

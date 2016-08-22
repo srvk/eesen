@@ -99,8 +99,9 @@ void Ctc::Eval(const CuMatrixBase<BaseFloat> &net_out, const std::vector<int32> 
 }
 
 void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBase<BaseFloat> &net_out,
-                       std::vector< std::vector<int32> > &label, CuMatrix<BaseFloat> *diff) {
-  diff->Resize(net_out.NumRows(), net_out.NumCols());
+    std::vector< std::vector<int32> > &label, CuMatrixBase<BaseFloat> *diff, const bool block) {
+  // assuming that diff is already sized to net_out
+  //diff->Resize(net_out.NumRows(), net_out.NumCols());
 
   int32 num_sequence = frame_num_utt.size();  // number of sequences
   int32 num_frames = net_out.NumRows();
@@ -118,7 +119,12 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
   int32 exp_len_labels = 2*max_label_len + 1;
   label_expand_.resize(0);
   label_expand_.resize(num_sequence * exp_len_labels, -1);
+  int nonzero_seq = 0;
   for (int32 s = 0; s < num_sequence; s++) {
+    if (!frame_num_utt[s]) { // stupid test?
+      label_lengths_utt[s] = 0;
+      continue;
+    }
     std::vector<int32> label_s = label[s];
     label_lengths_utt[s] = 2 * label_s.size() + 1;
     for (int32 l = 0; l < label_s.size(); l++) {
@@ -126,6 +132,7 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
       label_expand_[s*exp_len_labels + 2*l + 1] = label_s[l];
     }
     label_expand_[s*exp_len_labels + 2*label_s.size()] = 0;
+    nonzero_seq++;
   }
 
   // convert into the log scale
@@ -145,6 +152,8 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
   }
   CuVector<BaseFloat> pzx(num_sequence, kSetZero);
   for (int s = 0; s < num_sequence; s++) {
+    if (!frame_num_utt[s]) // stupid test?
+      continue;
     int label_len = 2* label[s].size() + 1;
     int frame_num = frame_num_utt[s];
     BaseFloat tmp1 = alpha_((frame_num-1)*num_sequence + s, label_len - 1);
@@ -154,7 +163,7 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
 
   // gradients from CTC
   ctc_err_.Resize(num_frames, num_classes, kSetZero);
-  ctc_err_.ComputeCtcErrorMSeq(alpha_, beta_, net_out, label_expand_, frame_num_utt, pzx);  // here should use the original ??
+  ctc_err_.ComputeCtcErrorMSeq(alpha_, beta_, net_out, label_expand_, frame_num_utt, pzx, block);  // here should use the original ??
 
   // back-propagate the errors through the softmax layer
   ctc_err_.MulElements(net_out);
@@ -169,9 +178,11 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
 
   // update registries
   obj_progress_ += pzx.Sum();
-  sequences_progress_ += num_sequence;
-  sequences_num_ += num_sequence;
+  sequences_progress_ += nonzero_seq;
+  sequences_num_ += nonzero_seq;
   for (int s = 0; s < num_sequence; s++) {
+    if (!frame_num_utt[s]) // stupid test?
+      continue;
     frames_progress_ += frame_num_utt[s];
     frames_ += frame_num_utt[s];
   }
@@ -180,8 +191,8 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
   {
     if (sequences_progress_ >= report_step_) {
       KALDI_VLOG(1) << "After " << sequences_num_ << " sequences (" << frames_/(100.0 * 3600) << "Hr): "
-                    << "Obj(log[Pzx]) = " << obj_progress_/sequences_progress_
-                    << "   TokenAcc = " << 100.0*(1.0 - error_num_progress_/ref_num_progress_) << "%";
+		    << "Obj(log[Pzx]) = " << obj_progress_/sequences_progress_
+		    << "   TokenAcc = " << 100.0*(1.0 - error_num_progress_/ref_num_progress_) << "%";
       // reset
       sequences_progress_ = 0;
       frames_progress_ = 0;
@@ -190,9 +201,8 @@ void Ctc::EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBa
       ref_num_progress_ = 0;
     }
   }
-
 }
-  
+
 void Ctc::ErrorRate(const CuMatrixBase<BaseFloat> &net_out, const std::vector<int32> &label, float* err_rate, std::vector<int32> *hyp) {
 
   // frame-level labels, by selecting the label with the largest probability at each frame
@@ -232,7 +242,7 @@ void Ctc::ErrorRate(const CuMatrixBase<BaseFloat> &net_out, const std::vector<in
   ref_num_progress_ += label.size();
 }
 
-void Ctc::ErrorRateMSeq(const std::vector<int> &frame_num_utt, const CuMatrixBase<BaseFloat> &net_out, std::vector< std::vector<int> > &label) {
+void Ctc::ErrorRateMSeq(const std::vector<int> &frame_num_utt, const CuMatrixBase<BaseFloat> &net_out, std::vector< std::vector<int> > &label, std::string &out) {
 
   // frame-level labels
   CuArray<int32> maxid(net_out.NumRows());
@@ -242,9 +252,16 @@ void Ctc::ErrorRateMSeq(const std::vector<int> &frame_num_utt, const CuMatrixBas
   std::vector<int32> data(dim);
   maxid.CopyToVec(&data);
 
+  std::ofstream output;
+  if (out.length()) {
+    output.open(out, std::ofstream::out | std::ofstream::app);
+  }
+  
   // compute errors sequence by sequence
   int32 num_seq = frame_num_utt.size();
   for (int32 s = 0; s < num_seq; s++) {
+    if (!frame_num_utt[s]) // stupid test?
+      continue;
     int32 num_frame = frame_num_utt[s];
     std::vector<int32> raw_hyp_seq(num_frame);
     for (int32 f = 0; f < num_frame; f++) {
@@ -265,11 +282,22 @@ void Ctc::ErrorRateMSeq(const std::vector<int> &frame_num_utt, const CuMatrixBas
       }
     }
     int32 err, ins, del, sub;
-    err =  LevenshteinEditDistance(label[s], hyp_seq, &ins, &del, &sub);
+    err = LevenshteinEditDistance(label[s], hyp_seq, &ins, &del, &sub);
     error_num_ += err;
     ref_num_ += label[s].size();
     error_num_progress_ += err;
     ref_num_progress_ += label[s].size();
+    
+    if (out.length()) {
+      output << "dummy-utt";
+      for (size_t index = 0; index < hyp_seq.size(); index ++)
+	output << " " << hyp_seq[index];
+      output << "\n";
+    }
+  }
+  if (out.length()) {
+    // would be better to do these tests on the stream, rather than the file name
+    output.close();
   }
 }
 

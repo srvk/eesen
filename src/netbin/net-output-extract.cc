@@ -46,6 +46,9 @@ int main(int argc, char *argv[]) {
     bool apply_log = false;
     po.Register("apply-log", &apply_log, "Transform network output to logscale");
 
+    int blockid = -1;
+    po.Register("blockid", &blockid, "Which block are you decoding? Ignore if you don't use block softmax");
+
     std::string use_gpu="no";
     po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
 
@@ -72,6 +75,13 @@ int main(int argc, char *argv[]) {
     Net net;
     net.Read(model_filename);
 
+    std::vector<int> block_softmax_dims(0);
+    if (blockid != -1)
+      block_softmax_dims = net.GetBlockSoftmaxDims();
+
+    KALDI_LOG << "NUMBER OF BLOCKS " << block_softmax_dims.size();
+    KALDI_LOG << "blockid " << blockid;
+
     // Load the counts of the labels/targets, will be used to scale the softmax-layer
     // outputs for ASR decoding
     ClassPrior class_prior(prior_opts);
@@ -85,16 +95,25 @@ int main(int argc, char *argv[]) {
     Matrix<BaseFloat> net_out_host;
 
     Timer time;
-    double time_now = 0;
+    //double time_now = 0;
     int32 num_done = 0;
 
     // Iterate over all sequences
     for (; !feature_reader.Done(); feature_reader.Next()) {
-      const Matrix<BaseFloat> &mat = feature_reader.Value();
+      Vector<BaseFloat> oneVec(1, kSetZero); 
+      oneVec.ReplaceValue(0, 1);
+			
+      const Matrix<BaseFloat> &vec_tmp = feature_reader.Value();
+      Matrix<BaseFloat> mat(vec_tmp.NumRows(), vec_tmp.NumCols() + block_softmax_dims.size(), kSetZero);
+
+      for(int i = 0; i < vec_tmp.NumRows(); i++){
+	mat.Row(i).Range(0, vec_tmp.NumCols()).CopyFromVec(vec_tmp.Row(i));
+	mat.Row(i).Range(vec_tmp.NumCols() + blockid, 1).CopyFromVec(oneVec);
+      }
       
       // Feed the sequence to the network for a feedforward pass
       net.Feedforward(CuMatrix<BaseFloat>(mat), &net_out);
-      
+
       // Convert posteriors to log-scale, if needed
       if (apply_log) {
         net_out.ApplyLog();

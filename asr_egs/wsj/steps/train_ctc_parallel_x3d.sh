@@ -11,9 +11,9 @@ train_tool=train-ctc-parallel  # the command for training; by default, we use th
          # parallel version which processes multiple utterances at the same time 
 
 # configs for multiple sequences
-num_sequence=5           # during training, how many utterances to be processed in parallel
-valid_num_sequence=10    # number of parallel sequences in validation
-frame_num_limit=1000000  # the number of frames to be processed at a time in training; this config acts to
+num_sequence=20          # during training, how many utterances to be processed in parallel
+valid_num_sequence=60    # number of parallel sequences in validation
+frame_num_limit=10000    # the number of frames to be processed at a time in training; this config acts to
          # to prevent running out of GPU memory if #num_sequence very long sequences are processed;the max
          # number of training examples is decided by if num_sequence or frame_num_limit is reached first. 
 
@@ -35,11 +35,15 @@ force_halving_epoch=     # force halving after this epoch
 
 # logging
 report_step=1000         # during training, the step (number of utterances) of reporting objective and accuracy
+safe_mode=false          # seems to be needed on bridges
 verbose=1
 
 # feature configs
 sort_by_len=true         # whether to sort the utterances by their lengths
-min_len=0                # minimal length of utterances to consider
+min_ratio=6              # minimal ratio of transcription to consider
+min_len=10               # minimal length of utterance
+keep_duplicates=false    # keep duplicate utterances 
+seed=777                 # random seed
 
 splice_feats=false       # whether to splice neighboring frams
 subsample_feats=false    # whether to subsample features
@@ -47,6 +51,7 @@ norm_vars=true           # whether to apply variance normalization when we do cm
 add_deltas=true          # whether to add deltas
 copy_feats=true          # whether to copy features into a local dir (on the GPU machine)
 feats_tmpdir=""          # the tmp dir to save the copied features, when copy_feats=true
+cache_dir=""             # get the data from this directory (rather than re-generate it)
 
 # status of learning rate schedule; useful when training is resumed from a break point
 cvacc=0
@@ -55,6 +60,8 @@ halving=0
 ## End configuration section
 
 echo "$0 $@"  # Print the command line for logging
+cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
+echo "SETUP STARTS [$cur_time]"
 
 [ -f path.sh ] && . ./path.sh; 
 
@@ -73,7 +80,7 @@ dir=$3
 mkdir -p $dir/log $dir/nnet
 
 for f in $data_tr/feats.scp $data_cv/feats.scp $dir/labels.tr.gz $dir/labels.cv.gz $dir/nnet.proto; do
-  [ ! -f $f ] && echo "decode.sh: no such file $f" && exit 1;
+  [ ! -f $f ] && echo `basename "$0"`": no such file $f" && exit 1;
 done
 
 ## Read the training status for resuming
@@ -100,9 +107,11 @@ echo $subsample_feats > $dir/subsample_feats
 
 if $sort_by_len; then
   feat-to-len scp:$data_tr/feats.scp ark,t:- | awk '{print $2}' | \
-    paste -d " " $data_tr/feats.scp - | sort -k3 -n - | awk -v m=$min_len '{ if ($3 >= m) {print $1 " " $2} }' > $dir/train.scp || exit 1;
+    paste -d " " $data_tr/feats.scp - <(gzip -cd $dir/labels.tr.gz) | sort -k3 -n | \
+    awk -v m=$min_ratio -v n=$min_len -v d=$keep_duplicates \
+	'{out=$0; sub(/^[ ]*([^ ]+ +){4}/, "", out); if (d=="false" && !(out in done) && $3 > m*NF && $3 > n) {done[out]=1; print $1 " " $2}}' > $dir/train.scp || exit 1;
   feat-to-len scp:$data_cv/feats.scp ark,t:- | awk '{print $2}' | \
-    paste -d " " $data_cv/feats.scp - | sort -k3 -n - | awk '{print $1 " " $2}' > $dir/cv.scp || exit 1;
+    paste -d " " $data_cv/feats.scp - | sort -k3 -n | awk '{print $1 " " $2}' > $dir/cv.scp || exit 1;
 else
   cat $data_tr/feats.scp | utils/shuffle_list.pl --srand ${seed:-777} > $dir/train.scp
   cat $data_cv/feats.scp | utils/shuffle_list.pl --srand ${seed:-777} > $dir/cv.scp
@@ -116,58 +125,86 @@ if $splice_feats; then
   feats_cv="$feats_cv splice-feats --left-context=1 --right-context=1 ark:- ark:- |"
 fi
 
-if $subsample_feats; then
-  tmpdir=$(mktemp -dp "$feats_tmpdir");
+if [ ! -z "$cache_dir" ]; then
+  # Get the features from a previously saved directory
+  if $copy_feats; then
+    tmpdir=$(mktemp -dp "$feats_tmpdir")
+    trap "echo \"Trying to move tmpdir $(hostname):$tmpdir to `pwd`\"; mv $tmpdir ." EXIT
+    cp $cache_dir/labels.* $tmpdir
 
-  copy-feats "$feats_tr" "ark:-" | tee     $tmpdir/tr.tmp.ark | \
-      subsample-feats --n=3 --offset=0 ark:-                  ark,scp:$tmpdir/train0.ark,$tmpdir/train0local.scp || exit 1;
-      subsample-feats --n=3 --offset=1 ark:$tmpdir/tr.tmp.ark ark,scp:$tmpdir/train1.ark,$tmpdir/train1local.scp || exit 1;
-      subsample-feats --n=3 --offset=2 ark:$tmpdir/tr.tmp.ark ark,scp:$tmpdir/train2.ark,$tmpdir/train2local.scp || exit 1;  
-  copy-feats "$feats_cv" "ark:-" | tee     $tmpdir/cv.tmp.ark | \
-      subsample-feats --n=3 --offset=0 ark:-                  ark,scp:$tmpdir/cv0.ark,$tmpdir/cv0local.scp || exit 1;
-      subsample-feats --n=3 --offset=1 ark:$tmpdir/cv.tmp.ark ark,scp:$tmpdir/cv1.ark,$tmpdir/cv1local.scp || exit 1;
-      subsample-feats --n=3 --offset=2 ark:$tmpdir/cv.tmp.ark ark,scp:$tmpdir/cv2.ark,$tmpdir/cv2local.scp || exit 1;
-  rm $tmpdir/tr.tmp.ark $tmpdir/cv.tmp.ark
+    copy-feats scp:$cache_dir/train_local.scp ark,scp:$tmpdir/train.ark,$tmpdir/train_local.scp || exit 1;
+    copy-feats scp:$cache_dir/cv_local.scp ark,scp:$tmpdir/cv.ark,$tmpdir/cv_local.scp || exit 1;
+
+    feats_tr="ark,s,cs:copy-feats scp:$tmpdir/train_local.scp ark:- |"
+    feats_cv="ark,s,cs:copy-feats scp:$tmpdir/cv_local.scp ark:- |"
+    labels_tr="ark:cat $tmpdir/labels.tr|"
+    labels_cv="ark:cat $tmpdir/labels.cv|"
+  else
+    feats_tr="ark,s,cs:copy-feats scp:$cache_dir/train_local.scp ark:- |"
+    feats_cv="ark,s,cs:copy-feats scp:$cache_dir/cv_local.scp ark:- |"
+    labels_tr="ark:cat $cache_dir/labels.tr|"
+    labels_cv="ark:cat $cache_dir/labels.cv|"	
+  fi
+    
+elif $subsample_feats; then
+  #Sub-sample the features 2 or 3 frames
+  tmpdir=$(mktemp -dp "$feats_tmpdir")
+  trap "echo \"Trying to move tmpdir $(hostname):$tmpdir to `pwd`\"; mv $tmpdir ." EXIT
+  if [ ! $copy_feats ]; then
+    echo "WARNING: subsample_feats implies copy_feats - if features have already been sub-sampled, set to 'false'"
+  fi
   
-  # this code is experimental - we may need to sort the data more carefully
+  #copy-feats "$feats_tr" ark:$tmpdir/tr.tmp.ark || exit 1;
+  subsample-feats --n=3 --offset=0 "$feats_tr" ark,scp:$tmpdir/train0.ark,$tmpdir/train0local.scp || exit 1;
+  subsample-feats --n=3 --offset=1 "$feats_tr" ark,scp:$tmpdir/train1.ark,$tmpdir/train1local.scp || exit 1;
+  subsample-feats --n=3 --offset=2 "$feats_tr" ark,scp:$tmpdir/train2.ark,$tmpdir/train2local.scp || exit 1;  
+
+  subsample-feats --n=3 --offset=0 "$feats_cv" ark,scp:$tmpdir/cv0.ark,$tmpdir/cv0local.scp || exit 1;
+  subsample-feats --n=3 --offset=1 "$feats_cv" ark,scp:$tmpdir/cv1.ark,$tmpdir/cv1local.scp || exit 1;
+  subsample-feats --n=3 --offset=2 "$feats_cv" ark,scp:$tmpdir/cv2.ark,$tmpdir/cv2local.scp || exit 1;
+  rm -f $tmpdir/tr.tmp.ark $tmpdir/cv.tmp.ark
+
   sed 's/^/0x/' $tmpdir/train0local.scp        > $tmpdir/train_local.scp
-  sed 's/^/0x/' $tmpdir/cv0local.scp           > $tmpdir/cv_local.scp
   sed 's/^/1x/' $tmpdir/train1local.scp | tac >> $tmpdir/train_local.scp
-  sed 's/^/1x/' $tmpdir/cv1local.scp    | tac >> $tmpdir/cv_local.scp
-  sed 's/^/2x/' $tmpdir/train2local.scp       >> $tmpdir/train_local.scp
-  sed 's/^/2x/' $tmpdir/cv2local.scp          >> $tmpdir/cv_local.scp
+  sed 's/^/2x/' $tmpdir/train2local.scp | tee >(awk '!(NR%2)'       >> $tmpdir/train_local.scp) | \
+                                                awk  '(NR%2)' | tac >> $tmpdir/train_local.scp
+#  paste -d '\n' <(sed 's/^/0x/' $tmpdir/train0local.scp) \
+#	<(sed 's/^/1x/' $tmpdir/train1local.scp) \
+#	<(sed 's/^/2x/' $tmpdir/train2local.scp) | \
+#      tee >(awk '!(NR%2)' >> $tmpdir/train_local.scp) | awk '(NR%2)' | tac >> $tmpdir/train_local.scp
+  sed 's/^/0x/' $tmpdir/cv0local.scp        > $tmpdir/cv_local.scp
+  sed 's/^/1x/' $tmpdir/cv1local.scp | tac >> $tmpdir/cv_local.scp
+  sed 's/^/2x/' $tmpdir/cv2local.scp       >> $tmpdir/cv_local.scp
 
   feats_tr="ark,s,cs:copy-feats scp:$tmpdir/train_local.scp ark:- |"
   feats_cv="ark,s,cs:copy-feats scp:$tmpdir/cv_local.scp ark:- |"
 
   gzip -cd $dir/labels.tr.gz | sed 's/^/0x/'  > $tmpdir/labels.tr
-  gzip -cd $dir/labels.cv.gz | sed 's/^/0x/'  > $tmpdir/labels.cv
   gzip -cd $dir/labels.tr.gz | sed 's/^/1x/' >> $tmpdir/labels.tr
-  gzip -cd $dir/labels.cv.gz | sed 's/^/1x/' >> $tmpdir/labels.cv
   gzip -cd $dir/labels.tr.gz | sed 's/^/2x/' >> $tmpdir/labels.tr
+  gzip -cd $dir/labels.cv.gz | sed 's/^/0x/'  > $tmpdir/labels.cv
+  gzip -cd $dir/labels.cv.gz | sed 's/^/1x/' >> $tmpdir/labels.cv
   gzip -cd $dir/labels.cv.gz | sed 's/^/2x/' >> $tmpdir/labels.cv
 
   labels_tr="ark:cat $tmpdir/labels.tr|"
   labels_cv="ark:cat $tmpdir/labels.cv|"
 
-#  trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls -l $tmpdir; rm -r $tmpdir" EXIT
-
 else
-
   # Save the features to a local dir on the GPU machine. On Linux, this usually points to /tmp
   if $copy_feats; then
-    tmpdir=$(mktemp -dp "$feats_tmpdir");
+    tmpdir=$(mktemp -dp "$feats_tmpdir")
+    trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
+
     copy-feats "$feats_tr" ark,scp:$tmpdir/train.ark,$tmpdir/train_local.scp || exit 1;
     copy-feats "$feats_cv" ark,scp:$tmpdir/cv.ark,$tmpdir/cv_local.scp || exit 1;
     feats_tr="ark,s,cs:copy-feats scp:$tmpdir/train_local.scp ark:- |"
     feats_cv="ark,s,cs:copy-feats scp:$tmpdir/cv_local.scp ark:- |"
-#    trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
   fi
 fi
 
 if $add_deltas; then
-    feats_tr="$feats_tr add-deltas ark:- ark:- |"
-    feats_cv="$feats_cv add-deltas ark:- ark:- |"
+  feats_tr="$feats_tr add-deltas ark:- ark:- |"
+  feats_cv="$feats_cv add-deltas ark:- ark:- |"
 fi
 ## End of feature setup
 
@@ -243,3 +280,4 @@ done
 format-to-nonparallel $dir/nnet/nnet.iter${iter} $dir/final.nnet >& $dir/log/model_to_nonparal.log || exit 1;
 
 echo "Training succeeded. The final model $dir/final.nnet"
+trap - EXIT

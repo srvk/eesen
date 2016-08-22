@@ -1,6 +1,6 @@
 // netbin/train-ctc-parallel.cc
 
-// Copyright 2015   Yajie Miao, Hang Su
+// Copyright 2015   Yajie Miao, Hang Su, Mohammad Gowayyed
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,9 @@
 #include "gpucompute/cuda-device.h"
 #include "net/communicator.h"
 
+using namespace eesen;
+typedef eesen::int32 int32;
+
 int main(int argc, char *argv[]) {
   using namespace eesen;
   typedef eesen::int32 int32;  
@@ -45,7 +48,14 @@ int main(int argc, char *argv[]) {
     bool binary = true, 
          crossvalidate = false;
     po.Register("binary", &binary, "Write model  in binary mode");
+
+    bool block_softmax = false;
+    po.Register("block-softmax", &block_softmax, "Whether to use block-softmax or not (default is false). Note that you have to pass this parameter even if the provided model contains a BlockSoftmax layer.");
+
     po.Register("cross-validate", &crossvalidate, "Perform cross-validation (no backpropagation)");
+
+    std::string sequence_out_file="";
+    po.Register("sequence-out-file", &sequence_out_file, "output file for the generated sequence");
 
     int32 num_sequence = 5;
     po.Register("num-sequence", &num_sequence, "Number of sequences processed in parallel");
@@ -83,9 +93,15 @@ int main(int argc, char *argv[]) {
     if (!crossvalidate) {
       target_model_filename = po.GetArg(4);
     }
+    std::string base_done_filename = crossvalidate ? model_filename + ".cv" : target_model_filename + ".tr";
+    std::string done_filename = comm_done_filename(base_done_filename, job_id);
 
-    using namespace eesen;
-    typedef eesen::int32 int32;
+    if (FileExist(done_filename.c_str())) {
+      KALDI_WARN << "Done file already exists! (From a previous run?) Removing.";
+      if (std::remove(done_filename.c_str())) {
+        KALDI_WARN << "Failed: " << std::strerror(errno);
+      }
+    }
 
     //Select the GPU
 #if HAVE_CUDA==1
@@ -110,12 +126,21 @@ int main(int argc, char *argv[]) {
 
     Timer time;
     KALDI_LOG << (crossvalidate?"CROSS-VALIDATION":"TRAINING") << " STARTED";
+    if (sequence_out_file.length()) {
+      KALDI_LOG << "Sequences will be written to " << sequence_out_file << " in order from feature file";
+      std::remove(sequence_out_file.c_str());
+    }
 
     std::vector< Matrix<BaseFloat> > feats_utt(num_sequence);  // Feature matrix of every utterance
     std::vector< std::vector<int> > labels_utt(num_sequence);  // Label vector of every utterance
     int32 feat_dim = net.InputDim();
 
     int32 num_done = 0, num_no_tgt_mat = 0, num_other_error = 0, avg_count = 0;
+
+    std::vector<int> block_softmax_dims(0);
+    if (block_softmax)
+      block_softmax_dims = net.GetBlockSoftmaxDims();
+
     while (1) {
 
       std::vector<int> frame_num_utt;
@@ -133,15 +158,27 @@ int main(int argc, char *argv[]) {
         Matrix<BaseFloat> mat = feature_reader.Value();
         std::vector<int32> targets = targets_reader.Value(utt);
 
-        if (max_frame_num < mat.NumRows()) max_frame_num = mat.NumRows();
+        if (mat.NumRows() > frame_limit) {
+          KALDI_WARN << utt << ", has too many frames; ignoring: " << mat.NumRows() << " > " << frame_limit;
+          continue;
+        }
+
+        int new_max_frame_num = max_frame_num;
+        if (mat.NumRows() > new_max_frame_num) {
+          new_max_frame_num = mat.NumRows();
+        }
+        if (new_max_frame_num * (frame_num_utt.size() + 1) > frame_limit) {  // then this utterance doesn't fit in this batch
+          break;
+        }
+        max_frame_num = new_max_frame_num;
+
         feats_utt[sequence_index] = mat;
         labels_utt[sequence_index] = targets;
         frame_num_utt.push_back(mat.NumRows());
         sequence_index++;
-        // If the total number of frames reaches frame_limit, then stop adding more sequences, regardless of whether
-        // the number of utterances reaches num_sequence or not.
-        if (frame_num_utt.size() == num_sequence || frame_num_utt.size() * max_frame_num > frame_limit) {
-            feature_reader.Next(); break;
+        if (frame_num_utt.size() == num_sequence) {
+            feature_reader.Next();
+            break;
         }
       }
       int32 cur_sequence_num = frame_num_utt.size();
@@ -153,23 +190,65 @@ int main(int argc, char *argv[]) {
         for (int r = 0; r < frame_num_utt[s]; r++) {
           feat_mat_host.Row(r*cur_sequence_num + s).CopyFromVec(mat_tmp.Row(r));
         }
-      }        
+      }
+
       // Set the original lengths of utterances before padding
       net.SetSeqLengths(frame_num_utt);
 
       // Propagation and CTC training
       net.Propagate(CuMatrix<BaseFloat>(feat_mat_host), &net_out);
-      ctc.EvalParallel(frame_num_utt, net_out, labels_utt, &obj_diff);
+      // ctc.EvalParallel(frame_num_utt, net_out, labels_utt, &obj_diff);
 
-      // Error rates
-      ctc.ErrorRateMSeq(frame_num_utt, net_out, labels_utt);
+      // I moved the Resize outside the EvalParallel for the block softmax to be convenient
+      obj_diff.Resize(net_out.NumRows(), net_out.NumCols());
+      obj_diff.Set(0);
 
+      if (block_softmax && block_softmax_dims.size() > 0) {
+        int startIdx = 0;
+
+	for (int i = 0; i < block_softmax_dims.size(); i++) {
+          // we need to get the submatrix that corresponds to the current block
+	  std::vector< std::vector<int> > labels_utt_block(cur_sequence_num);
+	  std::vector<int> frame_num_utt_block(cur_sequence_num);
+	  // for now, we assume that the original labels use the whole index, so we need to change them to be relative to the current softmax
+	  int nonzero_seq = 0;
+
+	  for (int s = 0; s < cur_sequence_num; s++) {
+	    // we need to check if this sequence belongs to this block
+	    if (labels_utt[s].size() > 0 && labels_utt[s][0] >= startIdx && labels_utt[s][0] < startIdx + block_softmax_dims[i]) {
+	      frame_num_utt_block[s] = frame_num_utt[s];
+	      for (int r = 0; r < labels_utt[s].size(); r++) {
+		KALDI_ASSERT (labels_utt[s][r] >= startIdx && labels_utt[s][r] < startIdx + block_softmax_dims[i]);
+		labels_utt_block[s].push_back(labels_utt[s][r] - startIdx);
+	      }
+	      nonzero_seq++;
+	    } else {
+	      frame_num_utt_block[s] = 0;
+	    }
+	  }
+	  if (nonzero_seq > 0) {
+	    CuSubMatrix<BaseFloat> net_out_block = net_out.ColRange(startIdx, block_softmax_dims[i]);
+	    CuSubMatrix<BaseFloat> obj_diff_block = obj_diff.ColRange(startIdx, block_softmax_dims[i]);
+            // BlockSoftMax=true may not strictly be needed (Gowayyed's "sequence2" CUDA kernel
+            // should work ok also for non-blocksoftmax cases), but just in case let's make this explicit
+	    ctc.EvalParallel(frame_num_utt_block, net_out_block, labels_utt_block, &obj_diff_block, true);
+	    // Error rates and output
+	    ctc.ErrorRateMSeq (frame_num_utt_block, net_out_block, labels_utt_block, sequence_out_file);
+	  }
+	  startIdx += block_softmax_dims[i];
+	}
+      } else {
+	// We explicitly state that BlockSoftMax=false (see above for the "true" case)
+        ctc.EvalParallel(frame_num_utt, net_out, labels_utt, &obj_diff, false);
+        // Error rates and output
+        ctc.ErrorRateMSeq(frame_num_utt, net_out, labels_utt, sequence_out_file);
+      }
 
       // Backward pass
       if (!crossvalidate) {
-        net.Backpropagate(obj_diff, NULL);
+	net.Backpropagate(obj_diff, NULL);
         if (num_jobs != 1 && (num_done + cur_sequence_num) / utts_per_avg != num_done / utts_per_avg) {
-          comm_avg_weights(net, job_id, num_jobs, avg_count, target_model_filename);
+          comm_avg_weights(net, job_id, num_jobs, avg_count, target_model_filename, base_done_filename);
           avg_count++;
         }
       }
@@ -182,14 +261,19 @@ int main(int argc, char *argv[]) {
 
     if (num_jobs != 1) {
       if (!crossvalidate) {
-        comm_avg_weights(net, job_id, num_jobs, avg_count, target_model_filename);
-        std::string avg_model_name = comm_avg_model_name(target_model_filename, avg_count);
-        rename(avg_model_name.c_str(), target_model_filename.c_str());
+        comm_avg_weights(net, job_id, num_jobs, avg_count, target_model_filename, base_done_filename);
       }
-      std::string base_done_filename = crossvalidate ? model_filename + ".cv" : target_model_filename + ".tr";
+
       comm_touch_done(ctc, job_id, num_jobs, base_done_filename);
-      avg_count++;
-      KALDI_LOG << "Total average operations: " << avg_count;
+
+      KALDI_LOG << "Total average operations: " << (avg_count + 1);
+
+      if (job_id == 1 && !crossvalidate) {
+        std::string avg_model_name = comm_avg_model_name(target_model_filename, avg_count);
+        if (std::rename(avg_model_name.c_str(), target_model_filename.c_str())) {
+          KALDI_LOG << "Failed to rename " << avg_model_name << " to " << target_model_filename << "; reason: " << std::strerror(errno);
+        }
+      }
     }
      
     // Print statistics of gradients when training finishes 

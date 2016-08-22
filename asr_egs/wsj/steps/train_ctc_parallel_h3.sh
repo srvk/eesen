@@ -1,14 +1,15 @@
 #!/bin/bash
 
 # Copyright 2015  Yajie Miao    (Carnegie Mellon University)
-#           2016  Florian Metze (Carnegie Mellon University)
+#           2015  Hang Su
+#           2016  Mohammad Gowayyed
 # Apache 2.0
 
 # This script trains acoustic models based on CTC and using SGD. 
 
 ## Begin configuration section
 train_tool=train-ctc-parallel  # the command for training; by default, we use the
-         # parallel version which processes multiple utterances at the same time 
+                # parallel version which processes multiple utterances at the same time 
 
 # configs for multiple sequences
 num_sequence=5           # during training, how many utterances to be processed in parallel
@@ -19,7 +20,7 @@ frame_num_limit=1000000  # the number of frames to be processed at a time in tra
 
 # learning rate
 learn_rate=4e-5          # learning rate
-final_learn_rate=0.0     # final learning rate
+final_learn_rate=1e-6    # final learning rate
 momentum=0.9             # momentum
 
 # learning rate schedule
@@ -52,11 +53,16 @@ feats_tmpdir=""          # the tmp dir to save the copied features, when copy_fe
 cvacc=0
 halving=0
 
+# Multi-GPU training
+nj=1
+utts_per_avg=700
+
 ## End configuration section
 
 echo "$0 $@"  # Print the command line for logging
 
-[ -f path.sh ] && . ./path.sh; 
+[ -f ./path.sh ] && . ./path.sh; 
+[ -f ./cmd.sh ] && . ./cmd.sh; 
 
 . utils/parse_options.sh || exit 1;
 
@@ -73,7 +79,7 @@ dir=$3
 mkdir -p $dir/log $dir/nnet
 
 for f in $data_tr/feats.scp $data_cv/feats.scp $dir/labels.tr.gz $dir/labels.cv.gz $dir/nnet.proto; do
-  [ ! -f $f ] && echo "decode.sh: no such file $f" && exit 1;
+  [ ! -f $f ] && echo "train_ctc_parallel.sh: no such file $f" && exit 1;
 done
 
 ## Read the training status for resuming
@@ -85,13 +91,13 @@ done
 ## Set up labels  
 labels_tr="ark:gunzip -c $dir/labels.tr.gz|"
 labels_cv="ark:gunzip -c $dir/labels.cv.gz|"
-# Compute the occurrence counts of labels in the label sequences. These counts will be used to
-# derive prior probabilities of the labels.
+# Compute the occurrence counts of labels in the label sequences. These counts will be used to derive prior probabilities of
+# the labels.
 gunzip -c $dir/labels.tr.gz | awk '{line=$0; gsub(" "," 0 ",line); print line " 0";}' | \
   analyze-counts --verbose=1 --binary=false ark:- $dir/label.counts >& $dir/log/compute_label_counts.log || exit 1
 ##
 
-## Setup up features
+## Set up features
 # output feature configs which will be used in decoding
 echo $norm_vars > $dir/norm_vars
 echo $add_deltas > $dir/add_deltas
@@ -117,6 +123,7 @@ if $splice_feats; then
 fi
 
 if $subsample_feats; then
+  #Subsample feats 3-fold, implies using a local directory
   tmpdir=$(mktemp -dp "$feats_tmpdir");
 
   copy-feats "$feats_tr" "ark:-" | tee     $tmpdir/tr.tmp.ark | \
@@ -137,37 +144,45 @@ if $subsample_feats; then
   sed 's/^/2x/' $tmpdir/train2local.scp       >> $tmpdir/train_local.scp
   sed 's/^/2x/' $tmpdir/cv2local.scp          >> $tmpdir/cv_local.scp
 
-  feats_tr="ark,s,cs:copy-feats scp:$tmpdir/train_local.scp ark:- |"
-  feats_cv="ark,s,cs:copy-feats scp:$tmpdir/cv_local.scp ark:- |"
-
   gzip -cd $dir/labels.tr.gz | sed 's/^/0x/'  > $tmpdir/labels.tr
   gzip -cd $dir/labels.cv.gz | sed 's/^/0x/'  > $tmpdir/labels.cv
   gzip -cd $dir/labels.tr.gz | sed 's/^/1x/' >> $tmpdir/labels.tr
   gzip -cd $dir/labels.cv.gz | sed 's/^/1x/' >> $tmpdir/labels.cv
   gzip -cd $dir/labels.tr.gz | sed 's/^/2x/' >> $tmpdir/labels.tr
   gzip -cd $dir/labels.cv.gz | sed 's/^/2x/' >> $tmpdir/labels.cv
-
   labels_tr="ark:cat $tmpdir/labels.tr|"
   labels_cv="ark:cat $tmpdir/labels.cv|"
 
-#  trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls -l $tmpdir; rm -r $tmpdir" EXIT
+  utils/prep_scps.sh --nj $nj --cmd "run.pl" ${seed:+ --seed=$seed} \
+    $tmpdir/train_local.scp $tmpdir/cv_local.scp $num_sequence $frame_num_limit $tmpdir $tmpdir || exit 1;
+  feats_tr="ark,s,cs:copy-feats scp:$tmpdir/feats_tr.JOB.scp ark:- |"
+  feats_cv="ark,s,cs:copy-feats scp:$tmpdir/feats_cv.JOB.scp ark:- |"
 
-else
+  trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls -l $tmpdir; rm -r $tmpdir" EXIT
 
+elif $copy_feats; then
   # Save the features to a local dir on the GPU machine. On Linux, this usually points to /tmp
-  if $copy_feats; then
-    tmpdir=$(mktemp -dp "$feats_tmpdir");
-    copy-feats "$feats_tr" ark,scp:$tmpdir/train.ark,$tmpdir/train_local.scp || exit 1;
-    copy-feats "$feats_cv" ark,scp:$tmpdir/cv.ark,$tmpdir/cv_local.scp || exit 1;
-    feats_tr="ark,s,cs:copy-feats scp:$tmpdir/train_local.scp ark:- |"
-    feats_cv="ark,s,cs:copy-feats scp:$tmpdir/cv_local.scp ark:- |"
-#    trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
-  fi
+  tmpdir=$(mktemp -dp "$feats_tmpdir");
+      
+  copy-feats "$feats_tr" ark,scp:$tmpdir/train.ark,$tmpdir/train_local.scp || exit 1;
+  copy-feats "$feats_cv" ark,scp:$tmpdir/cv.ark,$tmpdir/cv_local.scp || exit 1;
+
+  utils/prep_scps.sh --nj $nj --cmd "run.pl" ${seed:+ --seed=$seed} \
+    $tmpdir/train_local.scp $tmpdir/cv_local.scp $num_sequence $frame_num_limit $tmpdir $tmpdir || exit 1;
+  feats_tr="ark,s,cs:copy-feats scp:$tmpdir/feats_tr.JOB.scp ark:- |"
+  feats_cv="ark,s,cs:copy-feats scp:$tmpdir/feats_cv.JOB.scp ark:- |"
+  
+  trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
+else
+  # we hope you have the features set up correctly
+
+  feats_tr="ark,s,cs:copy-feats scp:$feats_tmpdir/feats_tr.JOB.scp ark:- |"
+  feats_cv="ark,s,cs:copy-feats scp:$feats_tmpdir/feats_cv.JOB.scp ark:- |"
 fi
 
 if $add_deltas; then
-    feats_tr="$feats_tr add-deltas ark:- ark:- |"
-    feats_cv="$feats_cv add-deltas ark:- ark:- |"
+  feats_tr="$feats_tr add-deltas ark:- ark:- |"
+  feats_cv="$feats_cv add-deltas ark:- ark:- |"
 fi
 ## End of feature setup
 
@@ -177,6 +192,9 @@ if [ ! -f $dir/nnet/nnet.iter0 ]; then
   net-initialize --binary=true $dir/nnet.proto $dir/nnet/nnet.iter0 >& $dir/log/initialize_model.log || exit 1;
 fi
 
+T=`mktemp -d` 
+cp $dir/nnet/nnet.iter$[start_epoch_num-1] $T || exit 1;
+
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
 echo "TRAINING STARTS [$cur_time]"
 echo "[NOTE] TOKEN_ACCURACY refers to token accuracy, i.e., (1.0 - token_error_rate)."
@@ -185,31 +203,37 @@ for iter in $(seq $start_epoch_num $max_iters); do
     echo -n "EPOCH $iter RUNNING ... "
 
     # train
-    $train_tool --report-step=$report_step --num-sequence=$num_sequence --frame-limit=$frame_num_limit \
-        --learn-rate=$learn_rate --momentum=$momentum \
-        --verbose=$verbose \
-        "$feats_tr" "$labels_tr" $dir/nnet/nnet.iter$[iter-1] $dir/nnet/nnet.iter${iter} \
-        >& $dir/log/tr.iter$iter.log || exit 1;
+    for JOB in `seq 1 $nj`; do
+      F=`echo $feats_tr|awk -v j=$JOB '{sub("JOB", j); print $0}'`
+      $train_tool --report-step=$report_step --num-sequence=$num_sequence --frame-limit=$frame_num_limit \
+	    --learn-rate=$learn_rate --momentum=$momentum --num-jobs=$nj --job-id=$JOB --verbose=$verbose \
+            ${utts_per_avg:+ --utts-per-avg=$utts_per_avg} \
+            "$F" "$labels_tr" $T/nnet.iter$[iter-1] $T/nnet.iter${iter} >& $dir/log/tr.iter$iter.$JOB.log &
+      sleep 30
+    done
+    cp $T/nnet.iter$[iter-1] $dir/nnet
+    wait
+    tracc=$(cat $dir/log/tr.iter${iter}.1.log | grep "TOTAL TOKEN_ACCURACY" | tail -n 1 | awk '{ acc=$(NF-1); gsub("%","",acc); print acc; }')
+    echo -n "lrate $(printf "%.6g" $learn_rate), TRAIN ACCURACY $(printf "%.4f" $tracc)%, "
 
     end_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
     echo -n "ENDS [$end_time]: "
 
-    tracc=$(cat $dir/log/tr.iter${iter}.log | grep -a "TOKEN_ACCURACY" | tail -n 1 | awk '{ acc=$3; gsub("%","",acc); print acc; }')
-    echo -n "lrate $(printf "%.6g" $learn_rate), TRAIN ACCURACY $(printf "%.4f" $tracc)%, "
-
     # validation
-    $train_tool --report-step=$report_step --num-sequence=$valid_num_sequence --frame-limit=$frame_num_limit \
-        --learn-rate=$learn_rate --momentum=$momentum \
-        --verbose=$verbose --cross-validate=true \
-        "$feats_cv" "$labels_cv" $dir/nnet/nnet.iter${iter} \
-        >& $dir/log/cv.iter$iter.log || exit 1;
-
-    cvacc=$(cat $dir/log/cv.iter${iter}.log | grep -a "TOKEN_ACCURACY" | tail -n 1 | awk '{ acc=$3; gsub("%","",acc); print acc; }')
+    for JOB in `seq 1 $nj`; do
+	F=`echo $feats_cv|awk -v j=$JOB '{sub("JOB", j); print $0}'`
+	$train_tool --report-step=$report_step --num-sequence=$valid_num_sequence --frame-limit=$frame_num_limit \
+        --cross-validate=true --num-jobs=$nj --job-id=$JOB --learn-rate=$learn_rate --verbose=$verbose \
+        "$F" "$labels_cv" $T/nnet.iter${iter} >& $dir/log/cv.iter$iter.$JOB.log || exit 1 &
+	sleep 30
+    done
+    wait
+    cvacc=$(cat $dir/log/cv.iter${iter}.1.log | grep "TOTAL TOKEN_ACCURACY" | tail -n 1 | awk '{ acc=$(NF-1); gsub("%","",acc); print acc; }')
     echo "VALID ACCURACY $(printf "%.4f" $cvacc)%"
 
     # stopping criterion
     intre='^[0-9]+$'
-    rel_impr=$(bc <<< "($cvacc-$cvacc_prev)")
+    rel_impr=$(bc <<< "($cvacc-$cvacc_prev)") || rel_impr=$start_halving_inc
     if [ 1 == $halving -a 1 == $(bc <<< "$rel_impr < $end_halving_inc") ]; then
       if [[ ( "$min_iters" =~ $intre ) && ( $min_iters -gt $iter ) ]]; then
         echo we were supposed to finish, but we continue as min_iters : $min_iters
@@ -232,6 +256,7 @@ for iter in $(seq $start_epoch_num $max_iters); do
       learn_rate=$(awk "BEGIN{print($learn_rate*$halving_factor)}")
       learn_rate=$(awk "BEGIN{if ($learn_rate<$final_learn_rate) {print $final_learn_rate} else {print $learn_rate}}")
     fi
+
     # save the status 
     echo $[$iter+1] > $dir/.epoch    # +1 because we save the epoch to start from
     echo $cvacc > $dir/.cvacc

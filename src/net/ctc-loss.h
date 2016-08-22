@@ -1,6 +1,6 @@
 // net/ctc-loss.h
 
-// Copyright 2015  Yajie Miao, Hang Su
+// Copyright 2015  Yajie Miao, Hang Su, Mohammad Gowayyed
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ class Ctc {
 
   /// CTC training over multiple sequences. The errors are returned to [diff]
   void EvalParallel(const std::vector<int32> &frame_num_utt, const CuMatrixBase<BaseFloat> &net_out,
-                    std::vector< std::vector<int32> > &label, CuMatrix<BaseFloat> *diff);
+                    std::vector< std::vector<int32> > &label, CuMatrixBase<BaseFloat> *diff, const bool block);
 
   /// Compute token error rate from the softmax-layer activations and the given labels. From the softmax activations,
   /// we get the frame-level labels, by selecting the label with the largest probability at each frame. Then, the frame
@@ -48,7 +48,7 @@ class Ctc {
   void ErrorRate(const CuMatrixBase<BaseFloat> &net_out, const std::vector<int32> &label, float* err, std::vector<int32> *hyp);
 
   /// Compute token error rate over multiple sequences. 
-  void ErrorRateMSeq(const std::vector<int> &frame_num_utt, const CuMatrixBase<BaseFloat> &net_out, std::vector< std::vector<int> > &label);
+  void ErrorRateMSeq(const std::vector<int> &frame_num_utt, const CuMatrixBase<BaseFloat> &net_out, std::vector< std::vector<int> > &label, std::string &out);
 
   /// Set the step of reporting
   void SetReportStep(int32 report_step) { report_step_ = report_step;  }

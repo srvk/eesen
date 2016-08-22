@@ -194,6 +194,11 @@ void Net::GetParams(Vector<BaseFloat>* wei_copy) const {
   KALDI_ASSERT(pos == NumParams());
 }
 
+std::vector<int> Net::GetBlockSoftmaxDims() {
+  KALDI_ASSERT(layers_[layers_.size()-1]->GetType() == Layer::l_BlockSoftmax);
+  return dynamic_cast<const BlockSoftmax*>(layers_[layers_.size()-1])->block_dims;
+}
+
 void Net::AppendLayer(Layer* dynamically_allocated_layer) {
   // append,
   layers_.push_back(dynamically_allocated_layer);

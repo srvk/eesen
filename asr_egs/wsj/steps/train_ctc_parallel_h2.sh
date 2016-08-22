@@ -1,7 +1,8 @@
 #!/bin/bash
-{
+
 # Copyright 2015  Yajie Miao    (Carnegie Mellon University)
 #           2015  Hang Su
+#           2016  Mohammad Gowayyed
 # Apache 2.0
 
 # This script trains acoustic models based on CTC and using SGD. 
@@ -18,7 +19,8 @@ frame_num_limit=1000000  # the number of frames to be processed at a time in tra
          # number of training examples is decided by if num_sequence or frame_num_limit is reached first. 
 
 # learning rate
-learn_rate=0.0001        # learning rate
+learn_rate=4e-5          # learning rate
+final_learn_rate=1e-6    # final learning rate
 momentum=0.9             # momentum
 
 # learning rate schedule
@@ -29,20 +31,26 @@ start_epoch_num=1        # start from which epoch, used for resuming training fr
 start_halving_inc=0.5    # start halving learning rates when the accuracy improvement falls below this amount
 end_halving_inc=0.1      # terminate training when the accuracy improvement falls below this amount
 halving_factor=0.5       # learning rate decay factor
-halving_after_epoch=1    # halving bcomes enabled after this many epochs
+halving_after_epoch=1    # halving becomes enabled after this many epochs
+force_halving_epoch=     # force halving after this epoch
 
 # logging
-report_step=100          # during training, the step (number of utterances) of reporting objective and accuracy
+report_step=1000         # during training, the step (number of utterances) of reporting objective and accuracy
 verbose=1
 
 # feature configs
 sort_by_len=true         # whether to sort the utterances by their lengths
+min_len=0                # minimal length of utterances to consider
 
+splice_feats=false       # whether to splice neighboring frams
+subsample_feats=false    # whether to subsample features
 norm_vars=true           # whether to apply variance normalization when we do cmn
 add_deltas=true          # whether to add deltas
+copy_feats=true          # whether to copy features into a local dir (on the GPU machine)
+feats_tmpdir=""          # the tmp dir to save the copied features, when copy_feats=true
 
 # status of learning rate schedule; useful when training is resumed from a break point
-cvacc=-1
+cvacc=0
 halving=0
 
 # Multi-GPU training
@@ -82,6 +90,15 @@ done
 [ -f $dir/.halving ] && halving=`cat $dir/.halving 2>/dev/null`
 [ -f $dir/.lrate ] && learn_rate=`cat $dir/.lrate 2>/dev/null`
 
+## Set up labels  
+labels_tr="ark:gunzip -c $dir/labels.tr.gz|"
+labels_cv="ark:gunzip -c $dir/labels.cv.gz|"
+# Compute the occurrence counts of labels in the label sequences. These counts will be used to derive prior probabilities of
+# the labels.
+gunzip -c $dir/labels.tr.gz | awk '{line=$0; gsub(" "," 0 ",line); print line " 0";}' | \
+  analyze-counts --verbose=1 --binary=false ark:- $dir/label.counts >& $dir/log/compute_label_counts.log || exit 1
+##
+
 ## Setup up features
 echo $norm_vars > $dir/norm_vars  # output feature configs which will be used in decoding
 echo $add_deltas > $dir/add_deltas
@@ -98,7 +115,7 @@ feats_cv="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_cv/utt2
 
 if [ $nj -eq 1 ]; then
   feats_tr=$(echo $feats_tr | sed 's#JOB#1#')
-  feats_cv=$(echo $feats_cv | sed 's#JOB#1#')
+  feats_tr=$(echo $feats_cv | sed 's#JOB#1#')
 fi
 
 if $add_deltas; then
@@ -106,15 +123,6 @@ if $add_deltas; then
   feats_cv="$feats_cv add-deltas ark:- ark:- |"
 fi
 ## End of feature setup
-
-## Set up labels  
-labels_tr="ark:gunzip -c $dir/labels.tr.gz|"
-labels_cv="ark:gunzip -c $dir/labels.cv.gz|"
-# Compute the occurrence counts of labels in the label sequences. These counts will be used to derive prior probabilities of
-# the labels.
-gunzip -c $dir/labels.tr.gz | awk '{line=$0; gsub(" "," 0 ",line); print line " 0";}' | \
-  analyze-counts --verbose=1 --binary=false ark:- $dir/label.counts >& $dir/log/compute_label_counts.log || exit 1
-##
 
 # Initialize model parameters
 if [ ! -f $dir/nnet/nnet.iter0 ]; then
@@ -138,13 +146,32 @@ for iter in $(seq $start_epoch_num $max_iters); do
         >& $dir/log/tr.iter$iter.log || exit 1;
       tracc=$(cat $dir/log/tr.iter${iter}.log | grep "TOKEN_ACCURACY" | tail -n 1 | awk '{ acc=$3; gsub("%","",acc); print acc; }')
     else
-      $cuda_cmd JOB=1:$nj $dir/log/tr.iter$iter.JOB.log \
-        $train_tool --report-step=$report_step --num-sequence=$num_sequence --frame-limit=$frame_num_limit \
-        --learn-rate=$learn_rate --momentum=$momentum --num-jobs=$nj --job-id=JOB \
+				for JOB in `seq 1 $nj`;
+        do
+				
+			feats_tr="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_tr/utt2spk scp:$data_tr/cmvn.scp scp:$dir/feats_tr.$JOB.scp ark:- |"
+
+			if $add_deltas; then
+				feats_tr="$feats_tr add-deltas ark:- ark:- |"
+			fi
+	
+
+			echo "$train_tool --report-step=$report_step --num-sequence=$num_sequence --frame-limit=$frame_num_limit  --learn-rate=$learn_rate --momentum=$momentum --num-jobs=$nj --job-id=$JOB  --verbose=$verbose  ${utts_per_avg:+ --utts-per-avg=$utts_per_avg}   "$feats_tr" $labels_tr $dir/nnet/nnet.iter$[iter-1] $dir/nnet/nnet.iter${iter} >& $dir/log/tr.iter$iter.$JOB.log || exit 1" >> $dir/log/tr.iter$iter.log
+
+	    $train_tool --report-step=$report_step --num-sequence=$num_sequence --frame-limit=$frame_num_limit \
+        --learn-rate=$learn_rate --momentum=$momentum --num-jobs=$nj --job-id=$JOB \
         --verbose=$verbose \
         ${utts_per_avg:+ --utts-per-avg=$utts_per_avg} \
-        "$feats_tr" "$labels_tr" $dir/nnet/nnet.iter$[iter-1] $dir/nnet/nnet.iter${iter} >& $dir/log/tr.iter$iter.log || exit 1
-      tracc=$(cat $dir/log/tr.iter${iter}.1.log | grep "TOTAL TOKEN_ACCURACY" | tail -n 1 | awk '{ acc=$(NF-1); gsub("%","",acc); print acc; }')
+        "$feats_tr" "$labels_tr" $dir/nnet/nnet.iter$[iter-1] $dir/nnet/nnet.iter${iter} >& $dir/log/tr.iter$iter.$JOB.log || exit 1 &
+				sleep 30s
+			done
+
+			echo "waiting " >> $dir/log/tr.iter$iter.log
+			wait
+			echo "done waiting " >> $dir/log/tr.iter$iter.log
+
+			tracc=$(cat $dir/log/tr.iter${iter}.1.log | grep "TOTAL TOKEN_ACCURACY" | tail -n 1 | awk '{ acc=$(NF-1); gsub("%","",acc); print acc; }')
+
     fi
 
 
@@ -162,13 +189,25 @@ for iter in $(seq $start_epoch_num $max_iters); do
         >& $dir/log/cv.iter$iter.log || exit 1;
       cvacc=$(cat $dir/log/cv.iter${iter}.log | grep "TOKEN_ACCURACY" | tail -n 1 | awk '{ acc=$3; gsub("%","",acc); print acc; }')
     else
-      $cuda_cmd JOB=1:$nj $dir/log/cv.iter$iter.JOB.log \
-        $train_tool --report-step=$report_step --num-sequence=$valid_num_sequence --frame-limit=$frame_num_limit \
-        --cross-validate=true --num-jobs=$nj --job-id=JOB \
+			for JOB in `seq 1 $nj`;
+        do
+			feats_cv="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_cv/utt2spk scp:$data_cv/cmvn.scp scp:$dir/feats_cv.$JOB.scp ark:- |"
+			if $add_deltas; then
+			  feats_cv="$feats_cv add-deltas ark:- ark:- |"
+			fi
+       $train_tool --report-step=$report_step --num-sequence=$valid_num_sequence --frame-limit=$frame_num_limit \
+        --cross-validate=true --num-jobs=$nj --job-id=$JOB \
         --learn-rate=$learn_rate \
         --verbose=$verbose \
-        "$feats_cv" "$labels_cv" $dir/nnet/nnet.iter${iter} >& $dir/log/cv.iter$iter.log || exit 1;
-      cvacc=$(cat $dir/log/cv.iter${iter}.1.log | grep "TOTAL TOKEN_ACCURACY" | tail -n 1 | awk '{ acc=$(NF-1); gsub("%","",acc); print acc; }')
+        "$feats_cv" "$labels_cv" $dir/nnet/nnet.iter${iter} >& $dir/log/cv.iter$iter.$JOB.log || exit 1 &
+				sleep 30s
+		done
+		echo "waiting" >> $dir/log/cv.iter$iter.log
+    wait
+    echo "done waiting " >> $dir/log/cv.iter$iter.log
+
+    cvacc=$(cat $dir/log/cv.iter${iter}.1.log | grep "TOTAL TOKEN_ACCURACY" | tail -n 1 | awk '{ acc=$(NF-1); gsub("%","",acc); print acc; }')
+
     fi
 
     echo "VALID ACCURACY $(printf "%.4f" $cvacc)%"
@@ -208,4 +247,3 @@ done
 format-to-nonparallel $dir/nnet/nnet.iter${iter} $dir/final.nnet >& $dir/log/model_to_nonparal.log || exit 1;
 
 echo "Training succeeded. The final model $dir/final.nnet"
-}

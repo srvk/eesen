@@ -1,6 +1,8 @@
-// featbin/splice-feats.cc
+// featbin/copy-feats.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2013  Johns Hopkins University (author: Daniel Povey)
+//                2015  Carnegie Mellon University (author: Hao Zhang)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -20,24 +22,22 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "cpucompute/matrix.h"
-#include "feat/feature-functions.h"
+
 
 int main(int argc, char *argv[]) {
   try {
     using namespace eesen;
 
     const char *usage =
-        "Splice features with left and right context (e.g. prior to LDA)\n"
-        "Usage: splice-feats [options] <feature-rspecifier> <feature-wspecifier>\n"
-        "e.g.: splice-feats scp:feats.scp ark:-\n";
+        "Get energy from mfcc features (in which --use-energy=true)\n"
+        "Usage: get-energy-from-mfcc [options] (<in-rspecifier> <out-wspecifier> | <in-rxfilename> <out-wxfilename>)\n"
+        "e.g.: get-energy-from-mfcc ark:- ark,scp:foo.ark,foo.scp\n";
 
     ParseOptions po(usage);
-    int32 left_context = 4, right_context = 4;
-
-
-    po.Register("left-context", &left_context, "Number of frames of left context");
-    po.Register("right-context", &right_context, "Number of frames of right context");
-
+    bool binary = true;
+    po.Register("binary", &binary, "Binary-mode output (not relevant if writing "
+                "to archive)");
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -45,24 +45,25 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
+    int32 num_done = 0;
+   
+    // Copying tables of features.
     std::string rspecifier = po.GetArg(1);
     std::string wspecifier = po.GetArg(2);
 
-    BaseFloatMatrixWriter kaldi_writer(wspecifier);
+    BaseFloatVectorWriter kaldi_writer(wspecifier);
     SequentialBaseFloatMatrixReader kaldi_reader(rspecifier);
-    for (; !kaldi_reader.Done(); kaldi_reader.Next()) {
-      Matrix<BaseFloat> spliced;
-      SpliceFrames(kaldi_reader.Value(),
-                   left_context,
-                   right_context,
-                   &spliced);
-      kaldi_writer.Write(kaldi_reader.Key(), spliced);
+    for (; !kaldi_reader.Done(); kaldi_reader.Next(), num_done++){
+	const Matrix<BaseFloat> &feats = kaldi_reader.Value();
+        Vector<BaseFloat> energy = Vector<BaseFloat>(feats.NumRows());
+	//energy.Resize(feats.NumRows());
+        energy.CopyColFromMat(feats,0);	
+	kaldi_writer.Write(kaldi_reader.Key(),energy);
     }
+    KALDI_LOG << "Copied " << num_done << " feature matrices.";
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }
 }
-
-

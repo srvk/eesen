@@ -339,7 +339,8 @@ function linux_configure_speex {
     spx_type=so
   fi
   if [ ! -f "$SPEEXROOT/lib/libspeex.${spx_type}" ];then
-    echo "Static=[$static_speex] Speex library not found: You can still build Kaldi without Speex."
+    # let's not confuse users with this
+    #echo "Static=[$static_speex] Speex library not found: You can still build Kaldi without Speex."
     return
   fi
   

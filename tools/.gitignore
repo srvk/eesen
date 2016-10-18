@@ -1,0 +1,5 @@
+# let's not list all the archives
+*.tar.gz
+*.tar.bz2
+*.tgz
+*.zip

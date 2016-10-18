@@ -111,6 +111,7 @@ class Layer {
   static Layer* Init(const std::string &conf_line);
   /// Read component from stream
   static Layer* Read(std::istream &is, bool binary);
+  static Layer* Read(std::istream &is, bool binary, bool convertparal);
   /// Read component from stream (with layer initialized before)
   void ReRead(std::istream &is, bool binary);
   /// Write component to stream

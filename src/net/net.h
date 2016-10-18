@@ -88,9 +88,11 @@ class Net {
   /// Initialize MLP from config
   void Init(const std::string &config_file);
   /// Read the MLP from file (can add layers to exisiting instance of Net)
-  void Read(const std::string &file);  
+  void Read(const std::string &file);
+  void Read(const std::string &file, bool convertparal);
   /// Read the MLP from stream (can add layers to exisiting instance of Net)
-  void Read(std::istream &in, bool binary);  
+  void Read(std::istream &in, bool binary);
+  void Read(std::istream &in, bool binary, bool convertparal);
   /// Re-read a MLP from file (of the same structure of current Net)
   void ReRead(const std::string &file);
   /// Re-read a MLP from stream (of the same structure of current Net)

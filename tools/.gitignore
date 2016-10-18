@@ -3,3 +3,6 @@
 *.tar.bz2
 *.tgz
 *.zip
+
+# auto-generated
+env.sh

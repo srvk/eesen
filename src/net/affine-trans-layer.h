@@ -63,6 +63,12 @@ class AffineTransform : public TrainableLayer {
     // initialize
     linearity_.Resize(output_dim_, input_dim_, kUndefined); linearity_.InitRandUniform(param_range);
     bias_.Resize(output_dim_, kUndefined); bias_.InitRandUniform(param_range);
+    
+    // initialize Ada vars
+    linearity_accu.Resize(output_dim_, input_dim_, kUndefined); linearity_accu.Set(0.0);
+    bias_accu.Resize(output_dim_, kUndefined); bias_accu.Set(0.0);
+    linearity_accu_scale.Resize(output_dim_, input_dim_, kUndefined); linearity_accu_scale.Set(0.0);
+    bias_accu_scale.Resize(output_dim_, kUndefined); bias_accu_scale.Set(0.0);
     //
     learn_rate_coef_ = learn_rate_coef;
   }
@@ -123,7 +129,7 @@ class AffineTransform : public TrainableLayer {
     in_diff->AddMatMat(1.0, out_diff, kNoTrans, linearity_, kNoTrans, 0.0);
   }
 
-  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
+  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff, const UpdateRule rule) {
     // we use following hyperparameters from the option class
     const BaseFloat lr = opts_.learn_rate * learn_rate_coef_;
     const BaseFloat mmt = opts_.momentum;
@@ -131,9 +137,22 @@ class AffineTransform : public TrainableLayer {
     // compute gradient (incl. momentum)
     linearity_corr_.AddMatMat(1.0, diff, kTrans, input, kNoTrans, mmt);
     bias_corr_.AddRowSumMat(1.0, diff, mmt);
-    // update
-    linearity_.AddMat(-lr, linearity_corr_);
-    bias_.AddVec(-lr, bias_corr_);
+
+    if (rule==sgd_update) {
+      // update
+      linearity_.AddMat(-lr, linearity_corr_);
+      bias_.AddVec(-lr, bias_corr_);
+    } else if (rule==adagrad_update) {
+      // update the accumolators
+      AdagradAccuUpdate(linearity_, linearity_corr_,linearity_corr_accu_scale);
+      AdagradAccuUpdate(bias_,bias_corr_,bias_corr_accu_scale);
+      // calculate 1.0 / sqrt(accu + epsilon)
+      AdagradScaleCompute(linearity_corr_accu_scale,linearity_corr_accu);
+      AdagradScaleCompute(bias_corr_accu_scale,bias_corr_accu);
+      // update the parameters
+      linearity_.AddMatMatElements(-lr, linearity_corr_accu_scale, linearity_corr_, 1.0);
+      bias_.AddMatMatElements(-lr, bias_corr_accu_scale, linearity_corr_, 1.0);
+    }
   }
   
   void Scale(BaseFloat scale) {
@@ -177,6 +196,12 @@ class AffineTransform : public TrainableLayer {
 
   CuMatrix<BaseFloat> linearity_corr_;
   CuVector<BaseFloat> bias_corr_;
+
+  CuMatrix<BaseFloat> linearity_corr_accu;
+  CuVector<BaseFloat> bias_corr_accu;
+
+  CuMatrix<BaseFloat> linearity_corr_accu_scale;
+  CuVector<BaseFloat> bias_corr_accu_scale;
 
   BaseFloat learn_rate_coef_;
 };

@@ -91,6 +91,46 @@ public:
       phole_f_c_bw_.Resize(cell_dim_); phole_f_c_bw_.InitRandUniform(param_range);
       phole_o_c_bw_.Resize(cell_dim_); phole_o_c_bw_.InitRandUniform(param_range);
 
+
+      //fw for Ada:
+      wei_gifo_x_fw_corr_accu.Resize(4 * cell_dim_, input_dim_); wei_gifo_x_fw_corr_accu.Set(0.0);
+      wei_gifo_x_fw_corr_accu_scale.Resize(4 * cell_dim_, input_dim_);
+
+      wei_gifo_m_fw_corr_accu.Resize(4 * cell_dim_, cell_dim_);  wei_gifo_m_fw_corr_accu.Set(0.0);
+      wei_gifo_m_fw_corr_accu_scale.Resize(4 * cell_dim_, cell_dim_);
+
+      bias_fw_corr_accu.Resize(4 * cell_dim_);  bias_fw_corr_accu.Set(0.0);
+      bias_fw_corr_accu_scale.Resize(4 * cell_dim_);
+
+      phole_i_c_fw_corr_accu.Resize(cell_dim_); phole_i_c_fw_corr_accu.Set(0.0);
+      phole_i_c_fw_corr_accu_scale.Resize(cell_dim_);
+
+      phole_f_c_fw_corr_accu.Resize(cell_dim_); phole_f_c_fw_corr_accu.Set(0.0);
+      phole_f_c_fw_corr_accu_scale.Resize(cell_dim_);
+
+      phole_o_c_fw_corr_accu.Resize(cell_dim_); phole_o_c_fw_corr_accu.Set(0.0);
+      phole_o_c_fw_corr_accu_scale.Resize(cell_dim_);
+
+      //bw for Ada:
+      
+      wei_gifo_x_bw_corr_accu.Resize(4 * cell_dim_, input_dim_); wei_gifo_x_bw_corr_accu.Set(0.0);
+      wei_gifo_x_bw_corr_accu_scale.Resize(4 * cell_dim_, input_dim_);
+
+      wei_gifo_m_bw_corr_accu.Resize(4 * cell_dim_, cell_dim_);  wei_gifo_m_bw_corr_accu.Set(0.0);
+      wei_gifo_m_bw_corr_accu_scale.Resize(4 * cell_dim_, cell_dim_);
+
+      bias_bw_corr_accu.Resize(4 * cell_dim_);  bias_bw_corr_accu.Set(0.0);
+      bias_bw_corr_accu_scale.Resize(4 * cell_dim_);
+
+      phole_i_c_bw_corr_accu.Resize(cell_dim_); phole_i_c_bw_corr_accu.Set(0.0);
+      phole_i_c_bw_corr_accu_scale.Resize(cell_dim_);
+
+      phole_f_c_bw_corr_accu.Resize(cell_dim_); phole_f_c_bw_corr_accu.Set(0.0);
+      phole_f_c_bw_corr_accu_scale.Resize(cell_dim_);
+
+      phole_o_c_bw_corr_accu.Resize(cell_dim_); phole_o_c_bw_corr_accu.Set(0.0);
+      phole_o_c_bw_corr_accu_scale.Resize(cell_dim_);
+
       //
       learn_rate_coef_ = learn_rate_coef;
       max_grad_ = max_grad; drop_factor_ = drop_factor;
@@ -498,7 +538,8 @@ public:
         } // end of the backward layer
     }
 
-    void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
+    void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff, 
+    const UpdateRule rule=sgd_update) {
       // clip gradients 
       if (max_grad_ > 0) {
         wei_gifo_x_fw_corr_.ApplyFloor(-max_grad_); wei_gifo_x_fw_corr_.ApplyCeiling(max_grad_);
@@ -517,21 +558,82 @@ public:
       }
 
       // update parameters
-      const BaseFloat lr = opts_.learn_rate * learn_rate_coef_;
+      BaseFloat lr = opts_.learn_rate;
 
-      wei_gifo_x_fw_.AddMat(-lr, wei_gifo_x_fw_corr_);
-      wei_gifo_m_fw_.AddMat(-lr, wei_gifo_m_fw_corr_);
-      bias_fw_.AddVec(-lr, bias_fw_corr_, 1.0);
-      phole_i_c_fw_.AddVec(-lr, phole_i_c_fw_corr_, 1.0);
-      phole_f_c_fw_.AddVec(-lr, phole_f_c_fw_corr_, 1.0);
-      phole_o_c_fw_.AddVec(-lr, phole_o_c_fw_corr_, 1.0);
+      if (rule==sgd_update) {
 
-      wei_gifo_x_bw_.AddMat(-lr, wei_gifo_x_bw_corr_);
-      wei_gifo_m_bw_.AddMat(-lr, wei_gifo_m_bw_corr_);
-      bias_bw_.AddVec(-lr, bias_bw_corr_, 1.0);
-      phole_i_c_bw_.AddVec(-lr, phole_i_c_bw_corr_, 1.0);
-      phole_f_c_bw_.AddVec(-lr, phole_f_c_bw_corr_, 1.0);
-      phole_o_c_bw_.AddVec(-lr, phole_o_c_bw_corr_, 1.0);
+        lr *= learn_rate_coef_;
+
+        wei_gifo_x_fw_.AddMat(-lr, wei_gifo_x_fw_corr_);
+        wei_gifo_m_fw_.AddMat(-lr, wei_gifo_m_fw_corr_);
+        bias_fw_.AddVec(-lr, bias_fw_corr_, 1.0);
+        phole_i_c_fw_.AddVec(-lr, phole_i_c_fw_corr_, 1.0);
+        phole_f_c_fw_.AddVec(-lr, phole_f_c_fw_corr_, 1.0);
+        phole_o_c_fw_.AddVec(-lr, phole_o_c_fw_corr_, 1.0);
+
+        wei_gifo_x_bw_.AddMat(-lr, wei_gifo_x_bw_corr_);
+        wei_gifo_m_bw_.AddMat(-lr, wei_gifo_m_bw_corr_);
+        bias_bw_.AddVec(-lr, bias_bw_corr_, 1.0);
+        phole_i_c_bw_.AddVec(-lr, phole_i_c_bw_corr_, 1.0);
+        phole_f_c_bw_.AddVec(-lr, phole_f_c_bw_corr_, 1.0);
+        phole_o_c_bw_.AddVec(-lr, phole_o_c_bw_corr_, 1.0);
+
+      } else if (rule==adagrad_update) {
+        /// fw
+
+        // update the accumolators
+        AdagradAccuUpdate(wei_gifo_x_fw_corr_accu, wei_gifo_x_fw_corr_, wei_gifo_x_fw_corr_accu_scale);
+        AdagradAccuUpdate(wei_gifo_m_fw_corr_accu, wei_gifo_m_fw_corr_, wei_gifo_m_fw_corr_accu_scale);
+        AdagradAccuUpdate(bias_fw_corr_accu, bias_fw_corr_, bias_fw_corr_accu_scale);
+        AdagradAccuUpdate(phole_i_c_fw_corr_accu, phole_i_c_fw_corr_, phole_i_c_fw_corr_accu_scale);
+        AdagradAccuUpdate(phole_f_c_fw_corr_accu, phole_f_c_fw_corr_, phole_f_c_fw_corr_accu_scale);
+        AdagradAccuUpdate(phole_o_c_fw_corr_accu, phole_o_c_fw_corr_, phole_o_c_fw_corr_accu_scale);
+
+        // calculate 1.0 / sqrt(accu + epsilon)
+        AdagradScaleCompute(wei_gifo_x_fw_corr_accu_scale,wei_gifo_x_fw_corr_accu);
+        AdagradScaleCompute(wei_gifo_m_fw_corr_accu_scale,wei_gifo_m_fw_corr_accu);
+        AdagradScaleCompute(bias_fw_corr_accu_scale,bias_fw_corr_accu);
+        AdagradScaleCompute(phole_i_c_fw_corr_accu_scale,phole_i_c_fw_corr_accu);
+        AdagradScaleCompute(phole_f_c_fw_corr_accu_scale,phole_f_c_fw_corr_accu);
+        AdagradScaleCompute(phole_o_c_fw_corr_accu_scale,phole_o_c_fw_corr_accu);
+
+        // update the parameters
+        wei_gifo_x_fw_.AddMatMatElements(-lr, wei_gifo_x_fw_corr_accu_scale, wei_gifo_x_fw_corr_, 1.0);
+        wei_gifo_m_fw_.AddMatMatElements(-lr, wei_gifo_m_fw_corr_accu_scale, wei_gifo_m_fw_corr_, 1.0);
+        bias_fw_.AddVecVec(-lr, bias_fw_corr_accu_scale, bias_fw_corr_, 1.0);
+        phole_i_c_fw_.AddVecVec(-lr, phole_i_c_fw_corr_accu_scale, phole_i_c_fw_corr_, 1.0);
+        phole_f_c_fw_.AddVecVec(-lr, phole_f_c_fw_corr_accu_scale, phole_f_c_fw_corr_, 1.0);
+        phole_o_c_fw_.AddVecVec(-lr, phole_o_c_fw_corr_accu_scale, phole_o_c_fw_corr_, 1.0);
+
+        /// bw
+
+        // update the accumolators
+        AdagradAccuUpdate(wei_gifo_x_bw_corr_accu, wei_gifo_x_bw_corr_, wei_gifo_x_bw_corr_accu_scale);
+        AdagradAccuUpdate(wei_gifo_m_bw_corr_accu, wei_gifo_m_bw_corr_, wei_gifo_m_bw_corr_accu_scale);
+        AdagradAccuUpdate(bias_bw_corr_accu, bias_bw_corr_, bias_bw_corr_accu_scale);
+        AdagradAccuUpdate(phole_i_c_bw_corr_accu, phole_i_c_bw_corr_, phole_i_c_bw_corr_accu_scale);
+        AdagradAccuUpdate(phole_f_c_bw_corr_accu, phole_f_c_bw_corr_, phole_f_c_bw_corr_accu_scale);
+        AdagradAccuUpdate(phole_o_c_bw_corr_accu, phole_o_c_bw_corr_, phole_o_c_bw_corr_accu_scale);
+
+        // calculate 1.0 / sqrt(accu + epsilon)
+        AdagradScaleCompute(wei_gifo_x_bw_corr_accu_scale,wei_gifo_x_bw_corr_accu);
+        AdagradScaleCompute(wei_gifo_m_bw_corr_accu_scale,wei_gifo_m_bw_corr_accu);
+        AdagradScaleCompute(bias_bw_corr_accu_scale,bias_bw_corr_accu);
+        AdagradScaleCompute(phole_i_c_bw_corr_accu_scale,phole_i_c_bw_corr_accu);
+        AdagradScaleCompute(phole_f_c_bw_corr_accu_scale,phole_f_c_bw_corr_accu);
+        AdagradScaleCompute(phole_o_c_bw_corr_accu_scale,phole_o_c_bw_corr_accu);
+
+        // update the parameters
+        wei_gifo_x_bw_.AddMatMatElements(-lr, wei_gifo_x_bw_corr_accu_scale, wei_gifo_x_bw_corr_, 1.0);
+        wei_gifo_m_bw_.AddMatMatElements(-lr, wei_gifo_m_bw_corr_accu_scale, wei_gifo_m_bw_corr_, 1.0);
+        bias_bw_.AddVecVec(-lr, bias_bw_corr_accu_scale, bias_bw_corr_, 1.0);
+        phole_i_c_bw_.AddVecVec(-lr, phole_i_c_bw_corr_accu_scale, phole_i_c_bw_corr_, 1.0);
+        phole_f_c_bw_.AddVecVec(-lr, phole_f_c_bw_corr_accu_scale, phole_f_c_bw_corr_, 1.0);
+        phole_o_c_bw_.AddVecVec(-lr, phole_o_c_bw_corr_accu_scale, phole_o_c_bw_corr_, 1.0);
+
+      }
+  
+
     }
 
     void Scale(BaseFloat scale) {
@@ -646,6 +748,38 @@ protected:
     CuVector<BaseFloat> phole_i_c_bw_corr_;
     CuVector<BaseFloat> phole_f_c_bw_corr_;
     CuVector<BaseFloat> phole_o_c_bw_corr_;
+
+    // fw accumolators for e.g. AdaGrad
+    CuMatrix<BaseFloat> wei_gifo_x_fw_corr_accu;
+    CuMatrix<BaseFloat> wei_gifo_m_fw_corr_accu;
+    CuVector<BaseFloat> bias_fw_corr_accu;
+    CuVector<BaseFloat> phole_i_c_fw_corr_accu;
+    CuVector<BaseFloat> phole_f_c_fw_corr_accu;
+    CuVector<BaseFloat> phole_o_c_fw_corr_accu;
+
+    // for fw scale computation, e.g. AdaGrad
+    CuMatrix<BaseFloat> wei_gifo_x_fw_corr_accu_scale;
+    CuMatrix<BaseFloat> wei_gifo_m_fw_corr_accu_scale;
+    CuVector<BaseFloat> bias_fw_corr_accu_scale;
+    CuVector<BaseFloat> phole_i_c_fw_corr_accu_scale;
+    CuVector<BaseFloat> phole_f_c_fw_corr_accu_scale;
+    CuVector<BaseFloat> phole_o_c_fw_corr_accu_scale;
+
+    // bw accumolators for e.g. AdaGrad
+    CuMatrix<BaseFloat> wei_gifo_x_bw_corr_accu;
+    CuMatrix<BaseFloat> wei_gifo_m_bw_corr_accu;
+    CuVector<BaseFloat> bias_bw_corr_accu;
+    CuVector<BaseFloat> phole_i_c_bw_corr_accu;
+    CuVector<BaseFloat> phole_f_c_bw_corr_accu;
+    CuVector<BaseFloat> phole_o_c_bw_corr_accu;
+
+    // for bw scale computation, e.g. AdaGrad
+    CuMatrix<BaseFloat> wei_gifo_x_bw_corr_accu_scale;
+    CuMatrix<BaseFloat> wei_gifo_m_bw_corr_accu_scale;
+    CuVector<BaseFloat> bias_bw_corr_accu_scale;
+    CuVector<BaseFloat> phole_i_c_bw_corr_accu_scale;
+    CuVector<BaseFloat> phole_f_c_bw_corr_accu_scale;
+    CuVector<BaseFloat> phole_o_c_bw_corr_accu_scale;
 
     // propagation buffer
     CuMatrix<BaseFloat> propagate_buf_fw_;

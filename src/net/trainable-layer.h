@@ -37,8 +37,6 @@ namespace eesen {
 
 enum UpdateRule {invalid_update=0, sgd_update=1, adagrad_update=2};
 
-BaseFloat adagrad_epsilon=1e-6;
-
 /**
  * Class TrainableLayer is a Layer which has trainable parameters,
  * contains SGD training hyper-parameters in NetTrainOptions.
@@ -46,7 +44,7 @@ BaseFloat adagrad_epsilon=1e-6;
 class TrainableLayer : public Layer {
  public: 
   TrainableLayer(int32 input_dim, int32 output_dim)
-    : Layer(input_dim, output_dim) { }
+    : Layer(input_dim, output_dim), adagrad_epsilon(1e-6) { }
   virtual ~TrainableLayer() { }
 
   /// Check if contains trainable parameters 
@@ -61,11 +59,12 @@ class TrainableLayer : public Layer {
   /// Compute gradient and update parameters
   virtual void Update(const CuMatrixBase<BaseFloat> &input,
                       const CuMatrixBase<BaseFloat> &diff, 
-                      const UpdateRule rule=adagrad_update ) = 0;
+                      const UpdateRule rule=sgd_update ) = 0;
 
   /// Compute accu+grad**2 elementwise for matrices
   inline void AdagradAccuUpdate(CuMatrixBase<BaseFloat> &accu, CuMatrixBase<BaseFloat> &grad, 
                                 CuMatrixBase<BaseFloat> &grad_tmp) {
+    grad_tmp.CopyFromMat(grad);
     grad_tmp.MulElements(grad);
     accu.AddMat(1.0,grad_tmp);
   }
@@ -73,6 +72,7 @@ class TrainableLayer : public Layer {
   /// Compute accu+grad**2 elementwise for vectors
   inline void AdagradAccuUpdate(CuVectorBase<BaseFloat> &accu, CuVectorBase<BaseFloat> &grad, 
                                 CuVectorBase<BaseFloat> &grad_tmp) {
+    grad_tmp.CopyFromVec(grad);
     grad_tmp.MulElements(grad);
     accu.AddVec(1.0,grad_tmp);
   }
@@ -80,16 +80,18 @@ class TrainableLayer : public Layer {
   /// calculate 1.0 / sqrt(accu + epsilon) elementwise for matrices
   inline void AdagradScaleCompute(CuMatrixBase<BaseFloat> &accu_scale, CuMatrixBase<BaseFloat> &accu) {
     accu_scale.CopyFromMat(accu);
-    accu_scale.Add(adagrad_epsilon);
-    accu_scale.ApplyPow(0.5);
+    //accu_scale.Add(adagrad_epsilon);
+    //accu_scale.ApplyPow(0.5);
+    accu_scale.ApplySqrt(adagrad_epsilon);
     accu_scale.InvertElements();
   }
 
   /// calculate 1.0 / sqrt(accu + epsilon) elementwise for vectors
   inline void AdagradScaleCompute(CuVectorBase<BaseFloat> &accu_scale, CuVectorBase<BaseFloat> &accu) {
     accu_scale.CopyFromVec(accu);
-    accu_scale.Add(adagrad_epsilon);
-    accu_scale.ApplyPow(0.5);
+    //accu_scale.Add(adagrad_epsilon);
+    //accu_scale.ApplyPow(0.5);
+    accu_scale.ApplySqrt(adagrad_epsilon);
     accu_scale.InvertElements();
   }
 
@@ -107,10 +109,11 @@ class TrainableLayer : public Layer {
   }
 
   virtual void InitData(std::istream &is) = 0;
+  BaseFloat adagrad_epsilon=1e-6;
 
  protected:
   /// Option-class with training hyper-parameters
-  NetTrainOptions opts_; 
+  NetTrainOptions opts_;
 };
 
 } // namespace eesen

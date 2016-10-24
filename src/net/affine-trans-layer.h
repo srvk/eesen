@@ -65,10 +65,10 @@ class AffineTransform : public TrainableLayer {
     bias_.Resize(output_dim_, kUndefined); bias_.InitRandUniform(param_range);
     
     // initialize Ada vars
-    linearity_accu.Resize(output_dim_, input_dim_, kUndefined); linearity_accu.Set(0.0);
-    bias_accu.Resize(output_dim_, kUndefined); bias_accu.Set(0.0);
-    linearity_accu_scale.Resize(output_dim_, input_dim_, kUndefined); linearity_accu_scale.Set(0.0);
-    bias_accu_scale.Resize(output_dim_, kUndefined); bias_accu_scale.Set(0.0);
+    linearity_corr_accu.Resize(output_dim_, input_dim_, kUndefined); linearity_corr_accu.Set(0.0);
+    bias_corr_accu.Resize(output_dim_, kUndefined); bias_corr_accu.Set(0.0);
+    linearity_corr_accu_scale.Resize(output_dim_, input_dim_, kUndefined); linearity_corr_accu_scale.Set(0.0);
+    bias_corr_accu_scale.Resize(output_dim_, kUndefined); bias_corr_accu_scale.Set(0.0);
     //
     learn_rate_coef_ = learn_rate_coef;
   }
@@ -129,7 +129,8 @@ class AffineTransform : public TrainableLayer {
     in_diff->AddMatMat(1.0, out_diff, kNoTrans, linearity_, kNoTrans, 0.0);
   }
 
-  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff, const UpdateRule rule) {
+  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff, const UpdateRule
+  rule=sgd_update) {
     // we use following hyperparameters from the option class
     const BaseFloat lr = opts_.learn_rate * learn_rate_coef_;
     const BaseFloat mmt = opts_.momentum;
@@ -151,7 +152,7 @@ class AffineTransform : public TrainableLayer {
       AdagradScaleCompute(bias_corr_accu_scale,bias_corr_accu);
       // update the parameters
       linearity_.AddMatMatElements(-lr, linearity_corr_accu_scale, linearity_corr_, 1.0);
-      bias_.AddMatMatElements(-lr, bias_corr_accu_scale, linearity_corr_, 1.0);
+      bias_.AddVecVec(-lr, bias_corr_accu_scale, bias_corr_, 1.0);
     }
   }
   

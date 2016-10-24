@@ -98,12 +98,16 @@ class CuVectorBase {
   void ApplySoftMax();
   void ApplyExp();
   void ApplyLog();
+  void ApplySqrt(Real epsilon);
   MatrixIndexT ApplyFloor(Real floor_val);
   void ApplyCeiling(Real ceiling_val);
   void ApplyPow(Real power);
   Real Sum() const;
   void SetRandn();
   void InitRandUniform(Real range);
+  
+  // Invert elements
+  void InvertElements();
 
   CuSubVector<Real> Range(const MatrixIndexT o, const MatrixIndexT l) {
     return CuSubVector<Real>(*this, o, l);

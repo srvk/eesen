@@ -124,7 +124,7 @@ public:
       phole_f_c_corr_ = phole_f_c_; phole_f_c_corr_.SetZero();
       phole_o_c_corr_ = phole_o_c_; phole_o_c_corr_.SetZero();
 
-      adaBuffersInitialized = true;
+      adaBuffersInitialized = false;
     }
 
     void WriteData(std::ostream &os, bool binary) const {

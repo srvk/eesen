@@ -77,7 +77,7 @@ public:
       max_grad_ = max_grad;
     }
 
-    void InitAdaBuffer () {
+    void InitAdaBuffers () {
       //for Ada:
       wei_gifo_m_corr_accu.Resize(4 * cell_dim_, cell_dim_);  wei_gifo_m_corr_accu.Set(0.0);
       wei_gifo_m_corr_accu_scale.Resize(4 * cell_dim_, cell_dim_);

@@ -36,7 +36,7 @@ class AffineTransform : public TrainableLayer {
     : TrainableLayer(dim_in, dim_out), 
       linearity_(dim_out, dim_in), bias_(dim_out),
       linearity_corr_(dim_out, dim_in), bias_corr_(dim_out),
-      learn_rate_coef_(1.0)
+      learn_rate_coef_(1.0), adaBuffersInitialized(false)
   { }
   ~AffineTransform()
   { }
@@ -64,13 +64,16 @@ class AffineTransform : public TrainableLayer {
     linearity_.Resize(output_dim_, input_dim_, kUndefined); linearity_.InitRandUniform(param_range);
     bias_.Resize(output_dim_, kUndefined); bias_.InitRandUniform(param_range);
     
+    //
+    learn_rate_coef_ = learn_rate_coef;
+  }
+
+  void InitAdaBuffers() {
     // initialize Ada vars
     linearity_corr_accu.Resize(output_dim_, input_dim_, kUndefined); linearity_corr_accu.Set(0.0);
     bias_corr_accu.Resize(output_dim_, kUndefined); bias_corr_accu.Set(0.0);
     linearity_corr_accu_scale.Resize(output_dim_, input_dim_, kUndefined); linearity_corr_accu_scale.Set(0.0);
     bias_corr_accu_scale.Resize(output_dim_, kUndefined); bias_corr_accu_scale.Set(0.0);
-    //
-    learn_rate_coef_ = learn_rate_coef;
   }
 
   void ReadData(std::istream &is, bool binary) {
@@ -82,6 +85,8 @@ class AffineTransform : public TrainableLayer {
     // weights
     linearity_.Read(is, binary);
     bias_.Read(is, binary);
+
+    adaBuffersInitialized = false;
 
     KALDI_ASSERT(linearity_.NumRows() == output_dim_);
     KALDI_ASSERT(linearity_.NumCols() == input_dim_);
@@ -144,6 +149,12 @@ class AffineTransform : public TrainableLayer {
       linearity_.AddMat(-lr, linearity_corr_);
       bias_.AddVec(-lr, bias_corr_);
     } else if (rule==adagrad_update) {
+
+      if (!adaBuffersInitialized) {
+        InitAdaBuffers();
+        adaBuffersInitialized=true;
+      }
+
       // update the accumolators
       AdagradAccuUpdate(linearity_, linearity_corr_,linearity_corr_accu_scale);
       AdagradAccuUpdate(bias_,bias_corr_,bias_corr_accu_scale);
@@ -205,6 +216,8 @@ class AffineTransform : public TrainableLayer {
   CuVector<BaseFloat> bias_corr_accu_scale;
 
   BaseFloat learn_rate_coef_;
+
+  bool adaBuffersInitialized;
 };
 
 } // namespace eesen

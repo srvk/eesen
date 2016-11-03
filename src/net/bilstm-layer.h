@@ -31,7 +31,7 @@ public:
         TrainableLayer(input_dim, output_dim),
         cell_dim_(output_dim/2),
         learn_rate_coef_(1.0), max_grad_(0.0),
-        drop_factor_(0.0)
+        drop_factor_(0.0), adaBuffersInitialized(false)
     { }
 
     ~BiLstm()
@@ -91,7 +91,11 @@ public:
       phole_f_c_bw_.Resize(cell_dim_); phole_f_c_bw_.InitRandUniform(param_range);
       phole_o_c_bw_.Resize(cell_dim_); phole_o_c_bw_.InitRandUniform(param_range);
 
+      learn_rate_coef_ = learn_rate_coef;
+      max_grad_ = max_grad; drop_factor_ = drop_factor;
+    }
 
+   void InitAdaBuffers() {
       //fw for Ada:
       wei_gifo_x_fw_corr_accu.Resize(4 * cell_dim_, input_dim_); wei_gifo_x_fw_corr_accu.Set(0.0);
       wei_gifo_x_fw_corr_accu_scale.Resize(4 * cell_dim_, input_dim_);
@@ -131,9 +135,6 @@ public:
       phole_o_c_bw_corr_accu.Resize(cell_dim_); phole_o_c_bw_corr_accu.Set(0.0);
       phole_o_c_bw_corr_accu_scale.Resize(cell_dim_);
 
-      //
-      learn_rate_coef_ = learn_rate_coef;
-      max_grad_ = max_grad; drop_factor_ = drop_factor;
     }
 
     void ReadData(std::istream &is, bool binary) {
@@ -180,6 +181,9 @@ public:
       phole_i_c_bw_corr_ = phole_i_c_bw_; phole_i_c_bw_corr_.SetZero();
       phole_f_c_bw_corr_ = phole_f_c_bw_; phole_f_c_bw_corr_.SetZero();
       phole_o_c_bw_corr_ = phole_o_c_bw_; phole_o_c_bw_corr_.SetZero();
+
+      //for initAdaBuffers();
+      adaBuffersInitialized = false;
     }
 
     void WriteData(std::ostream &os, bool binary) const {
@@ -579,6 +583,11 @@ public:
         phole_o_c_bw_.AddVec(-lr, phole_o_c_bw_corr_, 1.0);
 
       } else if (rule==adagrad_update) {
+
+        if (!adaBuffersInitialized) {
+          InitAdaBuffers();
+          adaBuffersInitialized=true;
+        }
         /// fw
 
         // update the accumolators
@@ -716,6 +725,7 @@ protected:
     BaseFloat learn_rate_coef_;
     BaseFloat max_grad_;
     BaseFloat drop_factor_;
+    bool adaBuffersInitialized;
 
     CuMatrix<BaseFloat> drop_mask_;
 

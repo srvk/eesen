@@ -29,8 +29,8 @@ class Lstm : public TrainableLayer {
 public:
     Lstm(int32 input_dim, int32 output_dim) :
         TrainableLayer(input_dim, output_dim),
-        cell_dim_(output_dim),
-        learn_rate_coef_(1.0), max_grad_(0.0)
+        cell_dim_(output_dim), learn_rate_coef_(1.0), 
+        max_grad_(0.0), adaBuffersInitialized(false)
     { }
 
     ~Lstm()
@@ -60,39 +60,42 @@ public:
 
       // initialize weights and biases
       wei_gifo_x_.Resize(4 * cell_dim_, input_dim_); wei_gifo_x_.InitRandUniform(param_range);
-      //for Ada:
-      wei_gifo_x_corr_accu.Resize(4 * cell_dim_, input_dim_); wei_gifo_x_corr_accu.Set(0.0);
-      wei_gifo_x_corr_accu_scale.Resize(4 * cell_dim_, input_dim_);
       // the weights connecting momory cell outputs with the units/gates
       wei_gifo_m_.Resize(4 * cell_dim_, cell_dim_);  wei_gifo_m_.InitRandUniform(param_range);
-      //for Ada:
-      wei_gifo_m_corr_accu.Resize(4 * cell_dim_, cell_dim_);  wei_gifo_m_corr_accu.Set(0.0);
-      wei_gifo_m_corr_accu_scale.Resize(4 * cell_dim_, cell_dim_);
       // the bias for the units/gates
       bias_.Resize(4 * cell_dim_); bias_.InitRandUniform(param_range);
       if (fgate_bias_init != 0.0) {   // reset the bias of the forget gates
         bias_.Range(2 * cell_dim_, cell_dim_).Set(fgate_bias_init);
       }
-      //for Ada:
-      bias_corr_accu.Resize(4 * cell_dim_);  bias_corr_accu.Set(0.0);
-      bias_corr_accu_scale.Resize(4 * cell_dim_);
-
       // peephole connections for i, f, and o, with diagonal matrices (vectors)
       phole_i_c_.Resize(cell_dim_); phole_i_c_.InitRandUniform(param_range);
-      phole_i_c_corr_accu.Resize(cell_dim_); phole_i_c_corr_accu.Set(0.0);
-      phole_i_c_corr_accu_scale.Resize(cell_dim_); 
-
       phole_f_c_.Resize(cell_dim_); phole_f_c_.InitRandUniform(param_range);
-      phole_f_c_corr_accu.Resize(cell_dim_); phole_f_c_corr_accu.Set(0.0);
-      phole_f_c_corr_accu_scale.Resize(cell_dim_);
-
       phole_o_c_.Resize(cell_dim_); phole_o_c_.InitRandUniform(param_range);
-      phole_o_c_corr_accu.Resize(cell_dim_); phole_o_c_corr_accu.Set(0.0);
-      phole_o_c_corr_accu_scale.Resize(cell_dim_);
 
       //
       learn_rate_coef_ = learn_rate_coef;
       max_grad_ = max_grad;
+    }
+
+    void InitAdaBuffer () {
+      //for Ada:
+      wei_gifo_m_corr_accu.Resize(4 * cell_dim_, cell_dim_);  wei_gifo_m_corr_accu.Set(0.0);
+      wei_gifo_m_corr_accu_scale.Resize(4 * cell_dim_, cell_dim_);
+      
+      wei_gifo_x_corr_accu.Resize(4 * cell_dim_, input_dim_); wei_gifo_x_corr_accu.Set(0.0);
+      wei_gifo_x_corr_accu_scale.Resize(4 * cell_dim_, input_dim_);
+      
+      bias_corr_accu.Resize(4 * cell_dim_);  bias_corr_accu.Set(0.0);
+      bias_corr_accu_scale.Resize(4 * cell_dim_);
+
+      phole_i_c_corr_accu.Resize(cell_dim_); phole_i_c_corr_accu.Set(0.0);
+      phole_i_c_corr_accu_scale.Resize(cell_dim_); 
+
+      phole_f_c_corr_accu.Resize(cell_dim_); phole_f_c_corr_accu.Set(0.0);
+      phole_f_c_corr_accu_scale.Resize(cell_dim_);
+      
+      phole_o_c_corr_accu.Resize(cell_dim_); phole_o_c_corr_accu.Set(0.0);
+      phole_o_c_corr_accu_scale.Resize(cell_dim_);
     }
 
     void ReadData(std::istream &is, bool binary) {
@@ -120,6 +123,8 @@ public:
       phole_i_c_corr_ = phole_i_c_; phole_i_c_corr_.SetZero();
       phole_f_c_corr_ = phole_f_c_; phole_f_c_corr_.SetZero();
       phole_o_c_corr_ = phole_o_c_; phole_o_c_corr_.SetZero();
+
+      adaBuffersInitialized = true;
     }
 
     void WriteData(std::ostream &os, bool binary) const {
@@ -334,6 +339,12 @@ public:
         phole_o_c_.AddVec(-lr, phole_o_c_corr_, 1.0); 
       }
       else if (rule==adagrad_update) {
+        if (!adaBuffersInitialized) {
+          InitAdaBuffers();
+          adaBuffersInitialized=true;
+        }
+
+
         // update the accumolators
         AdagradAccuUpdate(wei_gifo_x_corr_accu, wei_gifo_x_corr_, wei_gifo_x_corr_accu_scale);
         AdagradAccuUpdate(wei_gifo_m_corr_accu, wei_gifo_m_corr_, wei_gifo_m_corr_accu_scale); 
@@ -411,6 +422,7 @@ protected:
     int32 cell_dim_;
     BaseFloat learn_rate_coef_;
     BaseFloat max_grad_;
+    bool adaBuffersInitialized;
 
     // parameters of the forward layer
     CuMatrix<BaseFloat> wei_gifo_x_;

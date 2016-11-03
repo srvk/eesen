@@ -230,6 +230,23 @@ public:
   
     // print statistics of the gradients buffer
     std::string InfoGradient() const {
+        std::string extra = std::string("");
+        if (adaBuffersInitialized)
+        {
+            extra += "\n  wei_gifo_x_fw_corr_accu  "   + MomentStatistics(wei_gifo_x_fw_corr_accu) +
+            "\n  wei_gifo_m_fw_corr_accu  "   + MomentStatistics(wei_gifo_m_fw_corr_accu) +
+            "\n  bias_fw_corr_accu  "         + MomentStatistics(bias_fw_corr_accu) +
+            "\n  phole_i_c_fw_corr_accu  "      + MomentStatistics(phole_i_c_fw_corr_accu) +
+            "\n  phole_f_c_fw_corr_accu  "      + MomentStatistics(phole_f_c_fw_corr_accu) +
+            "\n  phole_o_c_fw_corr_accu  "      + MomentStatistics(phole_o_c_fw_corr_accu) +
+            "\n  wei_gifo_x_bw_corr_accu  "   + MomentStatistics(wei_gifo_x_bw_corr_accu) +
+            "\n  wei_gifo_m_bw_corr_accu  "   + MomentStatistics(wei_gifo_m_bw_corr_accu) +
+            "\n  bias_bw_corr_accu  "         + MomentStatistics(bias_bw_corr_accu) +
+            "\n  phole_i_c_bw_corr_accu  "      + MomentStatistics(phole_i_c_bw_corr_accu) +
+            "\n  phole_f_c_bw_corr_accu  "      + MomentStatistics(phole_f_c_bw_corr_accu) +
+            "\n  phole_o_c_bw_corr_accu  "      + MomentStatistics(phole_o_c_bw_corr_accu);          
+        }
+
         return std::string("    ") +
             "\n  wei_gifo_x_fw_corr_  "   + MomentStatistics(wei_gifo_x_fw_corr_) +
             "\n  wei_gifo_m_fw_corr_  "   + MomentStatistics(wei_gifo_m_fw_corr_) +
@@ -242,7 +259,7 @@ public:
             "\n  bias_bw_corr_  "         + MomentStatistics(bias_bw_corr_) +
             "\n  phole_i_c_bw_corr_  "      + MomentStatistics(phole_i_c_bw_corr_) +
             "\n  phole_f_c_bw_corr_  "      + MomentStatistics(phole_f_c_bw_corr_) +
-            "\n  phole_o_c_bw_corr_  "      + MomentStatistics(phole_o_c_bw_corr_);
+            "\n  phole_o_c_bw_corr_  "      + MomentStatistics(phole_o_c_bw_corr_) + extra;
     }
 
     // the feedforward pass

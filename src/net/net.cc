@@ -439,11 +439,16 @@ void Net::Destroy() {
 }
 
 void Net::SetUpdateAlgorithm(std::string opt) {
-  if (opt == "SGD")
-  {
+  if (opt.compare("SGD")==0) {
+    KALDI_LOG << "Selecting SGD with momentum as optimization algorithm.";
     update_algorithm=sgd_update;
-  }else if (opt == "Adagrad") {
+  }else if (opt.compare("Adagrad")==0) {
+    KALDI_LOG << "Selecting Adagrad as optimization algorithm.";
     update_algorithm=adagrad_update;
+  }else{
+    KALDI_ERR << "This optimization algorithm is unsupported: " << opt;
+    KALDI_LOG << "Selecting SGD with momentum as optimization algorithm.";
+    update_algorithm=sgd_update;
   }
 }
 

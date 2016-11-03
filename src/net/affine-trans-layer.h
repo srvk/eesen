@@ -115,9 +115,14 @@ class AffineTransform : public TrainableLayer {
            "\n  bias" + MomentStatistics(bias_);
   }
   std::string InfoGradient() const {
+    std::string extra = std::string("");
+    if (adaBuffersInitialized)
+    {
+      extra += "\n  linearity_grad_accu" + MomentStatistics(linearity_corr_accu) +
+               "\n  bias_grad_accu" + MomentStatistics(bias_corr_accu);
+    }
     return std::string("\n  linearity_grad") + MomentStatistics(linearity_corr_) + 
-                       "\n  bias_grad" + MomentStatistics(bias_corr_);
-           
+                       "\n  bias_grad" + MomentStatistics(bias_corr_) + extra;
   }
 
 
@@ -137,15 +142,17 @@ class AffineTransform : public TrainableLayer {
   void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff, const UpdateRule
   rule=sgd_update) {
     // we use following hyperparameters from the option class
-    const BaseFloat lr = opts_.learn_rate * learn_rate_coef_;
+    BaseFloat lr = opts_.learn_rate;
     const BaseFloat mmt = opts_.momentum;
     // we will also need the number of frames in the mini-batch
     // compute gradient (incl. momentum)
+    
     linearity_corr_.AddMatMat(1.0, diff, kTrans, input, kNoTrans, mmt);
     bias_corr_.AddRowSumMat(1.0, diff, mmt);
 
     if (rule==sgd_update) {
       // update
+      lr *= learn_rate_coef_;
       linearity_.AddMat(-lr, linearity_corr_);
       bias_.AddVec(-lr, bias_corr_);
     } else if (rule==adagrad_update) {
@@ -156,11 +163,11 @@ class AffineTransform : public TrainableLayer {
       }
 
       // update the accumolators
-      AdagradAccuUpdate(linearity_, linearity_corr_,linearity_corr_accu_scale);
-      AdagradAccuUpdate(bias_,bias_corr_,bias_corr_accu_scale);
+      AdagradAccuUpdate(linearity_corr_accu, linearity_corr_, linearity_corr_accu_scale);
+      AdagradAccuUpdate(bias_corr_accu, bias_corr_, bias_corr_accu_scale);
       // calculate 1.0 / sqrt(accu + epsilon)
-      AdagradScaleCompute(linearity_corr_accu_scale,linearity_corr_accu);
-      AdagradScaleCompute(bias_corr_accu_scale,bias_corr_accu);
+      AdagradScaleCompute(linearity_corr_accu_scale, linearity_corr_accu);
+      AdagradScaleCompute(bias_corr_accu_scale, bias_corr_accu);
       // update the parameters
       linearity_.AddMatMatElements(-lr, linearity_corr_accu_scale, linearity_corr_, 1.0);
       bias_.AddVecVec(-lr, bias_corr_accu_scale, bias_corr_, 1.0);

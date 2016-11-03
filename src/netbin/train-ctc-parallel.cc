@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
     po.Register("utts-per-avg", &utts_per_avg, "Number of utterances to process per average (default is 500)");
 
     float frames_per_sec = 100.0;
-    po.Register("frames-per-sec", &frames_per_sec, "Number of utterances to process per average (default is 100)");
+    po.Register("frames-per-sec", &frames_per_sec, "Number of frames per second (default is 100)");
 
     po.Read(argc, argv);
 

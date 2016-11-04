@@ -141,6 +141,12 @@ class AffineTransform : public TrainableLayer {
 
   void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff, const UpdateRule
   rule=sgd_update) {
+
+    if (max_grad_ > 0) {
+      linearity_corr_.ApplyFloor(-max_grad_); linearity_corr.ApplyCeiling(max_grad_);
+      bias_corr_.ApplyFloor(-max_grad_); bias_corr_.ApplyCeiling(max_grad_);
+    }
+    
     // we use following hyperparameters from the option class
     BaseFloat lr = opts_.learn_rate;
     const BaseFloat mmt = opts_.momentum;

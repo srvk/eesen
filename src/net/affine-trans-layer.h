@@ -36,7 +36,8 @@ class AffineTransform : public TrainableLayer {
     : TrainableLayer(dim_in, dim_out), 
       linearity_(dim_out, dim_in), bias_(dim_out),
       linearity_corr_(dim_out, dim_in), bias_corr_(dim_out),
-      learn_rate_coef_(1.0), adaBuffersInitialized(false)
+      learn_rate_coef_(1.0), adaBuffersInitialized(false),
+      max_grad_(0.0)
   { }
   ~AffineTransform()
   { }
@@ -47,7 +48,7 @@ class AffineTransform : public TrainableLayer {
  
   void InitData(std::istream &is) {
     // define options
-    float param_range = 0.02;
+    float param_range = 0.02, max_grad = 0.0;
     float learn_rate_coef = 1.0;
     // parse config
     std::string token; 
@@ -55,6 +56,7 @@ class AffineTransform : public TrainableLayer {
       ReadToken(is, false, &token); 
       /**/ if (token == "<ParamRange>") ReadBasicType(is, false, &param_range);
       else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef);
+      else if (token == "<MaxGrad>") ReadBasicType(is, false, &max_grad);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (ParamStddev|BiasMean|BiasRange|LearnRateCoef|BiasLearnRateCoef)";
       is >> std::ws; // eat-up whitespace
@@ -66,6 +68,7 @@ class AffineTransform : public TrainableLayer {
     
     //
     learn_rate_coef_ = learn_rate_coef;
+    max_grad_ = max_grad;
   }
 
   void InitAdaBuffers() {
@@ -143,7 +146,7 @@ class AffineTransform : public TrainableLayer {
   rule=sgd_update) {
 
     if (max_grad_ > 0) {
-      linearity_corr_.ApplyFloor(-max_grad_); linearity_corr.ApplyCeiling(max_grad_);
+      linearity_corr_.ApplyFloor(-max_grad_); linearity_corr_.ApplyCeiling(max_grad_);
       bias_corr_.ApplyFloor(-max_grad_); bias_corr_.ApplyCeiling(max_grad_);
     }
     
@@ -229,6 +232,7 @@ class AffineTransform : public TrainableLayer {
   CuVector<BaseFloat> bias_corr_accu_scale;
 
   BaseFloat learn_rate_coef_;
+  BaseFloat max_grad_;
 
   bool adaBuffersInitialized;
 };

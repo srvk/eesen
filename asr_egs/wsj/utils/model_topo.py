@@ -60,9 +60,10 @@ if __name__ == '__main__':
     --projection-dim : int
         Project the feature vector down to a given dimensionality between LSTM layers.
         Optional.
-
+    --max-grad : int
+        Clip the gradient of all layers to the specified value.
+        Optional
     """
-
 
     # parse arguments
     arg_elements = [sys.argv[i] for i in range(1, len(sys.argv))]
@@ -86,8 +87,12 @@ if __name__ == '__main__':
         actual_cell_dim = lstm_cell_dim
         model_type = '<LstmParallel>'
 
+    max_grad = 50.0
+    if arguments.has_key('max_grad'):
+        max_grad=float(arguments['max_grad'])
+
     # add the option to set the initial value of the forget-gate bias
-    lstm_comm = ' <ParamRange> ' + param_range + ' <LearnRateCoef> 1.0 <MaxGrad> 50.0'
+    lstm_comm = ' <ParamRange> ' + param_range + ' <LearnRateCoef> 1.0 <MaxGrad> ' + str(max_grad)
     if arguments.has_key('fgate_bias_init'):
         lstm_comm = lstm_comm + ' <FgateBias> ' + arguments['fgate_bias_init']
 
@@ -109,7 +114,7 @@ if __name__ == '__main__':
 
     # optional dimensionality reduction layer
     if input_dim > 0:
-        print '<AffineTransform> <InputDim> ' + str(input_feat_dim) + ' <OutputDim> ' + str(input_dim) + ' <ParamRange> ' + param_range
+        print '<AffineTransform> <InputDim> ' + str(input_feat_dim) + ' <OutputDim> ' + str(input_dim) + ' <ParamRange>' + param_range + ' <MaxGrad> ' + str(max_grad)
         input_feat_dim = input_dim
 
     # the first layer takes input features
@@ -117,12 +122,12 @@ if __name__ == '__main__':
     # the following bidirectional LSTM layers
     for n in range(1, lstm_layer_num):
         if proj_dim > 0:
-            print '<AffineTransform> <InputDim> ' + str(actual_cell_dim) + ' <OutputDim> ' + str(proj_dim) + ' <ParamRange> ' + param_range
+            print '<AffineTransform> <InputDim> ' + str(actual_cell_dim) + ' <OutputDim> ' + str(proj_dim) + '<ParamRange> ' + param_range + ' <MaxGrad> ' + max_grad
             print model_type + ' <InputDim> ' +        str(proj_dim) + ' <CellDim> ' + str(actual_cell_dim) + lstm_comm
         else:
             print model_type + ' <InputDim> ' + str(actual_cell_dim) + ' <CellDim> ' + str(actual_cell_dim) + lstm_comm
 
     # the final affine-transform and softmax layer
-    print '<AffineTransform> <InputDim> ' + str(actual_cell_dim) + ' <OutputDim> ' + str(target_num) + ' <ParamRange> ' + param_range
+    print '<AffineTransform> <InputDim> ' + str(actual_cell_dim) + ' <OutputDim> ' + str(target_num) + ' <ParamRange> ' + param_range + ' <MaxGrad> ' + str(max_grad)
     print '<Softmax> <InputDim> ' + str(target_num) + ' <OutputDim> ' + str(target_num)
     print '</Nnet>'

@@ -36,8 +36,8 @@ class AffineTransform : public TrainableLayer {
     : TrainableLayer(dim_in, dim_out), 
       linearity_(dim_out, dim_in), bias_(dim_out),
       linearity_corr_(dim_out, dim_in), bias_corr_(dim_out),
-      learn_rate_coef_(1.0), adaBuffersInitialized(false),
-      max_grad_(0.0)
+      learn_rate_coef_(1.0), max_grad_(0.0),
+      adaBuffersInitialized(false)
   { }
   ~AffineTransform()
   { }
@@ -132,8 +132,8 @@ class AffineTransform : public TrainableLayer {
       extra += "\n  linearity_grad_accu" + MomentStatistics(linearity_corr_accu) +
                "\n  bias_grad_accu" + MomentStatistics(bias_corr_accu);
     }
-    return std::string("\n  linearity_grad") + MomentStatistics(linearity_corr_) + 
-                       "\n  bias_grad" + MomentStatistics(bias_corr_) + extra;
+    return std::string("\n  linearity_corr_") + MomentStatistics(linearity_corr_) + 
+                       "\n  bias_corr_" + MomentStatistics(bias_corr_) + extra;
   }
 
 
@@ -153,20 +153,20 @@ class AffineTransform : public TrainableLayer {
   void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff, const UpdateRule
   rule=sgd_update) {
 
+    // we use following hyperparameters from the option class
+    BaseFloat lr = opts_.learn_rate;
+    const BaseFloat mmt = opts_.momentum;
+    
+    // compute gradient (incl. momentum)
+    linearity_corr_.AddMatMat(1.0, diff, kTrans, input, kNoTrans, mmt);
+    bias_corr_.AddRowSumMat(1.0, diff, mmt);
+    
+    // clip gradients
     if (max_grad_ > 0) {
       linearity_corr_.ApplyFloor(-max_grad_); linearity_corr_.ApplyCeiling(max_grad_);
       bias_corr_.ApplyFloor(-max_grad_); bias_corr_.ApplyCeiling(max_grad_);
     }
     
-    // we use following hyperparameters from the option class
-    BaseFloat lr = opts_.learn_rate;
-    const BaseFloat mmt = opts_.momentum;
-    // we will also need the number of frames in the mini-batch
-    // compute gradient (incl. momentum)
-    
-    linearity_corr_.AddMatMat(1.0, diff, kTrans, input, kNoTrans, mmt);
-    bias_corr_.AddRowSumMat(1.0, diff, mmt);
-
     if (rule==sgd_update) {
       // update
       lr *= learn_rate_coef_;

@@ -85,6 +85,12 @@ class AffineTransform : public TrainableLayer {
       ExpectToken(is, binary, "<LearnRateCoef>");
       ReadBasicType(is, binary, &learn_rate_coef_);
     }
+
+    if ('<' == Peek(is, binary)) {
+      ExpectToken(is, binary, "<MaxGrad>");
+      ReadBasicType(is, binary, &max_grad_);
+    }
+
     // weights
     linearity_.Read(is, binary);
     bias_.Read(is, binary);
@@ -99,6 +105,8 @@ class AffineTransform : public TrainableLayer {
   void WriteData(std::ostream &os, bool binary) const {
     WriteToken(os, binary, "<LearnRateCoef>");
     WriteBasicType(os, binary, learn_rate_coef_);
+    WriteToken(os, binary, "<MaxGrad>");
+    WriteBasicType(os, binary, max_grad_);
     // weights
     linearity_.Write(os, binary);
     bias_.Write(os, binary);

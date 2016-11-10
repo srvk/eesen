@@ -46,8 +46,8 @@ struct NetTrainOptions {
     po->Register("learn-rate", &learn_rate, "Learning rate");
     po->Register("momentum", &momentum, "Momentum");
     po->Register("adagrad-epsilon", &adagrad_epsilon, "Epsilon for numerical stability for all adaptive optimizers (Adagrad, RMSProp)");
-    po->Register("rms-prop", &adagrad_epsilon, "Rho parameter for RMSProp");
-
+    po->Register("rms-prop-rho", &rmsprop_rho, "Rho parameter for RMSProp");
+    rmsprop_one_minus_rho = 1.0 - rmsprop_rho;
   }
   // print for debug purposes
   friend std::ostream& operator<<(std::ostream& os, const NetTrainOptions& opts) {
@@ -55,7 +55,8 @@ struct NetTrainOptions {
        << "learn_rate" << opts.learn_rate << ", "
        << "momentum" << opts.momentum << ", "
        << "adagrad_epsilon" << opts.adagrad_epsilon << ", "
-       << "rmsprop_rho" << opts.rmsprop_rho;
+       << "rmsprop_rho" << opts.rmsprop_rho << ", "
+       << "rmsprop_one_minus_rho" << rmsprop_one_minus_rho;
     return os;
   }
 };

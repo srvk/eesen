@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
     po.Register("utts-per-avg", &utts_per_avg, "Number of utterances to process per average (default is 250)");
 
     std::string opt = "SGD";
-    po.Register("opt-algorithm", &opt, "Optimization algorithm (SGD|Adagrad)");
+    po.Register("opt-algorithm", &opt, "Optimization algorithm (SGD|Adagrad|RMSProp)");
 
     po.Read(argc, argv);
 

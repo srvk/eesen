@@ -66,7 +66,7 @@ class TrainableLayer : public Layer {
                                 CuMatrixBase<BaseFloat> &grad_tmp) {
     grad_tmp.CopyFromMat(grad);
     grad_tmp.MulElements(grad);
-    accu.AddMat(1.0,grad_tmp);
+    accu.AddMat(1.0, grad_tmp);
   }
 
   /// Compute accu+grad**2 elementwise for vectors
@@ -74,7 +74,25 @@ class TrainableLayer : public Layer {
                                 CuVectorBase<BaseFloat> &grad_tmp) {
     grad_tmp.CopyFromVec(grad);
     grad_tmp.MulElements(grad);
-    accu.AddVec(1.0,grad_tmp);
+    accu.AddVec(1.0, grad_tmp);
+  }
+
+  /// Compute accu_new = rho * accu + (1 - rho) * grad ** 2 elementwise for matrices
+  inline void RMSPropAccuUpdate(CuMatrixBase<BaseFloat> &accu, CuMatrixBase<BaseFloat> &grad, 
+                                CuMatrixBase<BaseFloat> &grad_tmp) {
+    grad_tmp.CopyFromMat(grad);
+    grad_tmp.MulElements(grad);
+    accu.Scale(opts_.rmsprop_rho);
+    accu.AddMat(opts_.rmsprop_one_minus_rho, grad_tmp);
+  }
+
+  /// Compute accu_new = rho * accu + (1 - rho) * grad ** 2 elementwise for vectors
+  inline void RMSPropAccuUpdate(CuVectorBase<BaseFloat> &accu, CuVectorBase<BaseFloat> &grad, 
+                                CuVectorBase<BaseFloat> &grad_tmp) {
+    grad_tmp.CopyFromVec(grad);
+    grad_tmp.MulElements(grad);
+    accu.Scale(opts_.rmsprop_rho);
+    accu.AddVec(opts_.rmsprop_one_minus_rho, grad_tmp);
   }
 
   /// calculate 1.0 / sqrt(accu + epsilon) elementwise for matrices

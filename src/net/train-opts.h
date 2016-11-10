@@ -32,16 +32,21 @@ struct NetTrainOptions {
   BaseFloat momentum;
   BaseFloat adagrad_epsilon;
   BaseFloat rmsprop_rho;
+  BaseFloat rmsprop_one_minus_rho;
+
   // default values
   NetTrainOptions() : learn_rate(0.008),
                       momentum(0.0),
-                      adagrad_epsilon(1e-6)
+                      adagrad_epsilon(1e-6),
+                      rmsprop_rho(0.9),
+                      rmsprop_one_minus_rho(0.1)
                       {}
   // register options
   void Register(OptionsItf *po) {
     po->Register("learn-rate", &learn_rate, "Learning rate");
     po->Register("momentum", &momentum, "Momentum");
     po->Register("adagrad-epsilon", &adagrad_epsilon, "Epsilon for numerical stability for all adaptive optimizers (Adagrad, RMSProp)");
+    po->Register("rms-prop", &adagrad_epsilon, "Rho parameter for RMSProp");
 
   }
   // print for debug purposes
@@ -49,7 +54,8 @@ struct NetTrainOptions {
     os << "TrainOptions : "
        << "learn_rate" << opts.learn_rate << ", "
        << "momentum" << opts.momentum << ", "
-       << "adagrad_epsilon" << opts.adagrad_epsilon;
+       << "adagrad_epsilon" << opts.adagrad_epsilon << ", "
+       << "rmsprop_rho" << opts.rmsprop_rho;
     return os;
   }
 };

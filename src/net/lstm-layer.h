@@ -337,21 +337,30 @@ public:
         phole_i_c_.AddVec(-lr, phole_i_c_corr_, 1.0);
         phole_f_c_.AddVec(-lr, phole_f_c_corr_, 1.0);
         phole_o_c_.AddVec(-lr, phole_o_c_corr_, 1.0); 
-      }
-      else if (rule==adagrad_update) {
+      } 
+      else if (rule==adagrad_update || rule==rmsprop_update) {
         if (!adaBuffersInitialized) {
           InitAdaBuffers();
           adaBuffersInitialized=true;
         }
 
-
         // update the accumolators
-        AdagradAccuUpdate(wei_gifo_x_corr_accu, wei_gifo_x_corr_, wei_gifo_x_corr_accu_scale);
-        AdagradAccuUpdate(wei_gifo_m_corr_accu, wei_gifo_m_corr_, wei_gifo_m_corr_accu_scale); 
-        AdagradAccuUpdate(bias_corr_accu, bias_corr_, bias_corr_accu_scale);
-        AdagradAccuUpdate(phole_i_c_corr_accu, phole_i_c_corr_, phole_i_c_corr_accu_scale);
-        AdagradAccuUpdate(phole_f_c_corr_accu, phole_f_c_corr_, phole_f_c_corr_accu_scale);
-        AdagradAccuUpdate(phole_o_c_corr_accu, phole_o_c_corr_, phole_o_c_corr_accu_scale);
+        if (rule==adagrad_update)
+        {
+          AdagradAccuUpdate(wei_gifo_x_corr_accu, wei_gifo_x_corr_, wei_gifo_x_corr_accu_scale);
+          AdagradAccuUpdate(wei_gifo_m_corr_accu, wei_gifo_m_corr_, wei_gifo_m_corr_accu_scale); 
+          AdagradAccuUpdate(bias_corr_accu, bias_corr_, bias_corr_accu_scale);
+          AdagradAccuUpdate(phole_i_c_corr_accu, phole_i_c_corr_, phole_i_c_corr_accu_scale);
+          AdagradAccuUpdate(phole_f_c_corr_accu, phole_f_c_corr_, phole_f_c_corr_accu_scale);
+          AdagradAccuUpdate(phole_o_c_corr_accu, phole_o_c_corr_, phole_o_c_corr_accu_scale);
+        } else {
+          RMSPropAccuUpdate(wei_gifo_x_corr_accu, wei_gifo_x_corr_, wei_gifo_x_corr_accu_scale);
+          RMSPropAccuUpdate(wei_gifo_m_corr_accu, wei_gifo_m_corr_, wei_gifo_m_corr_accu_scale); 
+          RMSPropAccuUpdate(bias_corr_accu, bias_corr_, bias_corr_accu_scale);
+          RMSPropAccuUpdate(phole_i_c_corr_accu, phole_i_c_corr_, phole_i_c_corr_accu_scale);
+          RMSPropAccuUpdate(phole_f_c_corr_accu, phole_f_c_corr_, phole_f_c_corr_accu_scale);
+          RMSPropAccuUpdate(phole_o_c_corr_accu, phole_o_c_corr_, phole_o_c_corr_accu_scale);
+        }
        
         // calculate 1.0 / sqrt(accu + epsilon)
         AdagradScaleCompute(wei_gifo_x_corr_accu_scale,wei_gifo_x_corr_accu);

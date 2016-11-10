@@ -445,6 +445,9 @@ void Net::SetUpdateAlgorithm(std::string opt) {
   }else if (opt.compare("Adagrad")==0) {
     KALDI_LOG << "Selecting Adagrad as optimization algorithm.";
     update_algorithm=adagrad_update;
+  }else if (opt.compare("RMSProp")==0) {
+    KALDI_LOG << "Selecting RMSProp as optimization algorithm.";
+    update_algorithm=rmsprop_update;
   }else{
     KALDI_ERR << "This optimization algorithm is unsupported: " << opt;
     KALDI_LOG << "Selecting SGD with momentum as optimization algorithm.";

@@ -172,16 +172,22 @@ class AffineTransform : public TrainableLayer {
       lr *= learn_rate_coef_;
       linearity_.AddMat(-lr, linearity_corr_);
       bias_.AddVec(-lr, bias_corr_);
-    } else if (rule==adagrad_update) {
+    } else if (rule==adagrad_update || rule==rmsprop_update) {
 
       if (!adaBuffersInitialized) {
         InitAdaBuffers();
         adaBuffersInitialized=true;
       }
 
-      // update the accumolators
-      AdagradAccuUpdate(linearity_corr_accu, linearity_corr_, linearity_corr_accu_scale);
-      AdagradAccuUpdate(bias_corr_accu, bias_corr_, bias_corr_accu_scale);
+      // update the accumolatorsi
+      if (rule==adagrad_update)
+      {
+        AdagradAccuUpdate(linearity_corr_accu, linearity_corr_, linearity_corr_accu_scale);
+        AdagradAccuUpdate(bias_corr_accu, bias_corr_, bias_corr_accu_scale);
+      }else {
+        RMSPropAccuUpdate(linearity_corr_accu, linearity_corr_, linearity_corr_accu_scale);
+        RMSPropAccuUpdate(bias_corr_accu, bias_corr_, bias_corr_accu_scale);
+      }
       // calculate 1.0 / sqrt(accu + epsilon)
       AdagradScaleCompute(linearity_corr_accu_scale, linearity_corr_accu);
       AdagradScaleCompute(bias_corr_accu_scale, bias_corr_accu);

@@ -56,7 +56,7 @@ struct NetTrainOptions {
        << "momentum" << opts.momentum << ", "
        << "adagrad_epsilon" << opts.adagrad_epsilon << ", "
        << "rmsprop_rho" << opts.rmsprop_rho << ", "
-       << "rmsprop_one_minus_rho" << rmsprop_one_minus_rho;
+       << "rmsprop_one_minus_rho" << opts.rmsprop_one_minus_rho;
     return os;
   }
 };

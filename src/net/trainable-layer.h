@@ -35,7 +35,7 @@
 
 namespace eesen {
 
-enum UpdateRule {invalid_update=0, sgd_update=1, adagrad_update=2};
+enum UpdateRule {invalid_update=0, sgd_update=1, adagrad_update=2, rmsprop_update=3};
 
 /**
  * Class TrainableLayer is a Layer which has trainable parameters,
@@ -44,7 +44,7 @@ enum UpdateRule {invalid_update=0, sgd_update=1, adagrad_update=2};
 class TrainableLayer : public Layer {
  public: 
   TrainableLayer(int32 input_dim, int32 output_dim)
-    : Layer(input_dim, output_dim), adagrad_epsilon(1e-6) { }
+    : Layer(input_dim, output_dim) { }
   virtual ~TrainableLayer() { }
 
   /// Check if contains trainable parameters 
@@ -82,7 +82,7 @@ class TrainableLayer : public Layer {
     accu_scale.CopyFromMat(accu);
     //accu_scale.Add(adagrad_epsilon);
     //accu_scale.ApplyPow(0.5);
-    accu_scale.ApplySqrt(adagrad_epsilon);
+    accu_scale.ApplySqrt(opts_.adagrad_epsilon);
     accu_scale.InvertElements();
   }
 
@@ -91,7 +91,7 @@ class TrainableLayer : public Layer {
     accu_scale.CopyFromVec(accu);
     //accu_scale.Add(adagrad_epsilon);
     //accu_scale.ApplyPow(0.5);
-    accu_scale.ApplySqrt(adagrad_epsilon);
+    accu_scale.ApplySqrt(opts_.adagrad_epsilon);
     accu_scale.InvertElements();
   }
 
@@ -109,7 +109,6 @@ class TrainableLayer : public Layer {
   }
 
   virtual void InitData(std::istream &is) = 0;
-  BaseFloat adagrad_epsilon=1e-6;
 
  protected:
   /// Option-class with training hyper-parameters

@@ -1,6 +1,5 @@
-
---- a/src/include/fst/minimize.h
-+++ b/src/include/fst/minimize.h
+--- minimize.h
++++ minimize.h
 @@ -124,7 +124,14 @@
    typedef typename A::Weight Weight;
    typedef ReverseArc<A> RevA;
@@ -47,8 +46,8 @@
  
    if (!(props & kAcceptor)) {  // weighted transducer
      VectorFst<GallicArc<A, GALLIC_LEFT>> gfst;
---- a/src/include/fst/partition.h
-+++ b/src/include/fst/partition.h
+--- partition.h
++++ partition.h
 @@ -36,9 +36,13 @@
    };
  

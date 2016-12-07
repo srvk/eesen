@@ -27,6 +27,8 @@
 #include "base/kaldi-common.h"
 #include <sstream>
 
+using namespace std;
+
 namespace eesen {
 
 // typedef fst::StdArc::StateId StateId;

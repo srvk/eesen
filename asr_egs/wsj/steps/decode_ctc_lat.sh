@@ -34,10 +34,10 @@ echo "$0 $@"  # Print the command line for logging
 [ -f ./path.sh ] && . ./path.sh;
 . parse_options.sh || exit 1;
 
-if [ $# != 3 ]; then
-   echo "Wrong #arguments ($#, expected 3)"
-   echo "Usage: steps/decode_ctc.sh [options] <graph-dir> <data-dir> <decode-dir>"
-   echo " e.g.: steps/decode_ctc.sh data/lang data/test exp/train_l4_c320/decode"
+if [ $# -ne 3 -a $# -ne 4 ]; then
+   echo "Wrong #arguments ($#, expected 3 or 4)"
+   echo "Usage: steps/decode_ctc_lat.sh [options] <graph-dir> <data-dir> <decode-dir> [model-dir]"
+   echo " e.g.: steps/decode_ctc_lat.sh data/lang data/test exp/train_l4_c320/decode"
    echo "main options (for others, see top of script file)"
    echo "  --stage                                  # starts from which stage"
    echo "  --nj <nj>                                # number of parallel jobs"
@@ -50,7 +50,11 @@ graphdir=$1
 data=$2
 dir=`echo $3 | sed 's:/$::g'` # remove any trailing slash.
 
-srcdir=`dirname $dir`; # assume model directory one level up from decoding directory.
+if [ $# -eq 4 ]; then
+    srcdir=$4; 
+else
+    srcdir=`dirname $dir`; # assume model directory one level up from decoding directory.
+fi
 sdata=$data/split$nj;
 
 thread_string=

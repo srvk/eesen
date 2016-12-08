@@ -130,8 +130,12 @@ Layer* Layer::Init(const std::string &conf_line) {
   return layer;
 }
 
-
 Layer* Layer::Read(std::istream &is, bool binary) {
+  // by default we do not want to convert the network to non-parallel
+  return Read (is, binary, false);
+}
+
+Layer* Layer::Read(std::istream &is, bool binary, bool convertparal) {
   int32 dim_out, dim_in;
   std::string token;
 
@@ -156,9 +160,18 @@ Layer* Layer::Read(std::istream &is, bool binary) {
     ExpectToken(is, binary, "<OutputDim>");
   }
   ReadBasicType(is, binary, &dim_out);
+
+  if (convertparal) {
+    Layer *lazer = NewLayerOfType(MarkerToType(token), dim_in, dim_out);
+    Layer *layer = NewLayerOfType(lazer->GetTypeNonParal(), dim_in, dim_out);
+    KALDI_VLOG(1) << "Converting " << token << " layer on the fly to non-parallel (if needed)";
+    layer->ReadData(is, binary);
+    return layer;
+  }
   
   Layer *layer = NewLayerOfType(MarkerToType(token), dim_in, dim_out);
   layer->ReadData(is, binary);
+
   return layer;
 }
 

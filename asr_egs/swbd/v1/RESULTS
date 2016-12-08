@@ -12,6 +12,10 @@ exit 0
 %WER 15.0 | 1831 21395 | 87.7 9.9 2.4 2.7 15.0 54.0 | exp/train_phn_l5_c320/decode_eval2000_sw1_fsh_tgpr/score_7/eval2000.ctm.swbd.filt.sys
 %WER 21.0 | 4459 42989 | 82.8 13.8 3.4 3.7 21.0 59.9 | exp/train_phn_l5_c320/decode_eval2000_sw1_fsh_tgpr/score_7/eval2000.ctm.filt.sys
 %WER 26.9 | 2628 21594 | 77.6 17.4 5.0 4.5 26.9 64.6 | exp/train_phn_l5_c320/decode_eval2000_sw1_fsh_tgpr/score_6/eval2000.ctm.callhm.filt.sys
+# Decoding with word insertion panelty and confidence
+%WER 14.8 | 1831 21395 | 87.6 9.8 2.6 2.4 14.8 53.8 | -0.310 | exp/train_phn_l5_c320/decode_eval2000_sw1_fsh_tgpr/score_p0.5_8/eval2000.ctm.swbd.filt.sys
+%WER 20.4 | 4459 42989 | 81.9 12.9 5.2 2.3 20.4 59.7 | -0.205 | exp/train_phn_l5_c320/decode_eval2000_sw1_fsh_tgpr/score_p1.5_7/eval2000.ctm.filt.sys
+%WER 26.0 | 2628 21594 | 76.9 16.3 6.8 2.9 26.0 64.1 | -0.220 | exp/train_phn_l5_c320/decode_eval2000_sw1_fsh_tgpr/score_p1.5_7/eval2000.ctm.callhm.filt.sys
 
 ###################################################################
 # A comparison to HMM/DNN hybrid systems

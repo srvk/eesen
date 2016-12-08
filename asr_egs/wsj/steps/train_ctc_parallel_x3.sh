@@ -47,6 +47,7 @@ add_deltas=true          # whether to add deltas
 copy_feats=true          # whether to copy features into a local dir (on the GPU machine)
 feats_tmpdir=            # the tmp dir to save the copied features, when copy_feats=true
 
+
 # status of learning rate schedule; useful when training is resumed from a break point
 cvacc=0
 halving=0
@@ -244,7 +245,7 @@ for iter in $(seq $start_epoch_num $max_iters); do
     echo $learn_rate > $dir/.lrate
 done
 
-# Convert the model marker from "<BiLstmParallel>" to "<BiLstm>"
+# Convert the model marker from "<BiLstmParallel>" to "<BiLstm>" (no longer needed)
 format-to-nonparallel $dir/nnet/nnet.iter${iter} $dir/final.nnet >& $dir/log/model_to_nonparal.log || exit 1;
 
 echo "Training succeeded. The final model $dir/final.nnet"

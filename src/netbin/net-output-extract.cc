@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     Net net;
-    net.Read(model_filename);
+    net.Read(model_filename, true);
 
     // Load the counts of the labels/targets, will be used to scale the softmax-layer
     // outputs for ASR decoding
@@ -85,7 +85,6 @@ int main(int argc, char *argv[]) {
     Matrix<BaseFloat> net_out_host;
 
     Timer time;
-    double time_now = 0;
     int32 num_done = 0;
 
     // Iterate over all sequences

@@ -589,6 +589,17 @@ template<class Arc> class DeterminizerStar {
         } else {  // already have one.
           if (final_string != elem.string) {
             std::cerr << "DeterminizerStar: FST was not functional -> not determinizable\n";
+            std::cerr << "Caused by: final string: " << final_string << " != elem.string: " << elem.string << "\n";
+            {
+                vector<Label> tmp_seq;
+                repository_.SeqOfId(final_string, &tmp_seq);
+                std::cerr << "First string: ";
+                for (size_t i = 0; i < tmp_seq.size(); i++) std::cerr << tmp_seq[i] << " ";
+                std::cerr << "\nSecond string: ";
+                repository_.SeqOfId(elem.string, &tmp_seq);
+                for (size_t i = 0; i < tmp_seq.size(); i++) std::cerr << tmp_seq[i] << " ";
+                std::cerr << "\n";
+            }
             throw std::runtime_error("Non-functional FST: cannot determinize.\n");
           }            
           final_weight = Plus(final_weight, Times(elem.weight, this_final_weight));
@@ -628,6 +639,17 @@ template<class Arc> class DeterminizerStar {
         while (cur_in != end && cur_in->state == cur_out->state) {  // merge elements.
           if (cur_in->string != cur_out->string) {
             std::cerr << "DeterminizerStar: FST was not functional -> not determinizable\n";
+            std::cerr << "Caused by: cur_in string: " << cur_in->string << " != cur_out string: " << cur_out->string << "\n";
+            {
+                vector<Label> tmp_seq;
+                repository_.SeqOfId(cur_in->string, &tmp_seq);
+                std::cerr << "First string: ";
+                for (size_t i = 0; i < tmp_seq.size(); i++) std::cerr << tmp_seq[i] << " ";
+                std::cerr << "\nSecond string: ";
+                repository_.SeqOfId(cur_out->string, &tmp_seq);
+                for (size_t i = 0; i < tmp_seq.size(); i++) std::cerr << tmp_seq[i] << " ";
+                std::cerr << "\n";
+            }
             throw std::runtime_error("Non-functional FST: cannot determinize.\n");
           }            
           cur_out->weight = Plus(cur_out->weight, cur_in->weight);

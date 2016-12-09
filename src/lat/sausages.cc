@@ -21,6 +21,8 @@
 #include "lat/sausages.h"
 #include "lat/lattice-functions.h"
 
+using namespace std;
+
 namespace eesen {
 
 // this is Figure 6 in the paper.

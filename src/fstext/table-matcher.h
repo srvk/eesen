@@ -22,7 +22,9 @@
 #include <fst/fstlib.h>
 #include <fst/fst-decl.h>
 
-
+#ifdef HAVE_OPENFST_GE_10500
+#include "fstext/ref-counter.h"
+#endif
 
 namespace fst {
 

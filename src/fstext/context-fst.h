@@ -66,6 +66,9 @@ using std::tr1::unordered_map;
 #include <fst/fst-decl.h>
 
 #include "util/const-integer-set.h"
+#ifdef HAVE_OPENFST_GE_10500
+#include "fstext/ref-counter.h"
+#endif
 
 namespace fst {
 
@@ -144,7 +147,24 @@ class ContextFstImpl : public CacheImpl<Arc> {
   // This function expands arcs only [not final state weight].
   void Expand(StateId s);
 
+ #ifdef HAVE_OPENFST_GE_10500
+ int RefCount() const {
+   return ref_count_.count();
+ }
+
+ int IncrRefCount() {
+   return ref_count_.Incr();
+ }
+
+ int DecrRefCount() {
+   return ref_count_.Decr();
+ }
+#endif
+
  private:
+#ifdef HAVE_OPENFST_GE_10500
+ RefCounter ref_count_;
+#endif
   //! Finds state-id corresponding to this vector of phones.  Inserts it if necessary.
   StateId FindState(const vector<LabelT> &seq);
 

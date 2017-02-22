@@ -96,9 +96,13 @@ public:
       
       phole_o_c_corr_accu.Resize(cell_dim_); phole_o_c_corr_accu.Set(0.0);
       phole_o_c_corr_accu_scale.Resize(cell_dim_);
+
+      adaBuffersInitialized = true;
     }
 
     void ReadData(std::istream &is, bool binary) {
+      adaBuffersInitialized = false;
+      
       // optional learning-rate coefs
       if ('<' == Peek(is, binary)) {
         ExpectToken(is, binary, "<LearnRateCoef>");
@@ -107,6 +111,20 @@ public:
       if ('<' == Peek(is, binary)) {
         ExpectToken(is, binary, "<MaxGrad>");
         ReadBasicType(is, binary, &max_grad_);
+      }
+
+      // optionally read in accumolators for AdaGrad and RMSProp
+      if ('<' == Peek(is, binary)) {
+        ExpectToken(is, binary, "<LstmAccus>");
+
+        InitAdaBuffers();
+
+        wei_gifo_x_corr_accu.Read(is, binary);
+        wei_gifo_m_corr_accu.Read(is, binary);
+        bias_corr_accu.Read(is, binary);
+        phole_i_c_corr_accu.Read(is, binary);
+        phole_f_c_corr_accu.Read(is, binary);
+        phole_o_c_corr_accu.Read(is, binary);
       }
 
       // read parameters
@@ -124,7 +142,6 @@ public:
       phole_f_c_corr_ = phole_f_c_; phole_f_c_corr_.SetZero();
       phole_o_c_corr_ = phole_o_c_; phole_o_c_corr_.SetZero();
 
-      adaBuffersInitialized = false;
     }
 
     void WriteData(std::ostream &os, bool binary) const {
@@ -132,6 +149,18 @@ public:
       WriteBasicType(os, binary, learn_rate_coef_);
       WriteToken(os, binary, "<MaxGrad>");
       WriteBasicType(os, binary, max_grad_);
+
+      if(adaBuffersInitialized)
+      {
+        WriteToken(os, binary, "<LstmAccus>");
+
+        wei_gifo_x_.Write(os, binary);
+        wei_gifo_m_.Write(os, binary);
+        bias_.Write(os, binary);
+        phole_i_c_.Write(os, binary);
+        phole_f_c_.Write(os, binary);
+        phole_o_c_.Write(os, binary);
+      }
 
       // write parameters of the forward layer
       wei_gifo_x_.Write(os, binary);
@@ -341,7 +370,6 @@ public:
       else if (rule==adagrad_update || rule==rmsprop_update) {
         if (!adaBuffersInitialized) {
           InitAdaBuffers();
-          adaBuffersInitialized=true;
         }
 
         // update the accumolators
@@ -424,6 +452,10 @@ public:
       wei_copy->Range(offset, size).CopyFromVec(phole_f_c_); offset += size;
       size = phole_o_c_.Dim();
       wei_copy->Range(offset, size).CopyFromVec(phole_o_c_); offset += size;
+    }
+
+    void SetDropFactor(BaseFloat dropfactor) {
+      //TODO
     }
 
 //private:

@@ -116,7 +116,6 @@ public:
       phole_o_c_fw_corr_accu_scale.Resize(cell_dim_);
 
       //bw for Ada:
-      
       wei_gifo_x_bw_corr_accu.Resize(4 * cell_dim_, input_dim_); wei_gifo_x_bw_corr_accu.Set(0.0);
       wei_gifo_x_bw_corr_accu_scale.Resize(4 * cell_dim_, input_dim_);
 
@@ -135,9 +134,13 @@ public:
       phole_o_c_bw_corr_accu.Resize(cell_dim_); phole_o_c_bw_corr_accu.Set(0.0);
       phole_o_c_bw_corr_accu_scale.Resize(cell_dim_);
 
+      adaBuffersInitialized = true;
     }
 
     void ReadData(std::istream &is, bool binary) {
+      //for initAdaBuffers();
+      adaBuffersInitialized = false;
+      
       // optional learning-rate coefs
       if ('<' == Peek(is, binary)) {
         ExpectToken(is, binary, "<LearnRateCoef>");
@@ -150,6 +153,28 @@ public:
       if ('<' == Peek(is, binary)) {
         ExpectToken(is, binary, "<DropFactor>");
         ReadBasicType(is, binary, &drop_factor_);
+      }
+
+      // optionally read in accumolators for AdaGrad and RMSProp
+      if ('<' == Peek(is, binary)) {
+        ExpectToken(is, binary, "<BiLstmAccus>");
+
+        InitAdaBuffers();
+        
+        wei_gifo_x_fw_corr_accu.Read(is, binary);
+        wei_gifo_m_fw_corr_accu.Read(is, binary);
+        bias_fw_corr_accu.Read(is, binary);
+        phole_i_c_fw_corr_accu.Read(is, binary);
+        phole_f_c_fw_corr_accu.Read(is, binary);
+        phole_o_c_fw_corr_accu.Read(is, binary);
+
+        wei_gifo_x_bw_corr_accu.Read(is, binary);
+        wei_gifo_m_bw_corr_accu.Read(is, binary);
+        bias_bw_corr_accu.Read(is, binary);
+        phole_i_c_bw_corr_accu.Read(is, binary);
+        phole_f_c_bw_corr_accu.Read(is, binary);
+        phole_o_c_bw_corr_accu.Read(is, binary);
+
       }
 
       // read parameters of forward layer
@@ -182,8 +207,6 @@ public:
       phole_f_c_bw_corr_ = phole_f_c_bw_; phole_f_c_bw_corr_.SetZero();
       phole_o_c_bw_corr_ = phole_o_c_bw_; phole_o_c_bw_corr_.SetZero();
 
-      //for initAdaBuffers();
-      adaBuffersInitialized = false;
     }
 
     void WriteData(std::ostream &os, bool binary) const {
@@ -194,6 +217,26 @@ public:
       WriteToken(os, binary, "<DropFactor>");
       WriteBasicType(os, binary, drop_factor_);
 
+      if(adaBuffersInitialized)
+      {
+        WriteToken(os, binary, "<BiLstmAccus>");
+        
+        wei_gifo_x_fw_corr_accu.Write(os, binary);
+        wei_gifo_m_fw_corr_accu.Write(os, binary);
+        bias_fw_corr_accu.Write(os, binary);
+        phole_i_c_fw_corr_accu.Write(os, binary);
+        phole_f_c_fw_corr_accu.Write(os, binary);
+        phole_o_c_fw_corr_accu.Write(os, binary);
+
+        wei_gifo_x_bw_corr_accu.Write(os, binary);
+        wei_gifo_m_bw_corr_accu.Write(os, binary);
+        bias_bw_corr_accu.Write(os, binary);
+        phole_i_c_bw_corr_accu.Write(os, binary);
+        phole_f_c_bw_corr_accu.Write(os, binary);
+        phole_o_c_bw_corr_accu.Write(os, binary);
+        
+      }
+      
       // write parameters of the forward layer
       wei_gifo_x_fw_.Write(os, binary);
       wei_gifo_m_fw_.Write(os, binary);
@@ -603,7 +646,6 @@ public:
 
         if (!adaBuffersInitialized) {
           InitAdaBuffers();
-          adaBuffersInitialized=true;
         }
 
         if (rule==adagrad_update)

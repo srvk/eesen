@@ -77,9 +77,13 @@ class AffineTransform : public TrainableLayer {
     bias_corr_accu.Resize(output_dim_, kUndefined); bias_corr_accu.Set(0.0);
     linearity_corr_accu_scale.Resize(output_dim_, input_dim_, kUndefined); linearity_corr_accu_scale.Set(0.0);
     bias_corr_accu_scale.Resize(output_dim_, kUndefined); bias_corr_accu_scale.Set(0.0);
+    adaBuffersInitialized = true;
   }
 
   void ReadData(std::istream &is, bool binary) {
+    
+    adaBuffersInitialized = false;
+    
     // optional learning-rate coefs
     if ('<' == Peek(is, binary)) {
       ExpectToken(is, binary, "<LearnRateCoef>");
@@ -91,11 +95,19 @@ class AffineTransform : public TrainableLayer {
       ReadBasicType(is, binary, &max_grad_);
     }
 
+    // optionally read in accumolators for AdaGrad and RMSProp
+    if ('<' == Peek(is, binary)) {
+      ExpectToken(is, binary, "<AffineAccus>");
+   
+      InitAdaBuffers();
+
+      linearity_corr_accu.Read(is, binary);
+      bias_corr_accu.Read(is, binary);
+    }
+
     // weights
     linearity_.Read(is, binary);
     bias_.Read(is, binary);
-
-    adaBuffersInitialized = false;
 
     KALDI_ASSERT(linearity_.NumRows() == output_dim_);
     KALDI_ASSERT(linearity_.NumCols() == input_dim_);
@@ -107,6 +119,15 @@ class AffineTransform : public TrainableLayer {
     WriteBasicType(os, binary, learn_rate_coef_);
     WriteToken(os, binary, "<MaxGrad>");
     WriteBasicType(os, binary, max_grad_);
+
+    // write out optional accumolators
+    if(adaBuffersInitialized)
+    {
+        WriteToken(os, binary, "<AffineAccus>");
+        linearity_corr_accu.Write(os, binary);
+        bias_corr_accu.Write(os, binary);
+    }
+
     // weights
     linearity_.Write(os, binary);
     bias_.Write(os, binary);
@@ -211,6 +232,10 @@ class AffineTransform : public TrainableLayer {
   void SetBias(const CuVectorBase<BaseFloat>& bias) {
     KALDI_ASSERT(bias.Dim() == bias_.Dim());
     bias_.CopyFromVec(bias);
+  }
+
+  void SetDropFactor(BaseFloat dropfactor) {
+      //TODO
   }
 
   const CuMatrixBase<BaseFloat>& GetLinearity() const {

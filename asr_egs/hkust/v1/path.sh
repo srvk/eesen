@@ -3,9 +3,13 @@ export PATH=$PWD/utils/:$EESEN_ROOT/src/netbin:$EESEN_ROOT/src/featbin:$EESEN_RO
 export LC_ALL=C
 
 if [[ `uname -n` =~ comet-* ]]; then
+  # SDSC Comet cluster
   :
+  
 elif [[ `uname -n`=~ bridges ]]; then
+  # PSC Bridges cluster
   :
+  
 elif [[ `uname -n`=~ compute-* ]]; then
   # CMU Rocks cluster
   
@@ -25,13 +29,3 @@ fi
 
 [ -f ${EESEN_ROOT}/tools/env.sh ] && . ${EESEN_ROOT}/tools/env.sh
 [ -f ./local.sh ] && . ./local.sh
-
-# for decoding without requiring CUDA
-if [[ "${SLURM_JOB_NAME}" =~ test-* || "${PBS_JOBNAME}" =~ test-* ]]; then
-  echo "Setting path to prefer non-gpu code ..."
-  export PATH=${EESEN_ROOT}/src-nogpu/netbin:${EESEN_ROOT}/src-nogpu/decoderbin:${PATH}
-  export LD_LIBRARY_PATH=${EESEN_ROOT}/tools/openfst/lib:${LD_LIBRARY_PATH}
-  export PATH=${PATH}:/data/ASR5/fmetze/kaldi-latest/src/latbin
-else
-  :
-fi

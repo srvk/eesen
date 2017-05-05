@@ -82,12 +82,15 @@ class DeepBidirRNN:
                     cell = None
                     if nproj > 0:
                         cell = tf.contrib.rnn.LSTMCell(nhidden, num_proj = nproj, state_is_tuple = True,
-                           initializer = tf.contrib.layers.xavier_initializer(), name = "proj_lstm")
+                           initializer = tf.contrib.layers.xavier_initializer())
+                        #, name = "proj_lstm")
                     else:
-                        cell = tf.contrib.rnn.BasicLSTMCell(nhidden, state_is_tuple = True, name = "lstm")
+                        cell = tf.contrib.rnn.BasicLSTMCell(nhidden, state_is_tuple = True)
+                        #, name = "lstm")
                     # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs, self.seq_len, dtype = tf.float32)
                     outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs, self.seq_len, swap_memory=True, dtype = tf.float32)
-                    outputs = tf.concat_v2(outputs, 2, name = "output")
+                    # also some API change
+                    outputs = tf.concat(values = outputs, axis = 2, name = "output")
         outputs = tf.reshape(outputs, [-1, output_size], name = "dbr_output")
 
         with tf.variable_scope("fc"):
@@ -102,7 +105,8 @@ class DeepBidirRNN:
             logits = tf.transpose(logits, (1, 0, 2))
 
         with tf.variable_scope("loss"):
-            loss = tf.nn.ctc_loss(self.labels, logits, self.seq_len)
+            # there are some API changes, so use named arguments here ...
+            loss = tf.nn.ctc_loss(labels=self.labels, inputs=logits, sequence_length=self.seq_len)
             regularized_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()])
             self.cost = tf.reduce_mean(loss) + l2 * regularized_loss
 

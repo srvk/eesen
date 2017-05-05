@@ -20,7 +20,7 @@ import tf
 #   Function definitions
 # -----------------------------------------------------------------
 
-def load_labels (dir, files=['labels.tr', 'labels.cv']):
+def load_labels(dir, files=['labels.tr', 'labels.cv']):
     """
     Load a set of labels in (local) Eesen format
     """
@@ -81,7 +81,6 @@ def make_even_batches(feats, labels, uttids, BATCH_SIZE):
     feats, labels, uttids = zip(*sorted(zip(feats, labels, uttids), key = lambda x: x[0].shape[0]))
     idx = 0
     while idx < L:
-        sys.stdout.flush()
         # find batch with even size, and with maximum size of BATCH_SIZE
         j = idx + 1
         target_len = feats[idx].shape[0]
@@ -97,16 +96,9 @@ def load_feat(args, part):
     """
     Load the features
     """
-    use_cudnn = args.use_cudnn
     DATA_DIR = args.data_dir
     BATCH_SIZE = args.batch_size
     nclass, label_dict = load_labels(DATA_DIR)
-    #if args.dataset == 'swbd':
-    #    nclass, label_dict = load_swbd_label(DATA_DIR)
-    #elif args.dataset == 'haitian':
-    #    nclass, label_dict = load_haitian_label(DATA_DIR)
-    #elif args.dataset == 'ml':
-    #    nclass, label_dict = load_ml_label(DATA_DIR)
 
     x, y = None, None
     features, labels, uttids = [], [], []
@@ -116,14 +108,16 @@ def load_feat(args, part):
         filename = os.path.join(DATA_DIR, "%s%d.ark" % (part, i))
         print("Reading file:", filename)
         sys.stdout.flush()
-        part_features, part_uttids = readArk(filename)
-        # part_features, part_uttids = readArk(filename, 1000)
+        if args.debug:
+            part_features, part_uttids = readArk(filename, 1000)
+        else:
+            part_features, part_uttids = readArk(filename)
         part_labels = [label_dict["%dx%s" % (i, x)] for x in part_uttids]
         features += part_features
         labels += part_labels
         uttids += part_uttids
 
-    if use_cudnn: 
+    if args.lstm_type == "cudnn": 
         x, y, uttids = make_even_batches(features, labels, uttids, BATCH_SIZE)
     else:
         x, y, uttids = make_batches(features, labels, uttids, BATCH_SIZE)
@@ -217,33 +211,35 @@ def get_output_folder(parent_dir):
 def mainParser():
     parser = argparse.ArgumentParser(description='Train TF-Eesen Model')
 
-    parser.add_argument('--use_cudnn', default=False, dest='use_cudnn', action='store_true', help='use cudnn lstm')
+    parser.add_argument('--lstm_type', default="cudnn", help = "lstm type: cudnn, fuse, native")
     parser.add_argument('--store_model', default=False, dest='store_model', action='store_true', help='store model')
     parser.add_argument('--eval', default=False, dest='eval', action='store_true', help='enable evaluation mode')
+    parser.add_argument('--debug', default=False, dest='debug', action='store_true', help='enable debug mode')
     parser.add_argument('--eval_model', default = "", help = "model to load for evaluation")
     parser.add_argument('--batch_size', default = 32, type=int, help='batch size')
     parser.add_argument('--data_dir', default = "/data/ASR5/fmetze/eesen/asr_egs/swbd/v1/tmp.LHhAHROFia/T22/", help = "data dir")
-    parser.add_argument('--count_dir', default = "/data/ASR5/fmetze/eesen/asr_egs/swbd/v1/label.counts", help = "data dir")
+    parser.add_argument('--counts_file', default = "/data/ASR5/fmetze/eesen/asr_egs/swbd/v1/label.counts", help = "data dir")
     parser.add_argument('--nepoch', default = 30, type=int, help='#epoch')
     parser.add_argument('--lr_rate', default = 0.03, type=float, help='learning rate')
     parser.add_argument('--l2', default = 0.0, type=float, help='l2 normalization')
     parser.add_argument('--clip', default = 0.1, type=float, help='gradient clipping')
     parser.add_argument('--nlayer', default = 5, type=int, help='#layer')
     parser.add_argument('--nhidden', default = 320, type=int, help='dimesnion of hidden units in single direction')
-    parser.add_argument('--nproj', default = 120, type=int, help='dimension of projection units in single direction, set to 0 if no projection needed')
+    parser.add_argument('--nproj', default = 0, type=int, help='dimension of projection units in single direction, set to 0 if no projection needed')
     parser.add_argument('--half_period', default = 10, type=int, help='half period in epoch of learning rate')
     parser.add_argument('--temperature', default = 1, type=float, help='temperature used in softmax')
     parser.add_argument('--grad_opt', default = "grad", help='optimizer: grad, adam, momentum, cuddnn only work with grad')
     parser.add_argument('--train_dir', default = "log", help='log and model (output) dir')
     parser.add_argument('--continue_ckpt', default = "", help='continue this experiment')
-    #parser.add_argument('--dataset', default = 'swbd', help='dataset selection: swbd, haitian')
+
     return parser
 
 def readConfig(args):
     config_path = os.path.dirname(args.eval_model) + "/config.pkl"
     config = pickle.load(open(config_path, "rb"))
     config["temperature"] = args.temperature
-    config["prior"] = load_prior(args.count_dir)
+    config["prior"] = load_prior(args.counts_file)
+    config["lstm_type"] = "cudnn"
     if len(args.continue_ckpt):
         config["continue_ckpt"] = args.continue_ckpt
     for k, v in config.items():
@@ -262,7 +258,7 @@ def createConfig(args, nfeat, nclass, train_path):
         "nlayer": args.nlayer,
         "nhidden": args.nhidden,
         "nproj": args.nproj,
-        "cudnn": args.use_cudnn,
+        "lstm_type": args.lstm_type,
         "half_period": args.half_period,
         "grad_opt": args.grad_opt,
         "batch_size": args.batch_size,
@@ -300,6 +296,8 @@ def main():
 
     if args.eval:
         config = readConfig(args)
+        config["temperature"] = args.temperature
+        config["prior"] = load_prior(args.counts_file)
         tf.eval(cv_data, config, args.eval_model)
 
     else:
@@ -316,5 +314,8 @@ def main():
 if __name__ == "__main__":
     main()
 
-    # python /data/ASR5/fmetze/eesen-tf/tf/tf1/main.py --store_model --nhidden 240 --nproj 0 --train_dir log --data_dir tmp.pgJ1QN1au3/T24/ --nlayer 5 --use_cudnn
     #python3 /pylon2/ir3l68p/metze/eesen-tf/tf/tf1/main.py --store_model --nhidden 240 --nproj 0 --train_dir log --data_dir ../v1-30ms-arlberg/tmp.LHhAHROFia/T22 --nlayer 5
+    # python /data/ASR5/fmetze/eesen-tf/tf/tf1/main.py --store_model --nhidden 240 --train_dir log --data_dir tmp.pgJ1QN1au3/T24/ --nlayer 5
+
+    # I got this to work with build #485, http://ci.tensorflow.org/view/Nightly/job/nightly-matrix-linux-gpu/
+    # pip install http://ci.tensorflow.org/view/Nightly/job/nightly-matrix-linux-gpu/TF_BUILD_IS_OPT=OPT,TF_BUILD_IS_PIP=PIP,TF_BUILD_PYTHON_VERSION=PYTHON2,label=gpu-linux/lastBuild/artifact/pip_test/whl/tensorflow_gpu-1.head-cp27-cp27mu-manylinux1_x86_64.whl

@@ -59,6 +59,7 @@ def eval(data, config, model_path):
         return [np.roll(a[i, :seq_len[i], :], 1, axis = 1) for i in range(len(a))]
 
     with tf.Session() as sess:
+        print (model_path)
         saver.restore(sess, model_path)
 
         ncv, ncv_label = 0, 0
@@ -107,7 +108,6 @@ def train(data, config):
     nepoch = config["nepoch"]
     init_lr_rate = config["lr_rate"]
     half_period = config["half_period"]
-    use_cudnn = config["cudnn"]
     idx_shuf = list(range(len(tr_x)))
     model_dir = config["train_path"] + "/model" 
     if not os.path.exists(model_dir):
@@ -124,7 +124,7 @@ def train(data, config):
             alpha = int(re.match(".*epoch([-+]?\d+).ckpt", config["continue_ckpt"]).groups()[0])
             print ("continue_ckpt", alpha, model_dir)
             saver.restore(sess, "%s/epoch%02d.ckpt" % (model_dir, alpha))
-        
+
         for epoch in range(alpha,nepoch):
             lr_rate = init_lr_rate * (0.5 ** (epoch / half_period)) 
             tic = time.time()

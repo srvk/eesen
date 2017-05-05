@@ -3,7 +3,7 @@ from DeepBidirRNN import *
 import numpy as np
 import time
 import random
-import sys, os
+import sys, os, re
 from fileutils.kaldi import writeArk
 
 def restore(data):
@@ -59,6 +59,7 @@ def eval(data, config, model_path):
         return [np.roll(a[i, :seq_len[i], :], 1, axis = 1) for i in range(len(a))]
 
     with tf.Session() as sess:
+        print (model_path)
         saver.restore(sess, model_path)
 
         ncv, ncv_label = 0, 0
@@ -89,14 +90,14 @@ def eval(data, config, model_path):
         cv_cost /= ncv
         cv_wer /= float(ncv_label)
         print("cost: %.4f, cer: %.4f, #example: %d" % (cv_cost, cv_wer, ncv))
-        root_path = config["log_path"]
+        root_path = config["train_path"]
         writeArk(root_path + "/soft_prob.ark", soft_prob, cv_uttids)
         writeArk(root_path + "/log_soft_prob.ark", log_soft_prob, cv_uttids)
         writeArk(root_path + "/log_like.ark", log_like, cv_uttids)
 
 def train(data, config):
-    tf.set_random_seed(15213)
-    random.seed(15213)
+    tf.set_random_seed(config["random_seed"])
+    random.seed(config["random_seed"])
     model = DeepBidirRNN(config)
     cv_x, tr_x, cv_y, tr_y = data
     for var in tf.trainable_variables():
@@ -107,17 +108,24 @@ def train(data, config):
     nepoch = config["nepoch"]
     init_lr_rate = config["lr_rate"]
     half_period = config["half_period"]
-    use_cudnn = config["cudnn"]
-    idx_shuf = range(len(tr_x))
-    model_dir = config["log_path"] + "/model" 
+    idx_shuf = list(range(len(tr_x)))
+    model_dir = config["train_path"] + "/model" 
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
     saver = tf.train.Saver(max_to_keep=nepoch)
 
     with tf.Session() as sess:
-        writer = tf.summary.FileWriter(config["log_path"], sess.graph)
+        writer = tf.summary.FileWriter(config["train_path"], sess.graph)
         tf.global_variables_initializer().run()
-        for epoch in range(nepoch):
+
+        alpha = 0
+        # restore a training
+        if "continue_ckpt" in config:
+            alpha = int(re.match(".*epoch([-+]?\d+).ckpt", config["continue_ckpt"]).groups()[0])
+            print ("continue_ckpt", alpha, model_dir)
+            saver.restore(sess, "%s/epoch%02d.ckpt" % (model_dir, alpha))
+
+        for epoch in range(alpha,nepoch):
             lr_rate = init_lr_rate * (0.5 ** (epoch / half_period)) 
             tic = time.time()
             random.shuffle(idx_shuf)

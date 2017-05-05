@@ -12,21 +12,21 @@ LOG_ZERO = -999999999.0
 LOG_ZERO_THRESHOLD = -100.0
 LOG_ONE = 0.0
 
-BeamEntry = namedtuple('HeapEntry', ['key', 'string', 'log_prob', 'log_prob_blank', 'log_prob_nonblank'], verbose=False)
+BeamEntry = namedtuple('HeapEntry', ['key', 'string', 'log_prob', 'log_prob_blank', 'log_prob_nonblank',''], verbose=False)
 CandidateEntry = namedtuple('CandidateEntry', ['string', 'log_prob_blank', 'log_prob_nonblank'], verbose=False)
 
 
 # ugly as ****
 def upper_to_string(str):
-    string_ar = [" " + c.lower() if c.isupper() else c for c in str]
-    string = "".join(string_ar)
+    #string_ar = [" " + c.lower() if c.isupper() else c for c in str]
+    #string = "".join(string_ar)
     # remove multiple whitespaces, also splits whitespaces in the beginning and end
-    string = ' '.join(string.split())
+    #string = ' '.join(string.split())
     # add whitespace at the end
-    if len(str) > 0 and str[-1] == " ":
-        string += " "
-    string = string.lower()
-    assert not string.isupper()
+    #if len(str) > 0 and str[-1] == " ":
+    #    string += " "
+    #string = string.lower()
+    #assert not string.isupper()
     return string.lower()
 
 

@@ -1,4 +1,11 @@
-**tf1** contains the latest code
+README for Tensorflow
+--
+
+**rnn-lm** contains the code to train a character lm in Tensorflow 
+
+**ctc-decode** contains Thomas' code for ctc decoding with an RNN LM
+
+**ctc-train** contains the latest code for training (the classic eesen code, ported by Bo)
 
 * help: 
 ```

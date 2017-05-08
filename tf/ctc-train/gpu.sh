@@ -20,8 +20,8 @@ echo $HOSTNAME
 echo "Running on gpu"
 echo "Device = $CUDA_VISIBLE_DEVICES"
 
-# swbd, cudnn, cer around 
-#python main.py --store_model
+# swbd, cudnn, cer around 0.13
+python main.py --store_model --nlayer=5 --nproj=120 --nhidden=320
 
 # haitian, cudnn, cer around 0.35
 #python main.py --store_model --data_dir=/home/bchen2/Haitian/data --nlayer=6 --nhidden=140 --nproj=60
@@ -30,6 +30,6 @@ echo "Device = $CUDA_VISIBLE_DEVICES"
 #python main.py --store_model --data_dir=/home/bchen2/Haitian/data --nlayer=6 --nhidden=140 --nproj=60 --lstm_type=native
 
 # haitian fuse
-python main.py --store_model --data_dir=/home/bchen2/Haitian/data --nlayer=6 --nhidden=140 --nproj=60 --lstm_type=fuse
+#python main.py --store_model --data_dir=/home/bchen2/Haitian/data --nlayer=6 --nhidden=140 --nproj=60 --lstm_type=fuse
 
 #python main.py --eval --eval_model=/home/bchen2/Haitian/log/dbr-run9/model/epoch11.ckpt

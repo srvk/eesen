@@ -17,7 +17,7 @@ python main.py --help
 * train:
 ```
 #!bash
-python main.py --use_cudnn --store_model
+python main.py --lstm_type=cudnn --store_model
 
 ```
 

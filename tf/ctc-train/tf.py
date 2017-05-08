@@ -1,23 +1,10 @@
 import tensorflow as tf
 from DeepBidirRNN import *
 import numpy as np
-import time
-import random
-import sys, os, re
+from multiprocessing import Process, Queue
+import sys, os, re, time, random
 from fileutils.kaldi import writeArk, readMatrixByOffset
-
-def restore(data):
-    idxes = vals = shape = []
-    if isinstance(data, tf.SparseTensorValue):
-        idxes = data.indices
-        vals = data.values
-        shape = data.dense_shape
-    else:
-        idxes, vals, shape = data
-    arr = np.zeros(shape, np.int32)
-    for i in range(len(vals)):
-        arr[tuple(idxes[i])] = vals[i]
-    return arr
+from Reader import run_reader
 
 def info(s):
     s = "[" + time.strftime("%Y-%m-%d %H:%M:%S") + "] " + s
@@ -26,25 +13,6 @@ def info(s):
 def get_label_len(label):
     idx, _, _ = label
     return len(idx)
-
-def read_batch(xinfo):
-    """
-    xinfo: arkfile, offset, feat_len, feat_dim
-    """
-    height = len(xinfo)
-    max_feat_len = max(x[2] for x in xinfo)
-    tmpx = None 
-    i = 0
-    for arkfile, offset, feat_len, feat_dim in xinfo:
-        feat = readMatrixByOffset(arkfile, offset)
-        if feat_len != feat.shape[0] or feat_dim != feat.shape[1]:
-            print("invlid shape")
-            exit()
-        if tmpx is None:
-            tmpx = np.zeros((height, max_feat_len, feat_dim), np.float32)
-        tmpx[i, :feat_len, :] = feat
-        i += 1
-    return tmpx
 
 def save_scalar(step, name, value, writer):
     """Save a scalar value to tensorboard.
@@ -83,12 +51,17 @@ def eval(data, config, model_path):
 
         ncv, ncv_label = 0, 0
         cv_cost = cv_wer = 0.0
-        for i in range(len(cv_xinfo)):
-            cv_x = read_batch(cv_xinfo[i])
-            batch_size = len(cv_x)
+        data_queue = Queue(10)
+        Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, True)).start()
+        while True:
+            data = data_queue.get()
+            if data is None:
+                break
+            xbatch, ybatch = data
+            batch_size = len(xbatch)
             ncv += batch_size
-            ncv_label += get_label_len(cv_y[i])
-            feed = {model.feats: cv_x, model.labels: cv_y[i], 
+            ncv_label += get_label_len(ybatch)
+            feed = {model.feats: xbatch, model.labels: ybatch,
                 model.temperature: config["temperature"], model.prior: config["prior"]}
             batch_cost, batch_wer, batch_soft_prob, batch_log_soft_prob, batch_log_like, batch_seq_len = \
                 sess.run([model.cost, model.wer, model.softmax_prob,
@@ -98,14 +71,6 @@ def eval(data, config, model_path):
             soft_prob += mat2list(batch_soft_prob, batch_seq_len)
             log_soft_prob += mat2list(batch_log_soft_prob, batch_seq_len)
             log_like += mat2list(batch_log_like, batch_seq_len)
-
-            # label = restore(cv_y[i])
-            # decode = restore(dstr[0])
-            # assert len(label) == len(decode)
-            # for i in range(len(label)):
-                # print(label[i])
-                # print(decode[i])
-                # print()
 
         cv_cost /= ncv
         cv_wer /= float(ncv_label)
@@ -128,7 +93,6 @@ def train(data, config):
     nepoch = config["nepoch"]
     init_lr_rate = config["lr_rate"]
     half_period = config["half_period"]
-    idx_shuf = list(range(len(tr_xinfo)))
     model_dir = config["train_path"] + "/model" 
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
@@ -144,58 +108,62 @@ def train(data, config):
             alpha = int(re.match(".*epoch([-+]?\d+).ckpt", config["continue_ckpt"]).groups()[0])
             print ("continue_ckpt", alpha, model_dir)
             saver.restore(sess, "%s/epoch%02d.ckpt" % (model_dir, alpha))
+        
+        data_queue = Queue(10)
 
         for epoch in range(alpha,nepoch):
             lr_rate = init_lr_rate * (0.5 ** (epoch / half_period)) 
             tic = time.time()
-            random.shuffle(idx_shuf)
-            ntrain, ntr_label = 0, 0
+            ntrain, ntr_label, train_step = 0, 0, 0
             train_cost = train_wer = 0.0
-            train_step = 0
             ntrain_batch = len(tr_xinfo)
             ncv_batch = len(cv_xinfo)
 
-            for i in idx_shuf: 
-                s  = time.time()
-                tr_x = read_batch(tr_xinfo[i])
-                t1 = time.time() - s
-                batch_size = len(tr_x)
+            Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, True)).start()
+            while True:
+                data = data_queue.get()
+                if data is None:
+                    break
+                xbatch, ybatch = data
+                batch_size = len(xbatch)
                 ntrain += batch_size
-                ntr_label += get_label_len(tr_y[i])
-                feed = {model.feats: tr_x, model.labels: tr_y[i], model.lr_rate: lr_rate}
+                ntr_label += get_label_len(ybatch)
+                feed = {model.feats: xbatch, model.labels: ybatch, model.lr_rate: lr_rate}
                 batch_cost, batch_wer, _ = sess.run(
                     [model.cost, model.wer, model.opt], feed)
-                train_cost += batch_cost * batch_size 
+                train_cost += batch_cost * batch_size
                 train_wer += batch_wer
                 if train_step % log_freq == 0:
                     global_step = train_step + ntrain_batch * epoch
                     save_scalar(global_step, "train/batch_cost", batch_cost, writer)
                     save_scalar(global_step, "train/batch_ce", batch_wer, writer)
                 train_step += 1
-                t2 = time.time() - s
-                # print("%.4f %.4f %.2f%%" % (t1, t2, t1 / t2 * 100))
-                # sys.stdout.flush()
 
             train_cost /= ntrain
             train_wer /= float(ntr_label)
             save_scalar(epoch, "train/epoch_cost", train_cost, writer)
             save_scalar(epoch, "train/epoch_cer", train_wer, writer)
 
-            ncv, ncv_label = 0, 0
+            ncv, ncv_label, cv_step = 0, 0, 0
             cv_cost = cv_wer = 0.0
-            for i in range(len(cv_xinfo)):
-                cv_x = read_batch(cv_xinfo[i])
-                batch_size = len(cv_x)
+            Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, False)).start()
+            while True:
+                data = data_queue.get()
+                if data is None:
+                    break
+                xbatch, ybatch = data
+                batch_size = len(xbatch)
                 ncv += batch_size
-                ncv_label += get_label_len(cv_y[i])
-                feed = {model.feats: cv_x, model.labels: cv_y[i], model.lr_rate: lr_rate}
+                ncv_label += get_label_len(ybatch)
+                feed = {model.feats: xbatch, model.labels: ybatch, model.lr_rate: lr_rate}
                 batch_cost, batch_wer = sess.run([model.cost, model.wer], feed)
                 cv_cost += batch_cost * batch_size
                 cv_wer += batch_wer
-                if i % log_freq == 0:
-                    global_step = i + ncv_batch * epoch
+                if cv_step % log_freq == 0:
+                    global_step = cv_step + ncv_batch * epoch
                     save_scalar(global_step, "test/batch_cost", batch_cost, writer)
                     save_scalar(global_step, "test/batch_ce", batch_wer, writer)
+                cv_step += 1
 
             cv_cost /= ncv
             cv_wer /= float(ncv_label)

@@ -1,4 +1,4 @@
-import numpy
+import numpy, os
 import struct
 import functools
 from fileutils import smart_open
@@ -13,7 +13,8 @@ def readString(f):
 
 def readInteger(f):
     n = ord(f.read(1))
-    return functools.reduce(lambda x, y: x * 256 + ord(y), f.read(n)[::-1].decode('windows-1252'), 0)
+    # return functools.reduce(lambda x, y: x * 256 + ord(y), f.read(n)[::-1].decode('windows-1252'), 0)
+    return functools.reduce(lambda x, y: x * 256 + ord(y), f.read(n)[::-1], 0)
 
 def readMatrix(f):
     header = f.read(2).decode('utf-8')
@@ -31,6 +32,21 @@ def readMatrix(f):
     else:
         raise ValueError("Unknown matrix format '%s' encountered while reading; currently supported formats are DM (float64) and FM (float32)." % format)
     return data.reshape(nRows, nCols)
+
+def readMatrixShape(f):
+    header = f.read(2).decode('utf-8')
+    if header != "\0B":
+        raise ValueError("Binary mode header ('\0B') not found when attempting to read a matrix.")
+    format = readString(f)
+    nRows = readInteger(f)
+    nCols = readInteger(f)
+    if format == "DM":
+        f.seek(nRows * nCols * 8, os.SEEK_CUR)
+    elif format == "FM":
+        f.seek(nRows * nCols * 4, os.SEEK_CUR)
+    else:
+        raise ValueError("Unknown matrix format '%s' encountered while reading; currently supported formats are DM (float64) and FM (float32)." % format)
+    return nRows, nCols
 
 def writeString(f, s):
     f.write(s + " ")
@@ -72,6 +88,12 @@ def readArk(filename, limit = numpy.inf):
             if len(features) == limit: break
     return features, uttids
 
+def readMatrixByOffset(arkfile, offset):
+    with smart_open(arkfile, "rb") as g:
+        g.seek(offset)
+        feature = readMatrix(g)
+    return feature
+
 def readScp(filename, limit = numpy.inf):
     """
     Reads the features in a Kaldi script file.
@@ -90,6 +112,20 @@ def readScp(filename, limit = numpy.inf):
             uttids.append(uttid)
             if len(features) == limit: break
     return features, uttids
+
+def readScpInfo(filename, limit = numpy.inf):
+    res = []
+    with smart_open(filename, "r") as f:
+        for line in f:
+            uttid, pointer = line.strip().split()
+            p = pointer.rfind(":")
+            arkfile, offset = pointer[:p], int(pointer[p+1:])
+            with smart_open(arkfile, "rb") as g:
+                g.seek(offset)
+                feat_len, feat_dim = readMatrixShape(g)
+            res.append((uttid, arkfile, offset, feat_len, feat_dim))
+            if len(res) == limit: break
+    return res 
 
 def writeArk(filename, features, uttids):
     """

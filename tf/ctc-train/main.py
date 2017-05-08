@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 
-import sys, os, os.path, time
+import sys, os, os.path
 # -----------------------------------------------------------------
 #   Main script
 # -----------------------------------------------------------------
@@ -10,7 +10,7 @@ import sys, os, os.path, time
 import pickle, re
 import argparse
 import numpy as np
-from fileutils.kaldi import readArk
+from fileutils.kaldi import readScpInfo
 from multiprocessing import Pool
 from functools import partial
 import tf
@@ -38,139 +38,78 @@ def load_labels(dir, files=['labels.tr', 'labels.cv']):
 
     return m+2, labels
 
-def get_batch(feats, labels, start, height):
+def get_batch_info(feat_info, label_dict, start, height):
     """
-    Get a batch of data
+    feat_info: uttid, arkfile, offset, feat_len, feat_dim
     """
-    max_feat_len = max(len(feats[start+i]) for i in range(height))
-    max_label_len = max(len(labels[start+i]) for i in range(height))
-    tmpx = np.zeros((height, max_feat_len, feats[start].shape[-1]), np.float32)
-    yshape = np.array([height, max_label_len], dtype = np.int32)
-    yidx, yval = [], []
+    max_label_len = 0
+    xinfo, yidx, yval = [], [], []
     for i in range(height):
-        feat, label = feats[start+i], labels[start+i]
-        tmpx[i, :len(feat), :] = feat
+        uttid, arkfile, offset, feat_len, feat_dim = feat_info[start + i]
+        label = label_dict[uttid]
+        max_label_len = max(max_label_len, len(label))
+        xinfo.append((arkfile, offset, feat_len, feat_dim))
         for j in range(len(label)):
             yidx.append([i, j])
             yval.append(label[j])
-
+    
+    yshape = np.array([height, max_label_len], dtype = np.int32)
     yidx = np.asarray(yidx, dtype = np.int32)
     yval = np.asarray(yval, dtype = np.int32)
-    return tmpx, yidx, yval, yshape
 
-def make_batches(feats, labels, uttids, BATCH_SIZE):
-    """
-    Simple procedure to batch the data
-    """
+    return xinfo, yidx, yval, yshape
+
+def make_batches_info(feat_info, label_dict, batch_size):
     batch_x, batch_y = [], []
-    L = len(feats)
-    feats, labels, uttids = zip(*sorted(zip(feats, labels, uttids), key = lambda x: x[0].shape[0]))
-    for start in range(0, L, BATCH_SIZE):
-        height = min(BATCH_SIZE, L - start)
-        tmpx, yidx, yval, yshape = get_batch(feats, labels, start, height)
-        batch_x.append(tmpx)
+    L = len(feat_info)
+    uttids = [x[0] for x in feat_info]
+    for idx in range(0, L, batch_size):
+        height = min(batch_size, L - idx)
+        xinfo, yidx, yval, yshape = get_batch_info(feat_info, label_dict, idx, height)
+        batch_x.append(xinfo)
         batch_y.append((yidx, yval, yshape))
     return batch_x, batch_y, uttids
 
-def make_even_batches(feats, labels, uttids, BATCH_SIZE):
+def make_even_batches_info(feat_info, label_dict, batch_size):
     """
     CudnnLSTM requires batches of even sizes
+    feat_info: uttid, arkfile, offset, feat_len, feat_dim
     """
     batch_x, batch_y = [], []
-    L = len(feats)
-    feats, labels, uttids = zip(*sorted(zip(feats, labels, uttids), key = lambda x: x[0].shape[0]))
+    L = len(feat_info)
+    uttids = [x[0] for x in feat_info]
     idx = 0
     while idx < L:
-        # find batch with even size, and with maximum size of BATCH_SIZE
+        # find batch with even size, and with maximum size of batch_size
         j = idx + 1
-        target_len = feats[idx].shape[0]
-        while j < min(idx + BATCH_SIZE, L) and feats[j].shape[0] == target_len: 
+        target_len = feat_info[idx][3]
+        while j < min(idx + batch_size, L) and feat_info[j][3] == target_len: 
             j += 1
-        tmpx, yidx, yval, yshape = get_batch(feats, labels, idx, j - idx)
-        batch_x.append(tmpx)
+        xinfo, yidx, yval, yshape = get_batch_info(feat_info, label_dict, idx, j - idx)
+        batch_x.append(xinfo)
         batch_y.append((yidx, yval, yshape))
         idx = j
     return batch_x, batch_y, uttids
 
-def load_feat(args, part):
-    """
-    Load the features
-    """
-    DATA_DIR = args.data_dir
-    BATCH_SIZE = args.batch_size
-    nclass, label_dict = load_labels(DATA_DIR)
+def load_feat_info(args, part):
+    data_dir = args.data_dir
+    batch_size = args.batch_size
+    nclass, label_dict = load_labels(data_dir)
 
     x, y = None, None
     features, labels, uttids = [], [], []
-    files = [f for f in os.listdir(DATA_DIR) if re.match(part + "\d.ark", f)]
-    nfile = len(files)
-    for i in range(nfile):
-        filename = os.path.join(DATA_DIR, "%s%d.ark" % (part, i))
-        print("Reading file:", filename)
-        sys.stdout.flush()
-        if args.debug:
-            part_features, part_uttids = readArk(filename, 1000)
-        else:
-            part_features, part_uttids = readArk(filename)
-        part_labels = [label_dict["%dx%s" % (i, x)] for x in part_uttids]
-        features += part_features
-        labels += part_labels
-        uttids += part_uttids
-
-    if args.lstm_type == "cudnn": 
-        x, y, uttids = make_even_batches(features, labels, uttids, BATCH_SIZE)
+    filename = os.path.join(data_dir, "%s_local.scp" % (part))
+    if args.debug:
+        feat_info = readScpInfo(filename, 1000)
     else:
-        x, y, uttids = make_batches(features, labels, uttids, BATCH_SIZE)
-
-    return nclass, (x, y, uttids)
-
-def load_feat_1(data_dir, label_dict, fname):
-        filename = os.path.join(data_dir, fname)
-        print("Reading file parallel:", filename)
-        sys.stdout.flush()
-        part_features, part_uttids = readArk(filename)
-        if re.search("\d.ark", fname):
-            i = int(re.search("(\d).ark", fname).groups()[0])
-            part_labels = [label_dict["%dx%s" % (i,x)] for x in part_uttids]
-        else:
-            part_labels = [label_dict["%s" % (x)] for x in part_uttids]
-        print("Done reading file parallel:", filename)
-
-        return (part_features, part_labels, part_uttids)
-
-def load_feat_par (args, part):
-    """
-    Load features in parallel
-    """
-    print("Loading:", args.data_dir)
-    x, y = None, None
-    features, labels, uttids = [], [], []
-    files = [f for f in os.listdir(args.data_dir) if re.match(part + '\d.ark', f)]
-    nclass, label_dict = load_labels(args.data_dir)
-    print("Enter loop:", files)
-    try: # Actual parallelization with helper function
-        pool = Pool(len(files))
-        func = partial(load_feat_1, args.data_dir, label_dict)
-        R = pool.imap_unordered(func, files)
-    finally: # To make sure processes are closed in the end, even if errors happen
-        print("X")
-        pool.close()
-        pool.join()
-
-    # To organize the results properly (should not duplicate memory)
-    print("Read:", args.data_dir)
-    for r in R:
-        print ("R", type(r), type(r[0]), type(r[1]), type(r[0][0]), type(r[1][0]))
-        #features += r[0]
-        labels += r[1]
-        uttids += r[2]
-    print("Making batches:", args.batch_size)
-    if args.use_cudnn:
-        x, y, uttids = make_even_batches(features, labels, uttids, args.batch_size)
+        feat_info = readScpInfo(filename)
+    nfeat = feat_info[0][4]
+    feat_info = sorted(feat_info, key = lambda x: x[3])
+    if args.lstm_type == "cudnn":
+        x, y, uutids = make_even_batches_info(feat_info, label_dict, batch_size)
     else:
-        x, y, uttids = make_batches(features, labels, uttids, args.batch_size)
-
-    return nclass, (x, y, uttids) 
+        x, y, uttids = make_batches_info(feat_info, label_dict, batch_size) 
+    return nclass, nfeat, (x, y, uttids)
 
 def load_prior(prior_path):
     prior = None
@@ -287,8 +226,7 @@ def main():
     parser = mainParser()
     args = parser.parse_args()
 
-    nclass, cv_data = load_feat(args, 'cv')
-    nfeat = cv_data[0][0].shape[-1]
+    nclass, nfeat, cv_data = load_feat_info(args, 'cv')
     if len(args.continue_ckpt):
         train_path = os.path.join(args.train_dir, os.path.dirname(os.path.dirname(args.continue_ckpt)))
     else:
@@ -299,14 +237,13 @@ def main():
         config["temperature"] = args.temperature
         config["prior"] = load_prior(args.counts_file)
         tf.eval(cv_data, config, args.eval_model)
-
     else:
         config = createConfig(args, nfeat, nclass, train_path)
 
-        _, tr_data = load_feat(args, 'train')
-        cv_x, cv_y, _ = cv_data
-        tr_x, tr_y, _ = tr_data
-        data = (cv_x, tr_x, cv_y, tr_y)
+        _, _, tr_data = load_feat_info(args, 'train')
+        cv_xinfo, cv_y, _ = cv_data
+        tr_xinfo, tr_y, _ = tr_data
+        data = (cv_xinfo, tr_xinfo, cv_y, tr_y)
 
         tf.train(data, config)
 

@@ -30,3 +30,7 @@ project.xcworkspace
 
 # python
 *.pyc
+
+# else
+tmp*
+log

@@ -4,7 +4,7 @@ import numpy as np
 import time
 import random
 import sys, os, re
-from fileutils.kaldi import writeArk
+from fileutils.kaldi import writeArk, readMatrixByOffset
 
 def restore(data):
     idxes = vals = shape = []
@@ -27,6 +27,25 @@ def get_label_len(label):
     idx, _, _ = label
     return len(idx)
 
+def read_batch(xinfo):
+    """
+    xinfo: arkfile, offset, feat_len, feat_dim
+    """
+    height = len(xinfo)
+    max_feat_len = max(x[2] for x in xinfo)
+    tmpx = None 
+    i = 0
+    for arkfile, offset, feat_len, feat_dim in xinfo:
+        feat = readMatrixByOffset(arkfile, offset)
+        if feat_len != feat.shape[0] or feat_dim != feat.shape[1]:
+            print("invlid shape")
+            exit()
+        if tmpx is None:
+            tmpx = np.zeros((height, max_feat_len, feat_dim), np.float32)
+        tmpx[i, :feat_len, :] = feat
+        i += 1
+    return tmpx
+
 def save_scalar(step, name, value, writer):
     """Save a scalar value to tensorboard.
       Parameters
@@ -48,7 +67,7 @@ def save_scalar(step, name, value, writer):
 
 def eval(data, config, model_path): 
     model = DeepBidirRNN(config)
-    cv_x, cv_y, cv_uttids = data
+    cv_xinfo, cv_y, cv_uttids = data
     saver = tf.train.Saver()
     soft_prob = []
     log_soft_prob = []
@@ -64,11 +83,12 @@ def eval(data, config, model_path):
 
         ncv, ncv_label = 0, 0
         cv_cost = cv_wer = 0.0
-        for i in range(len(cv_x)):
-            batch_size = len(cv_x[i])
+        for i in range(len(cv_xinfo)):
+            cv_x = read_batch(cv_xinfo[i])
+            batch_size = len(cv_x)
             ncv += batch_size
             ncv_label += get_label_len(cv_y[i])
-            feed = {model.feats: cv_x[i], model.labels: cv_y[i], 
+            feed = {model.feats: cv_x, model.labels: cv_y[i], 
                 model.temperature: config["temperature"], model.prior: config["prior"]}
             batch_cost, batch_wer, batch_soft_prob, batch_log_soft_prob, batch_log_like, batch_seq_len = \
                 sess.run([model.cost, model.wer, model.softmax_prob,
@@ -99,7 +119,7 @@ def train(data, config):
     tf.set_random_seed(config["random_seed"])
     random.seed(config["random_seed"])
     model = DeepBidirRNN(config)
-    cv_x, tr_x, cv_y, tr_y = data
+    cv_xinfo, tr_xinfo, cv_y, tr_y = data
     for var in tf.trainable_variables():
         print(var)
     sys.stdout.flush()
@@ -108,7 +128,7 @@ def train(data, config):
     nepoch = config["nepoch"]
     init_lr_rate = config["lr_rate"]
     half_period = config["half_period"]
-    idx_shuf = list(range(len(tr_x)))
+    idx_shuf = list(range(len(tr_xinfo)))
     model_dir = config["train_path"] + "/model" 
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
@@ -132,14 +152,17 @@ def train(data, config):
             ntrain, ntr_label = 0, 0
             train_cost = train_wer = 0.0
             train_step = 0
-            ntrain_batch = len(tr_x)
-            ncv_batch = len(cv_x)
+            ntrain_batch = len(tr_xinfo)
+            ncv_batch = len(cv_xinfo)
 
             for i in idx_shuf: 
-                batch_size = len(tr_x[i])
+                s  = time.time()
+                tr_x = read_batch(tr_xinfo[i])
+                t1 = time.time() - s
+                batch_size = len(tr_x)
                 ntrain += batch_size
                 ntr_label += get_label_len(tr_y[i])
-                feed = {model.feats: tr_x[i], model.labels: tr_y[i], model.lr_rate: lr_rate}
+                feed = {model.feats: tr_x, model.labels: tr_y[i], model.lr_rate: lr_rate}
                 batch_cost, batch_wer, _ = sess.run(
                     [model.cost, model.wer, model.opt], feed)
                 train_cost += batch_cost * batch_size 
@@ -149,6 +172,9 @@ def train(data, config):
                     save_scalar(global_step, "train/batch_cost", batch_cost, writer)
                     save_scalar(global_step, "train/batch_ce", batch_wer, writer)
                 train_step += 1
+                t2 = time.time() - s
+                # print("%.4f %.4f %.2f%%" % (t1, t2, t1 / t2 * 100))
+                # sys.stdout.flush()
 
             train_cost /= ntrain
             train_wer /= float(ntr_label)
@@ -157,11 +183,12 @@ def train(data, config):
 
             ncv, ncv_label = 0, 0
             cv_cost = cv_wer = 0.0
-            for i in range(len(cv_x)):
-                batch_size = len(cv_x[i])
+            for i in range(len(cv_xinfo)):
+                cv_x = read_batch(cv_xinfo[i])
+                batch_size = len(cv_x)
                 ncv += batch_size
                 ncv_label += get_label_len(cv_y[i])
-                feed = {model.feats: cv_x[i], model.labels: cv_y[i], model.lr_rate: lr_rate}
+                feed = {model.feats: cv_x, model.labels: cv_y[i], model.lr_rate: lr_rate}
                 batch_cost, batch_wer = sess.run([model.cost, model.wer], feed)
                 cv_cost += batch_cost * batch_size
                 cv_wer += batch_wer

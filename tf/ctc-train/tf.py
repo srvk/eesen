@@ -52,7 +52,7 @@ def eval(data, config, model_path):
         ncv, ncv_label = 0, 0
         cv_cost = cv_wer = 0.0
         data_queue = Queue(10)
-        Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, True)).start()
+        Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, False)).start()
         while True:
             data = data_queue.get()
             if data is None:

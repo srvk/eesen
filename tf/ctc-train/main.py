@@ -78,6 +78,7 @@ def make_even_batches_info(feat_info, label_dict, batch_size):
     batch_x, batch_y = [], []
     L = len(feat_info)
     uttids = [x[0] for x in feat_info]
+
     idx = 0
     while idx < L:
         # find batch with even size, and with maximum size of batch_size
@@ -106,9 +107,9 @@ def load_feat_info(args, part):
     nfeat = feat_info[0][4]
     feat_info = sorted(feat_info, key = lambda x: x[3])
     if args.lstm_type == "cudnn":
-        x, y, uutids = make_even_batches_info(feat_info, label_dict, batch_size)
+        x, y, uttids = make_even_batches_info(feat_info, label_dict, batch_size)
     else:
-        x, y, uttids = make_batches_info(feat_info, label_dict, batch_size) 
+        x, y, uttids = make_batches_info(feat_info, label_dict, batch_size)
     return nclass, nfeat, (x, y, uttids)
 
 def load_prior(prior_path):

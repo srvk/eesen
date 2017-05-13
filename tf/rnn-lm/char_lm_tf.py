@@ -1,6 +1,7 @@
 from __future__ import print_function
 import time
 
+# parameter suggestion: 16 64 1024 10000
 start_ = time.time()
 
 from collections import Counter, defaultdict
@@ -133,7 +134,7 @@ outputs, next_state = tf.nn.dynamic_rnn(cell, x_embs, sequence_length=x_lens, dt
 
 
 # Affine transform
-output = tf.reshape(tf.concat(outputs,1), [-1, args.HIDDEN_SIZE])
+output = tf.reshape(tf.concat_v2(values=outputs,axis=1), [-1, args.HIDDEN_SIZE])
 
 W_sm = tf.Variable(tf.random_uniform([args.HIDDEN_SIZE, nwords]))
 b_sm = tf.Variable(tf.random_uniform([nwords]))
@@ -150,7 +151,7 @@ print('Graph created.', file=sys.stderr)
 
 init = tf.global_variables_initializer()
 saver = tf.train.Saver()
-model_path='/home/sdalmia/asr-test/lorelei-audio/egs/asr/s5c/201-haitian-flp/langmodel/saved_models/'
+model_path='./saved_models/'
 with tf.Session() as sess:
     sess.run(init)
 

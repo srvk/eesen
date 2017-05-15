@@ -129,7 +129,7 @@ def train(data, config):
             ntrain_batch = len(tr_xinfo)
             ncv_batch = len(cv_xinfo)
 
-            Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, True)).start()
+            Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, True, epoch)).start()
             while True:
                 data = data_queue.get()
                 if data is None:
@@ -183,7 +183,7 @@ def train(data, config):
                 saver.save(sess, "%s/epoch%02d.ckpt" % (model_dir, epoch + 1))
 
             info("Epoch %d finished in %.2f seconds, learning rate: %.4f" % (epoch + 1, time.time() - tic, lr_rate))
-            print("Train cost: %.2f, ter: %.2f, #example: %d" % (train_cost, train_wer, ntrain))
-            print("Validate cost: %.2f, ter: %.2f, #example: %d" % (cv_cost, cv_wer, ncv))
+            print("Train cost: %.1f, ter: %.3f, #example: %d" % (train_cost, train_wer, ntrain))
+            print("Validate cost: %.1f, ter: %.3f, #example: %d" % (cv_cost, cv_wer, ncv))
             print(80 * "-")
             sys.stdout.flush()

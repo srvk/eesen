@@ -45,10 +45,15 @@ def get_batch_info(feat_info, label_dict, start, height):
     max_label_len = 0
     xinfo, yidx, yval = [], [], []
     for i in range(height):
-        uttid, arkfile, offset, feat_len, feat_dim = feat_info[start + i]
+        utt, arkfile, offset, feat_len, feat_dim = feat_info[start + i]
+        if len(utt) is 3:
+            uttid = utt[0]
+            xinfo.append((arkfile, offset, feat_len, feat_dim, [utt[1], utt[2]]))
+        else:
+            uttid = utt
+            xinfo.append((arkfile, offset, feat_len, feat_dim))
         label = label_dict[uttid]
         max_label_len = max(max_label_len, len(label))
-        xinfo.append((arkfile, offset, feat_len, feat_dim))
         for j in range(len(label)):
             yidx.append([i, j])
             yval.append(label[j])
@@ -62,7 +67,8 @@ def get_batch_info(feat_info, label_dict, start, height):
 def make_batches_info(feat_info, label_dict, batch_size):
     batch_x, batch_y = [], []
     L = len(feat_info)
-    uttids = [x[0] for x in feat_info]
+    #uttids = [x[0] for x in feat_info]
+    uttids = [x[0][0] for x in feat_info]
     for idx in range(0, L, batch_size):
         height = min(batch_size, L - idx)
         xinfo, yidx, yval, yshape = get_batch_info(feat_info, label_dict, idx, height)
@@ -77,7 +83,8 @@ def make_even_batches_info(feat_info, label_dict, batch_size):
     """
     batch_x, batch_y = [], []
     L = len(feat_info)
-    uttids = [x[0] for x in feat_info]
+    #uttids = [x[0] for x in feat_info]
+    uttids = [x[0][0] for x in feat_info]
 
     idx = 0
     while idx < L:
@@ -104,8 +111,19 @@ def load_feat_info(args, part):
         feat_info = readScpInfo(filename, 1000)
     else:
         feat_info = readScpInfo(filename)
-    nfeat = feat_info[0][4]
+
+    if args.augment:
+        # hard-coded stacking and slicing configured here
+        nfeat = feat_info[0][4]*3
+        feat_info1 = [ ([a,0,3],b,c,int((2+d)/3),e*3) for (a,b,c,d,e) in feat_info ]
+        feat_info2 = [ ([a,1,3],b,c,int((1+d)/3),e*3) for (a,b,c,d,e) in feat_info ]
+        feat_info  = [ ([a,2,3],b,c,int((0+d)/3),e*3) for (a,b,c,d,e) in feat_info ]
+        feat_info.extend(feat_info1)
+        feat_info.extend(feat_info2)
+     else:
+        nfeat = feat_info[0][4]
     feat_info = sorted(feat_info, key = lambda x: x[3])
+
     if args.lstm_type == "cudnn":
         x, y, uttids = make_even_batches_info(feat_info, label_dict, batch_size)
     else:
@@ -155,6 +173,7 @@ def mainParser():
     parser.add_argument('--store_model', default=False, dest='store_model', action='store_true', help='store model')
     parser.add_argument('--eval', default=False, dest='eval', action='store_true', help='enable evaluation mode')
     parser.add_argument('--debug', default=False, dest='debug', action='store_true', help='enable debug mode')
+    parser.add_argument('--augment', default=False, dest='augment', action='store_true', help='do data augmentation')
     parser.add_argument('--eval_model', default = "", help = "model to load for evaluation")
     parser.add_argument('--batch_size', default = 32, type=int, help='batch size')
     parser.add_argument('--data_dir', default = "/data/ASR5/fmetze/eesen/asr_egs/swbd/v1/tmp.LHhAHROFia/T22/", help = "data dir")
@@ -164,7 +183,7 @@ def mainParser():
     parser.add_argument('--l2', default = 0.0, type=float, help='l2 normalization')
     parser.add_argument('--clip', default = 0.1, type=float, help='gradient clipping')
     parser.add_argument('--nlayer', default = 5, type=int, help='#layer')
-    parser.add_argument('--nhidden', default = 320, type=int, help='dimesnion of hidden units in single direction')
+    parser.add_argument('--nhidden', default = 320, type=int, help='dimension of hidden units in single direction')
     parser.add_argument('--nproj', default = 0, type=int, help='dimension of projection units in single direction, set to 0 if no projection needed')
     parser.add_argument('--half_period', default = 10, type=int, help='half period in epoch of learning rate')
     parser.add_argument('--temperature', default = 1, type=float, help='temperature used in softmax')

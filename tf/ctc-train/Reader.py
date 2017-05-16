@@ -35,14 +35,16 @@ def read_batch(xinfo):
             tmpx = np.zeros((height, max_feat_len, feat_dim), np.float32)
         tmpx[i, :feat_len, :] = feat
         i += 1
+    #print("read mini-batch ",arkfile,offset,feat_len)
     return tmpx
 
-def run_reader(q, xinfo, ys, do_shuf, iter=2):
+def run_reader(q, xinfo, ys, do_shuf, epoch=1):
     idx_shuf = list(range(len(xinfo)))
-    if do_shuf and iter > 1:
+    if do_shuf and epoch > 0:
         random.shuffle(idx_shuf)
+        print("Shuffling for epoch",epoch)
     for i in idx_shuf:
         x = read_batch(xinfo[i])
-        y = ys[i] 
+        y = ys[i]
         q.put((x, y))
     q.put(None)

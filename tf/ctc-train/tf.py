@@ -52,8 +52,8 @@ def eval(data, config, model_path):
 
         ncv, ncv_label = 0, 0
         cv_cost = cv_wer = 0.0
-        data_queue = Queue(10)
-        Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, False)).start()
+        data_queue = Queue(config["batch_size"])
+        Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y)).start()
         while True:
             data = data_queue.get()
             if data is None:
@@ -119,7 +119,7 @@ def train(data, config):
             print ("continue_ckpt", alpha, model_dir)
             saver.restore(sess, "%s/epoch%02d.ckpt" % (model_dir, alpha))
         
-        data_queue = Queue(10)
+        data_queue = Queue(config["batch_size"])
 
         for epoch in range(alpha,nepoch):
             lr_rate = init_lr_rate * (0.5 ** (epoch / half_period)) 

@@ -120,7 +120,7 @@ def load_feat_info(args, part):
         feat_info  = [ ([a,2,3],b,c,int((0+d)/3),e*3) for (a,b,c,d,e) in feat_info ]
         feat_info.extend(feat_info1)
         feat_info.extend(feat_info2)
-     else:
+    else:
         nfeat = feat_info[0][4]
     feat_info = sorted(feat_info, key = lambda x: x[3])
 

@@ -72,7 +72,10 @@ int main(int argc, char *argv[]) {
     po.Register("job-id", &job_id, "Subjob id in multi-GPU mode");
 
     int32 utts_per_avg = 500;
-    po.Register("utts-per-avg", &utts_per_avg, "Number of utterances to process per average (default is 250)");
+    po.Register("utts-per-avg", &utts_per_avg, "Number of utterances to process per average (default is 500)");
+
+    float frames_per_sec = 100.0;
+    po.Register("frames-per-sec", &frames_per_sec, "Number of frames per second (default is 100)");
 
     po.Read(argc, argv);
 
@@ -118,6 +121,8 @@ int main(int argc, char *argv[]) {
     // Initialize CTC optimizer
     Ctc ctc;
     ctc.SetReportStep(report_step);
+    ctc.SetFramesPerSec(frames_per_sec);
+
     CuMatrix<BaseFloat> net_out, obj_diff;
 
     Timer time;

@@ -14,6 +14,10 @@
 *.dylib
 *.dSYM
 
+#kaldi
+*ark
+*scp
+
 # Make dependencies
 .depend.mk
 
@@ -34,3 +38,5 @@ project.xcworkspace
 # else
 tmp*
 log
+*/tmp*
+

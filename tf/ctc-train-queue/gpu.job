@@ -1,0 +1,20 @@
+#!/bin/bash
+#SBATCH -N 1
+#SBATCH -p GPU-shared
+#SBATCH --ntasks-per-node 2
+#SBATCH --gres=gpu:p100:1
+#SBATCH -t 24:00:00
+#
+## this will request 2 CPU cores, an one k80 on a shared GPU node
+## if the job is still running after 10 hours, it will be automatically killed.
+set -x  # echo commands to stdout
+set -u  # throw an error if unset variable referenced
+set -e  # exit on error
+export PS1=""
+PYLON2=/pylon2/$(id -gn)/$USER
+
+module load cuda-8.0
+module load python3
+source /home/bchen5/tf-gpu/bin/activate
+
+python main.py 

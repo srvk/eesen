@@ -107,6 +107,7 @@ def load_feat_info(args, part):
     x, y = None, None
     features, labels, uttids = [], [], []
     filename = os.path.join(data_dir, "%s_local.scp" % (part))
+    print("Reading features from",filename)
     if args.debug:
         feat_info = readScpInfo(filename, 1000)
     else:
@@ -114,6 +115,7 @@ def load_feat_info(args, part):
 
     if args.augment:
         # hard-coded stacking and slicing configured here
+        print("Doing augmentation")
         nfeat = feat_info[0][4]*3
         feat_info1 = [ ([a,0,3],b,c,int((2+d)/3),e*3) for (a,b,c,d,e) in feat_info ]
         feat_info2 = [ ([a,1,3],b,c,int((1+d)/3),e*3) for (a,b,c,d,e) in feat_info ]

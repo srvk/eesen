@@ -29,8 +29,8 @@ class DeepBidirRNN:
                             params=cudnn_params)
                         outputs = tf.contrib.layers.fully_connected(
                             activation_fn = None, inputs = outputs, 
-			    num_outputs = 2 * nproj, scope = "projection")
-                        ninput = 2 * nproj
+			    num_outputs = nproj, scope = "projection")
+                        ninput = nproj
             else:
                 cudnn_model = tf.contrib.cudnn_rnn.CudnnLSTM(nlayer, nhidden, nfeat, direction = 'bidirectional')
                 params_size_t = cudnn_model.params_size()
@@ -62,7 +62,7 @@ class DeepBidirRNN:
                     if nproj > 0:
                         outputs = tf.contrib.layers.fully_connected(
 			    activation_fn = None, inputs = outputs, 
-			    num_outputs = 2 * nproj, scope = "projection")
+			    num_outputs = nproj, scope = "projection")
         return outputs
 
     def my_native_lstm(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope):
@@ -114,7 +114,7 @@ class DeepBidirRNN:
         self.prior = tf.placeholder(tf.float32, [nclass], name = "prior")
         self.seq_len = self.length(self.feats)
 
-        output_size = 2 * nhidden if nproj == 0 else 2 * nproj
+        output_size = 2 * nhidden if nproj == 0 else nproj
         batch_size = tf.shape(self.feats)[0]
         outputs = tf.transpose(self.feats, (1, 0, 2), name = "feat_transpose")
         if lstm_type == "cudnn":

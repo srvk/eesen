@@ -15,7 +15,6 @@ from multiprocessing import Pool
 from functools import partial
 import tf
 
-
 # -----------------------------------------------------------------
 #   Function definitions
 # -----------------------------------------------------------------
@@ -45,19 +44,14 @@ def get_batch_info(feat_info, label_dict, start, height):
     max_label_len = 0
     xinfo, yidx, yval = [], [], []
     for i in range(height):
-        utt, arkfile, offset, feat_len, feat_dim = feat_info[start + i]
-        if len(utt) is 3:
-            uttid = utt[0]
-            xinfo.append((arkfile, offset, feat_len, feat_dim, [utt[1], utt[2]]))
-        else:
-            uttid = utt
-            xinfo.append((arkfile, offset, feat_len, feat_dim))
+        uttid, arkfile, offset, feat_len, feat_dim = feat_info[start + i]
         label = label_dict[uttid]
         max_label_len = max(max_label_len, len(label))
+        xinfo.append((arkfile, offset, feat_len, feat_dim))
         for j in range(len(label)):
             yidx.append([i, j])
             yval.append(label[j])
-    
+
     yshape = np.array([height, max_label_len], dtype = np.int32)
     yidx = np.asarray(yidx, dtype = np.int32)
     yval = np.asarray(yval, dtype = np.int32)
@@ -67,8 +61,7 @@ def get_batch_info(feat_info, label_dict, start, height):
 def make_batches_info(feat_info, label_dict, batch_size):
     batch_x, batch_y = [], []
     L = len(feat_info)
-    #uttids = [x[0] for x in feat_info]
-    uttids = [x[0][0] for x in feat_info]
+    uttids = [x[0] for x in feat_info]
     for idx in range(0, L, batch_size):
         height = min(batch_size, L - idx)
         xinfo, yidx, yval, yshape = get_batch_info(feat_info, label_dict, idx, height)
@@ -83,15 +76,13 @@ def make_even_batches_info(feat_info, label_dict, batch_size):
     """
     batch_x, batch_y = [], []
     L = len(feat_info)
-    #uttids = [x[0] for x in feat_info]
-    uttids = [x[0][0] for x in feat_info]
-
+    uttids = [x[0] for x in feat_info]
     idx = 0
     while idx < L:
         # find batch with even size, and with maximum size of batch_size
         j = idx + 1
         target_len = feat_info[idx][3]
-        while j < min(idx + batch_size, L) and feat_info[j][3] == target_len: 
+        while j < min(idx + batch_size, L) and feat_info[j][3] == target_len:
             j += 1
         xinfo, yidx, yval, yshape = get_batch_info(feat_info, label_dict, idx, j - idx)
         batch_x.append(xinfo)
@@ -103,34 +94,18 @@ def load_feat_info(args, part):
     data_dir = args.data_dir
     batch_size = args.batch_size
     nclass, label_dict = load_labels(data_dir)
-
-    x, y = None, None
-    features, labels, uttids = [], [], []
     filename = os.path.join(data_dir, "%s_local.scp" % (part))
-    print("Reading features from",filename)
+    x, y, uttids = None, None, None
+
+
     if args.debug:
         feat_info = readScpInfo(filename, 1000)
     else:
         feat_info = readScpInfo(filename)
-
-    if args.augment:
-        # hard-coded stacking and slicing configured here
-        print("Doing augmentation")
-        nfeat = feat_info[0][4]*3
-        feat_info1 = [ ([a,0,3],b,c,int((2+d)/3),e*3) for (a,b,c,d,e) in feat_info ]
-        feat_info2 = [ ([a,1,3],b,c,int((1+d)/3),e*3) for (a,b,c,d,e) in feat_info ]
-        feat_info  = [ ([a,2,3],b,c,int((0+d)/3),e*3) for (a,b,c,d,e) in feat_info ]
-        feat_info.extend(feat_info1)
-        feat_info.extend(feat_info2)
-    else:
-        nfeat = feat_info[0][4]
-    feat_info = sorted(feat_info, key = lambda x: x[3])
-
-    if args.lstm_type == "cudnn":
-        x, y, uttids = make_even_batches_info(feat_info, label_dict, batch_size)
-    else:
-        x, y, uttids = make_batches_info(feat_info, label_dict, batch_size)
+    nfeat = feat_info[0][4]
     return nclass, nfeat, (x, y, uttids)
+
+
 
 def load_prior(prior_path):
     prior = None
@@ -175,8 +150,6 @@ def mainParser():
     parser.add_argument('--store_model', default=False, dest='store_model', action='store_true', help='store model')
     parser.add_argument('--eval', default=False, dest='eval', action='store_true', help='enable evaluation mode')
     parser.add_argument('--debug', default=False, dest='debug', action='store_true', help='enable debug mode')
-    parser.add_argument('--augment', default=False, dest='augment', action='store_true', help='do data augmentation')
-    parser.add_argument('--noshuffle', default=True, dest='do_shuf', action='store_false', help='do not shuffle training samples')
     parser.add_argument('--eval_model', default = "", help = "model to load for evaluation")
     parser.add_argument('--batch_size', default = 32, type=int, help='batch size')
     parser.add_argument('--data_dir', default = "/data/ASR5/fmetze/eesen/asr_egs/swbd/v1/tmp.LHhAHROFia/T22/", help = "data dir")
@@ -186,23 +159,26 @@ def mainParser():
     parser.add_argument('--l2', default = 0.0, type=float, help='l2 normalization')
     parser.add_argument('--clip', default = 0.1, type=float, help='gradient clipping')
     parser.add_argument('--nlayer', default = 5, type=int, help='#layer')
-    parser.add_argument('--nhidden', default = 320, type=int, help='dimension of hidden units in single direction')
-    parser.add_argument('--nproj', default = 0, type=int, help='dimension of projection units, set to 0 if no projection needed')
-    parser.add_argument('--feat_proj', default = 0, type=int, help='dimension of feature projection units, set to 0 if no projection needed')
+    parser.add_argument('--nhidden', default = 320, type=int, help='dimesnion of hidden units in single direction')
+    parser.add_argument('--nproj', default = 0, type=int, help='dimension of projection units in single direction, set to 0 if no projection needed')
     parser.add_argument('--half_period', default = 10, type=int, help='half period in epoch of learning rate')
     parser.add_argument('--temperature', default = 1, type=float, help='temperature used in softmax')
     parser.add_argument('--grad_opt', default = "grad", help='optimizer: grad, adam, momentum, cuddnn only work with grad')
     parser.add_argument('--train_dir', default = "log", help='log and model (output) dir')
     parser.add_argument('--continue_ckpt', default = "", help='continue this experiment')
 
+    parser.add_argument('--current_epoch', default = 0, type=int, help='add current epoch if not started 0')
+
     return parser
 
 def readConfig(args):
-    config_path = os.path.dirname(args.eval_model) + "/config.pkl"
-    config = pickle.load(open(config_path, "rb"))
+    config={}
+    # config_path = os.path.dirname(args.eval_model) + "/config.pkl"
+    # config = pickle.load(open(config_path, "rb"))
     config["temperature"] = args.temperature
     config["prior"] = load_prior(args.counts_file)
     config["lstm_type"] = "cudnn"
+    #config["lstm_type"] = "native"
     if len(args.continue_ckpt):
         config["continue_ckpt"] = args.continue_ckpt
     for k, v in config.items():
@@ -213,21 +189,22 @@ def readConfig(args):
 def createConfig(args, nfeat, nclass, train_path):
     config = {
         "nfeat": nfeat,
+        "data_dir": args.data_dir,
         "nclass": nclass,
-        "nepoch": args.nepoch,
+        "current_epoch": args.current_epoch,
         "lr_rate": args.lr_rate,
         "l2": args.l2,
         "clip": args.clip,
         "nlayer": args.nlayer,
         "nhidden": args.nhidden,
         "nproj": args.nproj,
-        "feat_proj": args.feat_proj,
         "lstm_type": args.lstm_type,
         "half_period": args.half_period,
         "grad_opt": args.grad_opt,
         "batch_size": args.batch_size,
         "train_path": train_path,
         "store_model": args.store_model,
+        "nepoch": args.nepoch,
         "random_seed": 15213
     }
     if len(args.continue_ckpt):
@@ -248,36 +225,37 @@ def createConfig(args, nfeat, nclass, train_path):
 # -----------------------------------------------------------------
 
 def main():
+
     parser = mainParser()
     args = parser.parse_args()
 
-    nclass, nfeat, cv_data = load_feat_info(args, 'cv')
-    if len(args.continue_ckpt):
-        train_path = os.path.join(args.train_dir, os.path.dirname(os.path.dirname(args.continue_ckpt)))
-    else:
-        train_path = get_output_folder(args.train_dir)
+    nclass, nfeats, _ = load_feat_info(args, 'cv')
 
-    if args.eval:
-        config = readConfig(args)
-        config["temperature"] = args.temperature
-        config["prior"] = load_prior(args.counts_file)
-        tf.eval(cv_data, config, args.eval_model)
-    else:
-        config = createConfig(args, nfeat, nclass, train_path)
+    train_path = get_output_folder(args.train_dir)
 
-        _, _, tr_data = load_feat_info(args, 'train')
-        cv_xinfo, cv_y, _ = cv_data
-        tr_xinfo, tr_y, _ = tr_data
-        data = (cv_xinfo, tr_xinfo, cv_y, tr_y)
+    config = createConfig(args, nfeats, nclass, train_path)
+    config["temperature"] = args.temperature
+    config["prior"] = load_prior(args.counts_file)
 
-        tf.train(data, config)
+    path_cv_x = os.path.join(config["data_dir"], "cv.scp")
+    path_cv_y = os.path.join(config["data_dir"], "labels.cv")
 
+    path_tr_x = os.path.join(config["data_dir"], "cv.scp")
+    path_tr_y = os.path.join(config["data_dir"], "labels.cv")
+
+
+
+    print("full training starting")
+
+
+    tf.full_join_training(config, path_tr_x, path_tr_y, path_cv_x, path_cv_y, nfeats, 3, 8)
+    #    tf.eval(config, path_cv_x, path_cv_y, config["current_epoch"])
 
 if __name__ == "__main__":
     main()
 
     #python3 /pylon2/ir3l68p/metze/eesen-tf/tf/tf1/main.py --store_model --nhidden 240 --nproj 0 --train_dir log --data_dir ../v1-30ms-arlberg/tmp.LHhAHROFia/T22 --nlayer 5
-    # python /data/ASR5/fmetze/eesen-tf/tf/tf1/main.py --store_model --nhidden 240 --train_dir log --data_dir tmp.pgJ1QN1au3/T24/ --nlayer 5
+    #python /data/ASR5/fmetze/eesen-tf/tf/tf1/main.py --store_model --nhidden 240 --train_dir log --data_dir tmp.pgJ1QN1au3/T24/ --nlayer 5
 
     # I got this to work with build #485, http://ci.tensorflow.org/view/Nightly/job/nightly-matrix-linux-gpu/
     # pip install http://ci.tensorflow.org/view/Nightly/job/nightly-matrix-linux-gpu/TF_BUILD_IS_OPT=OPT,TF_BUILD_IS_PIP=PIP,TF_BUILD_PYTHON_VERSION=PYTHON2,label=gpu-linux/lastBuild/artifact/pip_test/whl/tensorflow_gpu-1.head-cp27-cp27mu-manylinux1_x86_64.whl

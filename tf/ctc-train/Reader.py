@@ -24,8 +24,8 @@ def read_batch(xinfo):
             offset = augment_info[0]
             stride = augment_info[1]
             # subsampling -> feat[2::3,] has a stride of 3 and an offset of 2
-            # splicing -> numpy.concatenate((numpy.roll(a,1,axis=0),a,numpy.roll(a,-1,axis=0)),1)[1::3,]
-            feat = np.concatenate((np.roll(feat,-1), feat, np.roll(feat,1)),1)[offset::stride,]
+            # splicing -> numpy.concatenate((numpy.roll(a,-1),a,numpy.roll(a,1)),1)[1::3,]
+            feat = np.concatenate((np.roll(feat,1,axis=0), feat, np.roll(feat,-1,axis=0)), 1)[offset::stride,]
 
         if feat_len != feat.shape[0] or feat_dim != feat.shape[1]:
             print("invalid shape",feat_len,feat.shape[0],feat_dim,feat.shape[1])

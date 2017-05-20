@@ -24,7 +24,7 @@ def read_batch(xinfo):
             offset = augment_info[0]
             stride = augment_info[1]
             # subsampling -> feat[2::3,] has a stride of 3 and an offset of 2
-            # splicing -> numpy.concatenate((numpy.roll(a,-1),a,numpy.roll(a,1)),1)[1::3,]
+            # splicing -> numpy.concatenate((numpy.roll(a,1,axis=0),a,numpy.roll(a,-1,axis=0)),1)[1::3,]
             feat = np.concatenate((np.roll(feat,-1), feat, np.roll(feat,1)),1)[offset::stride,]
 
         if feat_len != feat.shape[0] or feat_dim != feat.shape[1]:
@@ -42,7 +42,7 @@ def run_reader(q, xinfo, ys, do_shuf, epoch=1):
     idx_shuf = list(range(len(xinfo)))
     if do_shuf and epoch > 0:
         random.shuffle(idx_shuf)
-        print("Shuffling for epoch",epoch)
+        print("Shuffling for epoch",epoch+1)
     for i in idx_shuf:
         x = read_batch(xinfo[i])
         y = ys[i]

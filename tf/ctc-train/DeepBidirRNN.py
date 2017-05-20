@@ -29,8 +29,8 @@ class DeepBidirRNN:
                             params=cudnn_params)
                         outputs = tf.contrib.layers.fully_connected(
                             activation_fn = None, inputs = outputs, 
-			    num_outputs = 2 * nproj, scope = "projection")
-                        ninput = 2 * nproj
+                            num_outputs = nproj, scope = "projection")
+                        ninput = nproj
             else:
                 cudnn_model = tf.contrib.cudnn_rnn.CudnnLSTM(nlayer, nhidden, nfeat, direction = 'bidirectional')
                 params_size_t = cudnn_model.params_size()
@@ -61,8 +61,8 @@ class DeepBidirRNN:
                     # outputs = tf.concat([fw_out, bw_out], 2, name = "output")
                     if nproj > 0:
                         outputs = tf.contrib.layers.fully_connected(
-			    activation_fn = None, inputs = outputs, 
-			    num_outputs = 2 * nproj, scope = "projection")
+                            activation_fn = None, inputs = outputs, 
+                            num_outputs = nproj, scope = "projection")
         return outputs
 
     def my_native_lstm(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope):
@@ -70,15 +70,15 @@ class DeepBidirRNN:
         outputs: time, batch_size, feat_dim
         """
         with tf.variable_scope(scope):
-	    for i in range(nlayer):
-		with tf.variable_scope("layer%d" % i):
-		    if nproj > 0:
-			cell = tf.contrib.rnn.LSTMCell(nhidden, num_proj = nproj, state_is_tuple = True)
-		    else:
-			cell = tf.contrib.rnn.BasicLSTMCell(nhidden, state_is_tuple = True)
-		    # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs,
-                        # self.seq_len, swap_memory=True, time_major = True, dtype = tf.float32)
-		    outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs,
+            for i in range(nlayer):
+                with tf.variable_scope("layer%d" % i):
+                    if nproj > 0:
+                        cell = tf.contrib.rnn.LSTMCell(nhidden, num_proj = nproj, state_is_tuple = True)
+                    else:
+                        cell = tf.contrib.rnn.BasicLSTMCell(nhidden, state_is_tuple = True)
+                    # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs,
+                    # self.seq_len, swap_memory=True, time_major = True, dtype = tf.float32)
+                    outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs,
                         self.seq_len, time_major = True, dtype = tf.float32)
                     # also some API change
                     outputs = tf.concat_v2(values = outputs, axis = 2, name = "output") 
@@ -103,6 +103,7 @@ class DeepBidirRNN:
         nlayer = config["nlayer"]
         clip = config["clip"]
         nproj = config["nproj"]
+        featproj = config["feat_proj"]
         lstm_type = config["lstm_type"]
         grad_opt = config["grad_opt"]
 
@@ -114,18 +115,25 @@ class DeepBidirRNN:
         self.prior = tf.placeholder(tf.float32, [nclass], name = "prior")
         self.seq_len = self.length(self.feats)
 
-        output_size = 2 * nhidden if nproj == 0 else 2 * nproj
+        output_size = 2 * nhidden if nproj == 0 else nproj
         batch_size = tf.shape(self.feats)[0]
         outputs = tf.transpose(self.feats, (1, 0, 2), name = "feat_transpose")
+
+        if featproj > 0:
+            outputs = tf.contrib.layers.fully_connected(
+                activation_fn = None, inputs = outputs, num_outputs = featproj, 
+                scope = "input_fc", biases_initializer = tf.contrib.layers.xavier_initializer())
+        
         if lstm_type == "cudnn":
             outputs = self.my_cudnn_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "cudnn_lstm")
         elif lstm_type == "fuse":
             outputs = self.my_fuse_block_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "fuse_lstm")
         else:
             outputs = self.my_native_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "native_lstm")
+
         logits = tf.contrib.layers.fully_connected(
             activation_fn = None, inputs = outputs, num_outputs = nclass, 
-	    scope = "output_fc", biases_initializer = tf.contrib.layers.xavier_initializer())
+            scope = "output_fc", biases_initializer = tf.contrib.layers.xavier_initializer())
 
         with tf.variable_scope("loss"):
             # there are some API changes, so use named arguments here ...

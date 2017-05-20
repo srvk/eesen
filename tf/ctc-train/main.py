@@ -174,6 +174,7 @@ def mainParser():
     parser.add_argument('--eval', default=False, dest='eval', action='store_true', help='enable evaluation mode')
     parser.add_argument('--debug', default=False, dest='debug', action='store_true', help='enable debug mode')
     parser.add_argument('--augment', default=False, dest='augment', action='store_true', help='do data augmentation')
+    parser.add_argument('--noshuffle', default=True, dest='do_shuf', action='store_false', help='do not shuffle training samples')
     parser.add_argument('--eval_model', default = "", help = "model to load for evaluation")
     parser.add_argument('--batch_size', default = 32, type=int, help='batch size')
     parser.add_argument('--data_dir', default = "/data/ASR5/fmetze/eesen/asr_egs/swbd/v1/tmp.LHhAHROFia/T22/", help = "data dir")
@@ -184,7 +185,8 @@ def mainParser():
     parser.add_argument('--clip', default = 0.1, type=float, help='gradient clipping')
     parser.add_argument('--nlayer', default = 5, type=int, help='#layer')
     parser.add_argument('--nhidden', default = 320, type=int, help='dimension of hidden units in single direction')
-    parser.add_argument('--nproj', default = 0, type=int, help='dimension of projection units in single direction, set to 0 if no projection needed')
+    parser.add_argument('--nproj', default = 0, type=int, help='dimension of projection units, set to 0 if no projection needed')
+    parser.add_argument('--feat_proj', default = 0, type=int, help='dimension of feature projection units, set to 0 if no projection needed')
     parser.add_argument('--half_period', default = 10, type=int, help='half period in epoch of learning rate')
     parser.add_argument('--temperature', default = 1, type=float, help='temperature used in softmax')
     parser.add_argument('--grad_opt', default = "grad", help='optimizer: grad, adam, momentum, cuddnn only work with grad')
@@ -217,6 +219,7 @@ def createConfig(args, nfeat, nclass, train_path):
         "nlayer": args.nlayer,
         "nhidden": args.nhidden,
         "nproj": args.nproj,
+        "feat_proj": args.feat_proj,
         "lstm_type": args.lstm_type,
         "half_period": args.half_period,
         "grad_opt": args.grad_opt,

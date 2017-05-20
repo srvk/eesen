@@ -129,7 +129,7 @@ def train(data, config):
             ntrain_batch = len(tr_xinfo)
             ncv_batch = len(cv_xinfo)
 
-            Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, True, epoch)).start()
+            Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, config["do_shuf"], epoch)).start()
             while True:
                 data = data_queue.get()
                 if data is None:

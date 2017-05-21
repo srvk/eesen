@@ -61,13 +61,8 @@ class DeepBidirRNN:
                     # outputs = tf.concat([fw_out, bw_out], 2, name = "output")
                     if nproj > 0:
                         outputs = tf.contrib.layers.fully_connected(
-<<<<<<< HEAD
                             activation_fn = None, inputs = outputs, 
                             num_outputs = nproj, scope = "projection")
-=======
-			    activation_fn = None, inputs = outputs, 
-			    num_outputs = nproj, scope = "projection")
->>>>>>> 6664392e3f84bff561307b2ac3733897c3759897
         return outputs
 
     def my_native_lstm(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope):

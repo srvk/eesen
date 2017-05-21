@@ -222,6 +222,7 @@ def createConfig(args, nfeat, nclass, train_path):
         "nhidden": args.nhidden,
         "nproj": args.nproj,
         "feat_proj": args.feat_proj,
+        "do_shuf": args.do_shuf,
         "lstm_type": args.lstm_type,
         "half_period": args.half_period,
         "grad_opt": args.grad_opt,

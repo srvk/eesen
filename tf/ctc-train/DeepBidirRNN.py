@@ -118,19 +118,16 @@ class DeepBidirRNN:
         output_size = 2 * nhidden if nproj == 0 else nproj
         batch_size = tf.shape(self.feats)[0]
         outputs = tf.transpose(self.feats, (1, 0, 2), name = "feat_transpose")
-
         if featproj > 0:
             outputs = tf.contrib.layers.fully_connected(
                 activation_fn = None, inputs = outputs, num_outputs = featproj, 
                 scope = "input_fc", biases_initializer = tf.contrib.layers.xavier_initializer())
-        
         if lstm_type == "cudnn":
             outputs = self.my_cudnn_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "cudnn_lstm")
         elif lstm_type == "fuse":
             outputs = self.my_fuse_block_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "fuse_lstm")
         else:
             outputs = self.my_native_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "native_lstm")
-
         logits = tf.contrib.layers.fully_connected(
             activation_fn = None, inputs = outputs, num_outputs = nclass, 
             scope = "output_fc", biases_initializer = tf.contrib.layers.xavier_initializer())

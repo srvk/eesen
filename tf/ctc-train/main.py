@@ -45,15 +45,10 @@ def get_batch_info(feat_info, label_dict, start, height):
     max_label_len = 0
     xinfo, yidx, yval = [], [], []
     for i in range(height):
-        utt, arkfile, offset, feat_len, feat_dim = feat_info[start + i]
-        if len(utt) is 3:
-            uttid = utt[0]
-            xinfo.append((arkfile, offset, feat_len, feat_dim, [utt[1], utt[2]]))
-        else:
-            uttid = utt
-            xinfo.append((arkfile, offset, feat_len, feat_dim))
+        uttid, arkfile, offset, feat_len, feat_dim, a_info = feat_info[start + i]
         label = label_dict[uttid]
         max_label_len = max(max_label_len, len(label))
+        xinfo.append((arkfile, offset, feat_len, feat_dim, a_info))
         for j in range(len(label)):
             yidx.append([i, j])
             yval.append(label[j])
@@ -67,8 +62,7 @@ def get_batch_info(feat_info, label_dict, start, height):
 def make_batches_info(feat_info, label_dict, batch_size):
     batch_x, batch_y = [], []
     L = len(feat_info)
-    #uttids = [x[0] for x in feat_info]
-    uttids = [x[0][0] for x in feat_info]
+    uttids = [x[0] for x in feat_info]
     for idx in range(0, L, batch_size):
         height = min(batch_size, L - idx)
         xinfo, yidx, yval, yshape = get_batch_info(feat_info, label_dict, idx, height)
@@ -83,9 +77,7 @@ def make_even_batches_info(feat_info, label_dict, batch_size):
     """
     batch_x, batch_y = [], []
     L = len(feat_info)
-    #uttids = [x[0] for x in feat_info]
-    uttids = [x[0][0] for x in feat_info]
-
+    uttids = [x[0] for x in feat_info]
     idx = 0
     while idx < L:
         # find batch with even size, and with maximum size of batch_size
@@ -107,23 +99,19 @@ def load_feat_info(args, part):
     x, y = None, None
     features, labels, uttids = [], [], []
     filename = os.path.join(data_dir, "%s_local.scp" % (part))
-    print("Reading features from",filename)
     if args.debug:
         feat_info = readScpInfo(filename, 1000)
     else:
         feat_info = readScpInfo(filename)
+    nfeat = feat_info[0][4]
 
     if args.augment:
-        # hard-coded stacking and slicing configured here
-        print("Doing augmentation")
-        nfeat = feat_info[0][4]*3
-        feat_info1 = [ ([a,0,3],b,c,int((2+d)/3),e*3) for (a,b,c,d,e) in feat_info ]
-        feat_info2 = [ ([a,1,3],b,c,int((1+d)/3),e*3) for (a,b,c,d,e) in feat_info ]
-        feat_info  = [ ([a,2,3],b,c,int((0+d)/3),e*3) for (a,b,c,d,e) in feat_info ]
-        feat_info.extend(feat_info1)
-        feat_info.extend(feat_info2)
+        print("Augmenting data from", filename, nfeat, nclass)
+        nfeat *= 3
+        feat_info = [(tup[0], tup[1], tup[2], int((tup[3]+2-shift)/3), 3*tup[4], shift) for shift in range(3) for tup in feat_info]
     else:
-        nfeat = feat_info[0][4]
+        feat_info = [tup+(None,) for tup in feat_info]
+
     feat_info = sorted(feat_info, key = lambda x: x[3])
 
     if args.lstm_type == "cudnn":

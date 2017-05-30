@@ -4,45 +4,41 @@ from fileutils.kaldi import writeArk, readMatrixByOffset
 
 def read_batch(xinfo):
     """
-    xinfo: arkfile, offset, feat_len, feat_dim[, augment_info]
+    xinfo: arkfile, offset, feat_len, feat_dim, augment
     """
     height = len(xinfo)
     max_feat_len = max(x[2] for x in xinfo)
     tmpx = None
     i = 0
-    for x in xinfo:
-        if len(x) is 4:
-            arkfile, offset, feat_len, feat_dim = x
-            augment_info = None
-        else:
-            arkfile, offset, feat_len, feat_dim, augment_info = x
 
+    #print("Batch",height,xinfo[0][2],max_feat_len)
+    for arkfile, offset, feat_len, feat_dim, augment in xinfo:
         feat = readMatrixByOffset(arkfile, offset)
-
-        if not augment_info is None:
+        if not augment is None:
             # data augmentation
-            offset = augment_info[0]
-            stride = augment_info[1]
-            # subsampling -> feat[2::3,] has a stride of 3 and an offset of 2
-            # splicing -> numpy.concatenate((numpy.roll(a,-1),a,numpy.roll(a,1)),1)[1::3,]
-            feat = np.concatenate((np.roll(feat,1,axis=0), feat, np.roll(feat,-1,axis=0)), 1)[offset::stride,]
+            #shift = augment[0]
+            #stride = augment[1]
+            stride=3
+            shift=augment
+            if stride is 3:
+                feat = np.concatenate((np.roll(feat,1,axis=0), feat, np.roll(feat,-1,axis=0)), 1)[shift::stride,]
+            else:
+                print("stride not supported", stride)
+                exit()
 
         if feat_len != feat.shape[0] or feat_dim != feat.shape[1]:
-            print("invalid shape",feat_len,feat.shape[0],feat_dim,feat.shape[1])
+            print("invalid shape",feat_len,feat.shape[0],feat_dim,feat.shape[1], augment)
             exit()
-
         if tmpx is None:
             tmpx = np.zeros((height, max_feat_len, feat_dim), np.float32)
         tmpx[i, :feat_len, :] = feat
         i += 1
-    #print("read mini-batch ",arkfile,offset,feat_len)
     return tmpx
 
-def run_reader(q, xinfo, ys, do_shuf, epoch=1):
+def run_reader(q, xinfo, ys, do_shuf):
     idx_shuf = list(range(len(xinfo)))
-    if do_shuf and epoch > 0:
+    if do_shuf:
         random.shuffle(idx_shuf)
-        print("Shuffling for epoch",epoch+1)
     for i in idx_shuf:
         x = read_batch(xinfo[i])
         y = ys[i]

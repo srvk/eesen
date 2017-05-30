@@ -5,7 +5,6 @@ from multiprocessing import Process, Queue
 import sys, os, re, time, random
 from fileutils.kaldi import writeArk, readMatrixByOffset
 from Reader import run_reader
-import itertools
 
 def info(s):
     s = "[" + time.strftime("%Y-%m-%d %H:%M:%S") + "] " + s
@@ -53,7 +52,7 @@ def eval(data, config, model_path):
         ncv, ncv_label = 0, 0
         cv_cost = cv_wer = 0.0
         data_queue = Queue(config["batch_size"])
-        Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y)).start()
+        Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, False)).start()
         while True:
             data = data_queue.get()
             if data is None:
@@ -77,15 +76,6 @@ def eval(data, config, model_path):
         cv_wer /= float(ncv_label)
         print("cost: %.4f, cer: %.4f, #example: %d" % (cv_cost, cv_wer, ncv))
         root_path = config["train_path"]
-        #with open(root_path + "/soft_prob.ark",'w') as f:
-        #    for key,mat in itertools.izip(soft_prob, cv_uttids):
-        #        kaldi_io.write_mat(f, mat, key=key)
-        #with open(root_path + "/log_soft_prob.ark",'w') as f:
-        #    for key,mat in itertools.izip(log_soft_prob, cv_uttids):
-        #        kaldi_io.write_mat(f, mat, key=key)
-        #with open(root_path + "/log_like.ark",'w') as f:
-        #    for key,mat in itertools.izip(log_like, cv_uttids):
-        #        kaldi_io.write_mat(f, mat, key=key)
         writeArk(root_path + "/soft_prob.ark", soft_prob, cv_uttids)
         writeArk(root_path + "/log_soft_prob.ark", log_soft_prob, cv_uttids)
         writeArk(root_path + "/log_like.ark", log_like, cv_uttids)
@@ -129,7 +119,7 @@ def train(data, config):
             ntrain_batch = len(tr_xinfo)
             ncv_batch = len(cv_xinfo)
 
-            Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, config["do_shuf"], epoch)).start()
+            Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, config["do_shuf"])).start()
             while True:
                 data = data_queue.get()
                 if data is None:

@@ -240,6 +240,12 @@ def main():
     parser = mainParser()
     args = parser.parse_args()
 
+    try:
+        print(sys.version)
+        print(tf.__version__)
+    except:
+        print("could not get version information")
+
     nclass, nfeat, cv_data = load_feat_info(args, 'cv')
     if len(args.continue_ckpt):
         train_path = os.path.join(args.train_dir, os.path.dirname(os.path.dirname(args.continue_ckpt)))

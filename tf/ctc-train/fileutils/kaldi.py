@@ -14,7 +14,10 @@ def readString(f):
 def readInteger(f):
     n = ord(f.read(1))
     # return functools.reduce(lambda x, y: x * 256 + ord(y), f.read(n)[::-1].decode('windows-1252'), 0)
-    return functools.reduce(lambda x, y: x * 256 + ord(y), f.read(n)[::-1], 0)
+    try:
+        return functools.reduce(lambda x, y: x * 256 + y, f.read(n)[::-1], 0)
+    except:
+        return functools.reduce(lambda x, y: x * 256 + ord(y), f.read(n)[::-1].decode('windows-1252'), 0)
 
 def readMatrix(f):
     header = f.read(2).decode('utf-8')

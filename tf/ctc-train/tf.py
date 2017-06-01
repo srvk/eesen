@@ -52,7 +52,8 @@ def eval(data, config, model_path):
         ncv, ncv_label = 0, 0
         cv_cost = cv_wer = 0.0
         data_queue = Queue(config["batch_size"])
-        Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, False)).start()
+        p=Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, False))
+        p.start()
         while True:
             data = data_queue.get()
             if data is None:
@@ -72,7 +73,12 @@ def eval(data, config, model_path):
             log_soft_prob += mat2list(batch_log_soft_prob, batch_seq_len)
             log_like += mat2list(batch_log_like, batch_seq_len)
 
-        cv_cost /= ncv
+        p.join()
+        try:
+            p.terminate()
+        except:
+            print("problem terminating process")
+
         cv_wer /= float(ncv_label)
         print("cost: %.4f, cer: %.4f, #example: %d" % (cv_cost, cv_wer, ncv))
         root_path = config["train_path"]
@@ -89,6 +95,7 @@ def train(data, config):
         print(var)
     sys.stdout.flush()
 
+    debug=True
     log_freq = 100
     nepoch = config["nepoch"]
     init_lr_rate = config["lr_rate"]
@@ -110,7 +117,6 @@ def train(data, config):
             saver.restore(sess, "%s/epoch%02d.ckpt" % (model_dir, alpha))
         
         data_queue = Queue(config["batch_size"])
-
         for epoch in range(alpha,nepoch):
             lr_rate = init_lr_rate * (0.5 ** (epoch / half_period)) 
             tic = time.time()
@@ -119,7 +125,8 @@ def train(data, config):
             ntrain_batch = len(tr_xinfo)
             ncv_batch = len(cv_xinfo)
 
-            Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, config["do_shuf"])).start()
+            p=Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, config["do_shuf"]))
+            p.start()
             while True:
                 data = data_queue.get()
                 if data is None:
@@ -137,7 +144,16 @@ def train(data, config):
                     global_step = train_step + ntrain_batch * epoch
                     save_scalar(global_step, "train/batch_cost", batch_cost, writer)
                     save_scalar(global_step, "train/batch_ce", batch_wer, writer)
+                if debug:
+                    print("batch",train_step,"of",ntrain_batch,"size",batch_size,
+                          "queue",data_queue.empty(),data_queue.full(),data_queue.qsize())
                 train_step += 1
+
+            p.join()
+            try:
+                p.terminate()
+            except:
+                print("problem terminating process")
 
             train_cost /= ntrain
             train_wer /= float(ntr_label)
@@ -146,7 +162,8 @@ def train(data, config):
 
             ncv, ncv_label, cv_step = 0, 0, 0
             cv_cost = cv_wer = 0.0
-            Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, False)).start()
+            p=Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, False))
+            p.start()
             while True:
                 data = data_queue.get()
                 if data is None:
@@ -164,6 +181,12 @@ def train(data, config):
                     save_scalar(global_step, "test/batch_cost", batch_cost, writer)
                     save_scalar(global_step, "test/batch_ce", batch_wer, writer)
                 cv_step += 1
+
+            p.join()
+            try:
+                p.terminate()
+            except:
+                print("problem terminating process")
 
             cv_cost /= ncv
             cv_wer /= float(ncv_label)

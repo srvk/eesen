@@ -95,7 +95,7 @@ def train(data, config):
         print(var)
     sys.stdout.flush()
 
-    debug=True
+    debug=False
     log_freq = 100
     nepoch = config["nepoch"]
     init_lr_rate = config["lr_rate"]

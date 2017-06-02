@@ -80,7 +80,7 @@ def eval(data, config, model_path):
             print("problem terminating process")
 
         cv_wer /= float(ncv_label)
-        print("cost: %.4f, cer: %.4f, #example: %d" % (cv_cost, cv_wer, ncv))
+        print("cost: %.4f, ter: %.4f, #example: %d" % (cv_cost, cv_wer, ncv))
         root_path = config["train_path"]
         writeArk(root_path + "/soft_prob.ark", soft_prob, cv_uttids)
         writeArk(root_path + "/log_soft_prob.ark", log_soft_prob, cv_uttids)

@@ -13,11 +13,21 @@ def readString(f):
 
 def readInteger(f):
     n = ord(f.read(1))
-    # return functools.reduce(lambda x, y: x * 256 + ord(y), f.read(n)[::-1].decode('windows-1252'), 0)
+    #return reduce(lambda x, y: x * 256 + ord(y), f.read(n)[::-1], 0)
+    a = f.read(n)[::-1]
     try:
-        return functools.reduce(lambda x, y: x * 256 + ord(y), f.read(n)[::-1], 0)
+        return int.from_bytes(a, byteorder='big', signed=False)
     except:
-        return functools.reduce(lambda x, y: x * 256 + ord(y), f.read(n)[::-1].decode('windows-1252'), 0)
+        return functools.reduce(lambda x, y: x * 256 + ord(y), a, 0)
+    #return functools.reduce(lambda x, y: x * 256 + ord(y), f.read(n)[::-1].decode('windows-1252'), 0)
+    #try:
+    #a=f.read(n)[::-1]
+    #b=int.from_bytes(a, byteorder='big', signed=False)
+    #print(a,type(a),b)
+    #return functools.reduce(lambda x, y: x * 256 + ord(y), a[::-1], 0)
+    #return functools.reduce(lambda x, y: x * 256 + ord(y), f.read(n)[::-1], 0)
+    #except:
+    #    return functools.reduce(lambda x, y: x * 256 + ord(y), f.read(n)[::-1].decode('windows-1252'), 0)
 
 def readMatrix(f):
     header = f.read(2).decode('utf-8')

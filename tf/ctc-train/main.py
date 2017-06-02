@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 
-
-import sys, os, os.path
 # -----------------------------------------------------------------
 #   Main script
 # -----------------------------------------------------------------
 
-
+import sys, os, os.path
 import pickle, re
 import argparse
 import numpy as np
@@ -106,12 +104,11 @@ def load_feat_info(args, part):
     nfeat = feat_info[0][4]
 
     if args.augment:
-        print("Augmenting data from", filename, nfeat, nclass)
+        print("Augmenting data from", filename, "#features=", nfeat, "#classes=", nclass, "#examples=", len(feat_info))
         nfeat *= 3
         feat_info = [(tup[0], tup[1], tup[2], int((tup[3]+2-shift)/3), 3*tup[4], shift) for shift in range(3) for tup in feat_info]
     else:
         feat_info = [tup+(None,) for tup in feat_info]
-
     feat_info = sorted(feat_info, key = lambda x: x[3])
 
     if args.lstm_type == "cudnn":
@@ -239,12 +236,6 @@ def createConfig(args, nfeat, nclass, train_path):
 def main():
     parser = mainParser()
     args = parser.parse_args()
-
-    try:
-        print(sys.version)
-        print(tf.__version__)
-    except:
-        print("could not get version information")
 
     nclass, nfeat, cv_data = load_feat_info(args, 'cv')
     if len(args.continue_ckpt):

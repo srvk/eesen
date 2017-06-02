@@ -6,6 +6,18 @@ import sys, os, re, time, random
 from fileutils.kaldi import writeArk, readMatrixByOffset
 from Reader import run_reader
 
+print("tf.py - version information follows:")
+try:
+    print(sys.version)
+    print(tf.__version__)
+except:
+    print("tf.py: could not get version information for logging")
+
+
+# -----------------------------------------------------------------
+#   Main part
+# -----------------------------------------------------------------
+
 def info(s):
     s = "[" + time.strftime("%Y-%m-%d %H:%M:%S") + "] " + s
     print(s)
@@ -74,10 +86,7 @@ def eval(data, config, model_path):
             log_like += mat2list(batch_log_like, batch_seq_len)
 
         p.join()
-        try:
-            p.terminate()
-        except:
-            print("problem terminating process")
+        p.terminate()
 
         cv_wer /= float(ncv_label)
         print("cost: %.4f, ter: %.4f, #example: %d" % (cv_cost, cv_wer, ncv))
@@ -93,7 +102,6 @@ def train(data, config):
     cv_xinfo, tr_xinfo, cv_y, tr_y = data
     for var in tf.trainable_variables():
         print(var)
-    sys.stdout.flush()
 
     debug=False
     log_freq = 100
@@ -115,7 +123,9 @@ def train(data, config):
             alpha = int(re.match(".*epoch([-+]?\d+).ckpt", config["continue_ckpt"]).groups()[0])
             print ("continue_ckpt", alpha, model_dir)
             saver.restore(sess, "%s/epoch%02d.ckpt" % (model_dir, alpha))
-        
+        else:
+            print("starting training ...")
+
         data_queue = Queue(config["batch_size"])
         for epoch in range(alpha,nepoch):
             lr_rate = init_lr_rate * (0.5 ** (epoch / half_period)) 
@@ -150,10 +160,7 @@ def train(data, config):
                 train_step += 1
 
             p.join()
-            try:
-                p.terminate()
-            except:
-                print("problem terminating process")
+            p.terminate()
 
             train_cost /= ntrain
             train_wer /= float(ntr_label)
@@ -183,10 +190,7 @@ def train(data, config):
                 cv_step += 1
 
             p.join()
-            try:
-                p.terminate()
-            except:
-                print("problem terminating process")
+            p.terminate()
 
             cv_cost /= ncv
             cv_wer /= float(ncv_label)

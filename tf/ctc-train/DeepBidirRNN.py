@@ -103,7 +103,10 @@ class DeepBidirRNN:
         nlayer = config["nlayer"]
         clip = config["clip"]
         nproj = config["nproj"]
-        featproj = config["feat_proj"]
+        try:
+            featproj = config["feat_proj"]
+        except:
+            featproj = 0
         lstm_type = config["lstm_type"]
         grad_opt = config["grad_opt"]
 

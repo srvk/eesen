@@ -58,7 +58,7 @@ def eval(data, config, model_path):
         return [np.roll(a[i, :seq_len[i], :], 1, axis = 1) for i in range(len(a))]
 
     with tf.Session() as sess:
-        print (model_path)
+        print ("load_ckpt", model_path)
         saver.restore(sess, model_path)
 
         ncv, ncv_label = 0, 0
@@ -89,7 +89,7 @@ def eval(data, config, model_path):
         p.terminate()
 
         cv_wer /= float(ncv_label)
-        print("cost: %.4f, ter: %.4f, #example: %d" % (cv_cost, cv_wer, ncv))
+        print("Eval cost: %.1f, ter: %.3f, #example: %d" % (cv_cost, cv_wer, ncv))
         root_path = config["train_path"]
         writeArk(root_path + "/soft_prob.ark", soft_prob, cv_uttids)
         writeArk(root_path + "/log_soft_prob.ark", log_soft_prob, cv_uttids)
@@ -123,8 +123,8 @@ def train(data, config):
             alpha = int(re.match(".*epoch([-+]?\d+).ckpt", config["continue_ckpt"]).groups()[0])
             print ("continue_ckpt", alpha, model_dir)
             saver.restore(sess, "%s/epoch%02d.ckpt" % (model_dir, alpha))
-        else:
-            print("starting training ...")
+        print(80 * "-")
+        sys.stdout.flush()
 
         data_queue = Queue(config["batch_size"])
         for epoch in range(alpha,nepoch):
@@ -198,6 +198,10 @@ def train(data, config):
             save_scalar(epoch, "test/epoch_cer", cv_wer, writer)
             if config["store_model"]:
                 saver.save(sess, "%s/epoch%02d.ckpt" % (model_dir, epoch + 1))
+                with open("%s/epoch%02d.log" % (model_dir, epoch + 1), 'w') as fp:
+                    fp.write("Time: %.2f seconds, lrate: %.4f" % (time.time() - tic, lr_rate))
+                    fp.write("Train cost: %.1f, ter: %.3f, #example: %d" % (train_cost, train_wer, ntrain))
+                    fp.write("Validate cost: %.1f, ter: %.3f, #example: %d" % (cv_cost, cv_wer, ncv))
 
             info("Epoch %d finished in %.2f seconds, learning rate: %.4f" % (epoch + 1, time.time() - tic, lr_rate))
             print("Train cost: %.1f, ter: %.3f, #example: %d" % (train_cost, train_wer, ntrain))

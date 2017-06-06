@@ -30,45 +30,65 @@ def load_labels(dir, files=['labels.tr', 'labels.cv']):
         with open(os.path.join(dir, filename), "r") as f:
             for line in f:
                 tokens = line.strip().split()
-                labels[tokens[0]] = [mapLabel(int(x)) for x in tokens[1:]]
+                # labels[tokens[0]] = [mapLabel(int(x)) for x in tokens[1:]]
+                labels[tokens[0]] = [int(x) for x in tokens[1:]]
                 if max(labels[tokens[0]]) > m:
                     m = max(labels[tokens[0]])
 
     return m+2, labels
 
-def get_batch_info(feat_info, label_dict, start, height):
+def get_batch_info(feat_info, label_dicts, start, height):
     """
     feat_info: uttid, arkfile, offset, feat_len, feat_dim
     """
-    max_label_len = 0
+    max_label_len = []
+
     xinfo, yidx, yval = [], [], []
+
+    for count_label in range(len(label_dicts)):
+        yidx.append([])
+        yval.append([])
+        max_label_len.append(0)
+
     for i in range(height):
         uttid, arkfile, offset, feat_len, feat_dim, a_info = feat_info[start + i]
-        label = label_dict[uttid]
-        max_label_len = max(max_label_len, len(label))
         xinfo.append((arkfile, offset, feat_len, feat_dim, a_info))
-        for j in range(len(label)):
-            yidx.append([i, j])
-            yval.append(label[j])
-    
-    yshape = np.array([height, max_label_len], dtype = np.int32)
-    yidx = np.asarray(yidx, dtype = np.int32)
-    yval = np.asarray(yval, dtype = np.int32)
 
-    return xinfo, yidx, yval, yshape
+        for count_label, label_dict in enumerate(label_dicts):
+            label = label_dict[uttid]
+            max_label_len[count_label] = max(max_label_len[count_label], len(label))
+            for j in range(len(label)):
+                yidx[count_label].append([i, j])
+                yval[count_label].append(label[j])
 
-def make_batches_info(feat_info, label_dict, batch_size):
+
+    yshape_r=[]
+    yidx_r=[]
+    yval_r=[]
+
+    for count_label, _ in enumerate(label_dicts):
+        yshape_r.append(np.array([height, max_label_len[count_label]], dtype = np.int32))
+        yidx_r.append(np.asarray(yidx[count_label], dtype = np.int32))
+        yval_r.append(np.asarray(yval[count_label], dtype = np.int32))
+
+    return xinfo, yidx_r, yval_r, yshape_r
+
+def make_batches_info(feat_info, label_dicts, batch_size):
     batch_x, batch_y = [], []
     L = len(feat_info)
     uttids = [x[0] for x in feat_info]
     for idx in range(0, L, batch_size):
         height = min(batch_size, L - idx)
-        xinfo, yidx, yval, yshape = get_batch_info(feat_info, label_dict, idx, height)
-        batch_x.append(xinfo)
-        batch_y.append((yidx, yval, yshape))
+        xinfo, yidx, yval, yshape = get_batch_info(feat_info, label_dicts, idx, height)
+
+
+        batch_y=[]
+        for idx, _ in enumerate(label_dicts):
+            element=((yidx[idx], yval[idx], yshape[dx]))
+            batch_y.append(element)
     return batch_x, batch_y, uttids
 
-def make_even_batches_info(feat_info, label_dict, batch_size):
+def make_even_batches_info(feat_info, label_dicts, batch_size):
     """
     CudnnLSTM requires batches of even sizes
     feat_info: uttid, arkfile, offset, feat_len, feat_dim
@@ -81,18 +101,39 @@ def make_even_batches_info(feat_info, label_dict, batch_size):
         # find batch with even size, and with maximum size of batch_size
         j = idx + 1
         target_len = feat_info[idx][3]
-        while j < min(idx + batch_size, L) and feat_info[j][3] == target_len: 
+        while j < min(idx + batch_size, L) and feat_info[j][3] == target_len:
             j += 1
-        xinfo, yidx, yval, yshape = get_batch_info(feat_info, label_dict, idx, j - idx)
+        xinfo, yidx, yval, yshape = get_batch_info(feat_info, label_dicts, idx, j - idx)
         batch_x.append(xinfo)
-        batch_y.append((yidx, yval, yshape))
+        batch_y_element=[]
+
+        for idx, _ in enumerate(label_dicts):
+            element=((yidx[idx], yval[idx], yshape[idx]))
+            batch_y_element.append(element)
+
+        batch_y.append(batch_y_element)
         idx = j
     return batch_x, batch_y, uttids
 
 def load_feat_info(args, part):
+    nclass_all=[]
+    label_dicts=[]
+
     data_dir = args.data_dir
     batch_size = args.batch_size
+
     nclass, label_dict = load_labels(data_dir)
+
+    nclass_all.append(nclass)
+    label_dicts.append(label_dict)
+
+    if(args.extra_labels):
+        extra_labels=args.extra_labels
+        extra_dirs=extra_labels.split(':')
+        for extra_dir in extra_dirs:
+            nclass, label_dict = load_labels(extra_dir)
+            nclass_all.append(nclass)
+            label_dicts.append(label_dict)
 
     x, y = None, None
     features, labels, uttids = [], [], []
@@ -112,10 +153,10 @@ def load_feat_info(args, part):
     feat_info = sorted(feat_info, key = lambda x: x[3])
 
     if args.lstm_type == "cudnn":
-        x, y, uttids = make_even_batches_info(feat_info, label_dict, batch_size)
+        x, y, uttids = make_even_batches_info(feat_info, label_dicts, batch_size)
     else:
-        x, y, uttids = make_batches_info(feat_info, label_dict, batch_size)
-    return nclass, nfeat, (x, y, uttids)
+        x, y, uttids = make_batches_info(feat_info, label_dicts, batch_size)
+    return nclass_all, nfeat, (x, y, uttids)
 
 def load_prior(prior_path):
     prior = None
@@ -165,6 +206,7 @@ def mainParser():
     parser.add_argument('--eval_model', default = "", help = "model to load for evaluation")
     parser.add_argument('--batch_size', default = 32, type=int, help='batch size')
     parser.add_argument('--data_dir', default = "/data/ASR5/fmetze/eesen/asr_egs/swbd/v1/tmp.LHhAHROFia/T22/", help = "data dir")
+    parser.add_argument('--extra_labels', help = "extra labels (e.g. phn set when your main target are char) IMPORTANT: the feature files are the master")
     parser.add_argument('--counts_file', default = "/data/ASR5/fmetze/eesen/asr_egs/swbd/v1/label.counts", help = "data dir")
     parser.add_argument('--nepoch', default = 30, type=int, help='#epoch')
     parser.add_argument('--lr_rate', default = 0.03, type=float, help='learning rate')
@@ -237,7 +279,7 @@ def main():
     parser = mainParser()
     args = parser.parse_args()
 
-    nclass, nfeat, cv_data = load_feat_info(args, 'cv')
+    nclass, nfeat, cv_data = load_feat_info(args, 'train')
     if len(args.continue_ckpt):
         train_path = os.path.join(args.train_dir, os.path.dirname(os.path.dirname(args.continue_ckpt)))
     else:
@@ -251,11 +293,10 @@ def main():
     else:
         config = createConfig(args, nfeat, nclass, train_path)
 
-        _, _, tr_data = load_feat_info(args, 'train')
+        _, _, tr_data = load_feat_info(args, 'cv')
         cv_xinfo, cv_y, _ = cv_data
         tr_xinfo, tr_y, _ = tr_data
         data = (cv_xinfo, tr_xinfo, cv_y, tr_y)
-
         tf.train(data, config)
 
 

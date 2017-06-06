@@ -114,7 +114,6 @@ class DeepBidirRNN:
         self.lr_rate = tf.placeholder(tf.float32, name = "learning_rate")[0]
         self.feats = tf.placeholder(tf.float32, [None, None, nfeat], name = "feats")
 
-
         self.temperature = tf.placeholder(tf.float32, name = "temperature")
 
         self.labels = [tf.sparse_placeholder(tf.int32)

@@ -177,8 +177,6 @@ def train(data, config):
                     global_step = train_step + ntrain_batch * epoch
 
                     save_scalar(global_step, "train/batch_cost", batch_cost, writer)
-                    for idx, _ in enumerate(nclass):
-                        save_scalar(global_step, "train/batch_ce", batch_cers[idx], writer)
 
                 if debug:
                     print("batch",train_step,"of",ntrain_batch,"size",batch_size,

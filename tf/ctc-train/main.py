@@ -22,16 +22,26 @@ def load_labels(dir, files=['labels.tr', 'labels.cv']):
     """
     Load a set of labels in (local) Eesen format
     """
-    mapLabel = lambda x: x - 1
     labels = {}
     m = 0
+    min_label=sys.maxint
+
+    print('checking labels...')
+    for filename in files:
+        with open(os.path.join(dir, filename), "r") as f:
+            for line in f:
+                tokens = line.strip().split()
+                labels[tokens[0]] = [int(x) for x in tokens[1:]]
+                if min(labels[tokens[0]]) < min_label:
+                    min_label = min(labels[tokens[0]])
+
+    mapLabel = lambda x: x - min_label
 
     for filename in files:
         with open(os.path.join(dir, filename), "r") as f:
             for line in f:
                 tokens = line.strip().split()
-                # labels[tokens[0]] = [mapLabel(int(x)) for x in tokens[1:]]
-                labels[tokens[0]] = [int(x) for x in tokens[1:]]
+                labels[tokens[0]] = [mapLabel(int(x)) for x in tokens[1:]]
                 if max(labels[tokens[0]]) > m:
                     m = max(labels[tokens[0]])
 
@@ -279,7 +289,7 @@ def main():
     parser = mainParser()
     args = parser.parse_args()
 
-    nclass, nfeat, cv_data = load_feat_info(args, 'train')
+    nclass, nfeat, cv_data = load_feat_info(args, 'cv')
     if len(args.continue_ckpt):
         train_path = os.path.join(args.train_dir, os.path.dirname(os.path.dirname(args.continue_ckpt)))
     else:
@@ -293,7 +303,7 @@ def main():
     else:
         config = createConfig(args, nfeat, nclass, train_path)
 
-        _, _, tr_data = load_feat_info(args, 'cv')
+        _, _, tr_data = load_feat_info(args, 'train')
         cv_xinfo, cv_y, _ = cv_data
         tr_xinfo, tr_y, _ = tr_data
         data = (cv_xinfo, tr_xinfo, cv_y, tr_y)

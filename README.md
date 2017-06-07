@@ -24,7 +24,7 @@ Eesen contains 4 key components to enable end-to-end ASR:
 * The RNN-LM decoding approach does not require a fixed lexicon.
 * GPU implementation of LSTM model training and CTC learning, now also using [Tensorflow](https://www.tensorflow.org/).
 * Multiple utterances are processed in parallel for training speed-up.
-* Fully-fledged [example setups](asr_egs/) to demonstrate end-to-end system building, with both phonemes and characters as labels, following [Kaldi](https://github.com/kaldi-asr/kaldi) conventions.
+* Fully-fledged [example setups](asr_egs/) to demonstrate end-to-end system building, with both phonemes and characters as labels, following [Kaldi](https://github.com/kaldi-asr/kaldi) recipes and conventions.
 
 ### Experimental Results
 

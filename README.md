@@ -8,7 +8,7 @@
 * Dictionary, if characters are used as the modeling units
 * **...**
 
-Eesen was created by [Yajie Miao](http://www.cs.cmu.edu/~ymiao) borrowing liberally from the [Kaldi](https://github.com/kaldi-asr/kaldi) toolkit.
+Eesen was created by [Yajie Miao](http://www.cs.cmu.edu/~ymiao) borrowing liberally from the [Kaldi](https://github.com/kaldi-asr/kaldi) toolkit. [Thank you, Yajie!](https://www.youcaring.com/iscainternationalspeechcommunicationassociation-815026)
 
 ### Key Components
 

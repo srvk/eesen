@@ -8,7 +8,7 @@
 * Dictionary, if characters are used as the modeling units
 * **...**
 
-Eesen was created by [Yajie Miao](http://www.cs.cmu.edu/~ymiao) borrowing liberally from the [Kaldi](https://github.com/kaldi-asr/kaldi) toolkit. [Thank you, Yajie!](https://www.youcaring.com/iscainternationalspeechcommunicationassociation-815026)
+Eesen was created by [Yajie Miao](http://www.cs.cmu.edu/~ymiao) with inspiration from the [Kaldi](https://github.com/kaldi-asr/kaldi) toolkit. [Thank you, Yajie!](https://www.youcaring.com/iscainternationalspeechcommunicationassociation-815026)
 
 ### Key Components
 
@@ -16,7 +16,7 @@ Eesen contains 4 key components to enable end-to-end ASR:
 * **Acoustic Model**  -- Bi-directional RNNs with LSTM units.
 * **Training**        -- [Connectionist temporal classification (CTC)](http://www.machinelearning.org/proceedings/icml2006/047_Connectionist_Tempor.pdf) as the training objective.
 * **WFST Decoding**   -- A principled decoding approach based on Weighted Finite-State Transducers (WFSTs), or 
-* **RNN-LM Decoding** -- Decoding based on (character) [RNN language models](https://arxiv.org/abs/1408.2873), when using Tensorflow
+* **RNN-LM Decoding** -- Decoding based on (character) [RNN language models](https://arxiv.org/abs/1408.2873), when using Tensorflow (currently its own branch)
 
 ### Highlights of Eesen
 

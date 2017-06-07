@@ -1,6 +1,6 @@
 ### Eesen
 
-**Eesen** is to simplify the existing complicated, expertise-intensive ASR pipeline into a straightforward learning problem. Acoustic modeling in Eesen involves training a single recurrent neural network (RNN) to model the mapping from speech to text. Eesen abandons the following elements required by the existing ASR pipeline:
+**Eesen** is to simplify the existing complicated, expertise-intensive ASR pipeline into a straightforward sequence learning problem. Acoustic modeling in Eesen involves training a single recurrent neural network (RNN) to model the mapping from speech to text. Eesen abandons the following elements required by the existing ASR pipeline:
 
 * Hidden Markov models (HMMs)
 * Gaussian mixture models (GMMs)
@@ -13,10 +13,10 @@ Eesen was created by [Yajie Miao](http://www.cs.cmu.edu/~ymiao) borrowing libera
 ### Key Components
 
 Eesen contains 4 key components to enable end-to-end ASR:
-* **Acoustic Model** -- Bi-directional RNNs with LSTM units.
-* **Training**       -- [Connectionist temporal classification (CTC)](http://www.machinelearning.org/proceedings/icml2006/047_Connectionist_Tempor.pdf) as the training objective.
-* **WFST Decoding**       -- A principled decoding approach based on Weighted Finite-State Transducers (WFSTs), or 
-* **RNN-LM Decoding** -- Decoding based on (character) [RNN language models](https://arxiv.org/abs/1408.2873)
+* **Acoustic Model**  -- Bi-directional RNNs with LSTM units.
+* **Training**        -- [Connectionist temporal classification (CTC)](http://www.machinelearning.org/proceedings/icml2006/047_Connectionist_Tempor.pdf) as the training objective.
+* **WFST Decoding**   -- A principled decoding approach based on Weighted Finite-State Transducers (WFSTs), or 
+* **RNN-LM Decoding** -- Decoding based on (character) [RNN language models](https://arxiv.org/abs/1408.2873), when using Tensorflow
 
 ### Highlights of Eesen
 
@@ -34,4 +34,4 @@ Refer to RESULTS under each [example setup](asr_egs/).
 
 For more information, please refer to the following paper(s):
 
-Yajie Miao, Mohammad Gowayyed, and Florian Metze, "[EESEN: End-to-End Speech Recognition using Deep RNN Models and WFST-based Decoding](http://arxiv.org/abs/1507.08240)," in Proc. ASRU 2015.
+Yajie Miao, Mohammad Gowayyed, and Florian Metze, "[EESEN: End-to-End Speech Recognition using Deep RNN Models and WFST-based Decoding](http://arxiv.org/abs/1507.08240)," in Proc. Automatic Speech Recognition and Understanding Workshop (ASRU), Scottsdale, AZ; U.S.A., December 2015. IEEE.

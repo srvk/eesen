@@ -46,12 +46,25 @@ def save_scalar(step, name, value, writer):
     writer.add_summary(summary, step)
 
 def eval(data, config, model_path):
+
+    nclass= config["nclass"]
+
     model = DeepBidirRNN(config)
     cv_xinfo, cv_y, cv_uttids = data
     saver = tf.train.Saver()
-    soft_prob = []
-    log_soft_prob = []
-    log_like = []
+
+
+    soft_probs = []
+    log_soft_probs = []
+    log_likes = []
+    logits = []
+
+    for idx, _ in enumerate(nclass):
+        soft_probs.append([])
+        log_soft_probs.append([])
+        log_likes.append([])
+        logits.append([])
+
 
     def mat2list(a, seq_len):
         # roll to match the output of essen code, blank label first
@@ -61,40 +74,65 @@ def eval(data, config, model_path):
         print ("load_ckpt", model_path)
         saver.restore(sess, model_path)
 
-        ncv, ncv_label = 0, 0
-        cv_cost = cv_wer = 0.0
+        ncv = 0
+        cv_cost = 0.0
+
+        cv_cers = [0] * len(nclass)
+        ncv_labels = [0] * len(nclass)
+
         data_queue = Queue(config["batch_size"])
+
+
         p=Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, False))
         p.start()
+
+        count =0
         while True:
+            count=count+1
+
             data = data_queue.get()
             if data is None:
                 break
+
             xbatch, ybatch = data
             batch_size = len(xbatch)
             ncv += batch_size
-            ncv_label += get_label_len(ybatch)
 
-            feed = {model.feats: xbatch, model.labels: ybatch,
-                model.temperature: config["temperature"], model.prior: config["prior"]}
-            batch_cost, batch_wer, batch_soft_prob, batch_log_soft_prob, batch_log_like, batch_seq_len = \
-                sess.run([model.cost, model.wer, model.softmax_prob,
-                model.log_softmax_prob, model.log_likelihood, model.seq_len], feed)
+            for idx, y_element_batch in enumerate(ybatch):
+                 ncv_labels[idx] += get_label_len(y_element_batch)
+
+            feed = {i: y for i, y in zip(model.labels, ybatch)}
+
+            feed[model.feats] = xbatch
+            feed[model.temperature] = config["temperature"]
+            feed[model.prior] = config["prior"]
+
+            batch_cost, batch_cers, batch_soft_probs, batch_log_soft_probs, batch_log_likes, batch_seq_len, batch_logits = sess.run([model.cost, model.cers, model.softmax_probs,
+                model.log_softmax_probs, model.log_likelihoods, model.seq_len, model.logits], feed)
+
             cv_cost += batch_cost * batch_size
-            cv_wer += batch_wer
-            soft_prob += mat2list(batch_soft_prob, batch_seq_len)
-            log_soft_prob += mat2list(batch_log_soft_prob, batch_seq_len)
-            log_like += mat2list(batch_log_like, batch_seq_len)
+            for idx, _ in enumerate(nclass):
+                cv_cers[idx] += batch_cers[idx]
+                soft_probs[idx] += mat2list(batch_soft_probs[idx], batch_seq_len)
+                log_soft_probs[idx] += mat2list(batch_log_soft_probs[idx], batch_seq_len)
+                log_likes[idx] += mat2list(batch_log_likes[idx], batch_seq_len)
+                logits[idx] += mat2list(batch_logits[idx], batch_seq_len)
 
         p.join()
         p.terminate()
 
-        cv_wer /= float(ncv_label)
-        print("Eval cost: %.1f, ter: %.3f, #example: %d" % (cv_cost, cv_wer, ncv))
         root_path = config["train_path"]
-        writeArk(root_path + "/soft_prob.ark", soft_prob, cv_uttids)
-        writeArk(root_path + "/log_soft_prob.ark", log_soft_prob, cv_uttids)
-        writeArk(root_path + "/log_like.ark", log_like, cv_uttids)
+        cv_cost=cv_cost/ncv
+        for idx, _ in enumerate(nclass):
+            cv_cers[idx] /= float(ncv_labels[idx])
+            if(len(nclass) > 1):
+                print("Eval cost: %.1f, ter: %.3f, #example: %d language "+str(idx)+"]" % (cv_cost, cv_cers[idx], ncv))
+            else:
+                print("Eval cost: %.1f, ter: %.3f, #example: %d" % (cv_cost, cv_cers[idx], ncv))
+            writeArk(root_path + "/soft_prob_"+str(idx)+".ark", soft_probs[idx], cv_uttids)
+
+            writeArk(root_path + "/log_soft_prob_"+str(idx)+".ark", log_soft_probs[idx], cv_uttids)
+            writeArk(root_path + "/logits_"+str(idx)+".ark", logits[idx], cv_uttids)
 
 def train(data, config):
     tf.set_random_seed(config["random_seed"])
@@ -111,6 +149,7 @@ def train(data, config):
     init_lr_rate = config["lr_rate"]
     half_period = config["half_period"]
     model_dir = config["train_path"] + "/model"
+
     nclass= config["nclass"]
 
     if not os.path.exists(model_dir):
@@ -152,6 +191,9 @@ def train(data, config):
                 if data is None:
                     break
                 xbatch, ybatch = data
+
+
+
                 batch_size = len(xbatch)
 
                 ntrain += batch_size
@@ -208,6 +250,10 @@ def train(data, config):
                     break
 
                 xbatch, ybatch = data
+
+
+                print(ybatch)
+                sys.exit()
                 batch_size = len(xbatch)
 
                 ncv += batch_size
@@ -250,14 +296,22 @@ def train(data, config):
                     fp.write("Time: %.2f seconds, lrate: %.4f" % (time.time() - tic, lr_rate))
 
                     for idx, _ in enumerate(nclass):
-                        fp.write("Train cost( language "+str(idx)+"): %.1f, ter: %.3f, #example: %d" % (train_cost, train_cer[idx], ntrain))
-                        fp.write("Validate cost( language "+str(idx)+"): %.1f, ter: %.3f, #example: %d" % (cv_cost, cv_cer[idx], ncv))
+                        if(len(nclass) > 1):
+                            fp.write("Train cost (language "+str(idx)+"): %.1f, ter: %.3f, #example: %d" % (train_cost, train_cer[idx], ntrain))
+                            fp.write("Validate cost: %.1f, ter: %.3f, #example: %d [language "+str(idx)+"]" % (cv_cost, cv_cer[idx], ncv))
+                        else:
+                            fp.write("Train cost: %.1f, ter: %.3f, #example: %d" % (train_cost, train_cer[idx], ntrain))
+                            fp.write("Validate cost: %.1f, ter: %.3f, #example: %d" % (cv_cost, cv_cer[idx], ncv))
 
 
             info("Epoch %d finished in %.2f seconds, learning rate: %.4f" % (epoch + 1, time.time() - tic, lr_rate))
 
             for idx, _ in enumerate(nclass):
-                print("Train cost ( language "+str(idx)+"): %.1f, ter: %.3f, #example: %d" % (train_cost, train_cer[idx], ntrain))
-                print("Validate cost ( language "+str(idx)+"): %.1f, ter: %.3f, #example: %d" % (cv_cost, cv_cer[idx], ncv))
-                print(80 * "-")
-                sys.stdout.flush()
+                if(len(nclass) > 1):
+                    print("Train cost ( language "+str(idx)+"): %.1f, ter: %.3f, #example: %d" % (train_cost, train_cer[idx], ntrain))
+                    print("Validate cost ( language "+str(idx)+"): %.1f, ter: %.3f, #example: %d" % (cv_cost, cv_cer[idx], ncv))
+                else:
+                    print("Train cost ( language "+str(idx)+"): %.1f, ter: %.3f, #example: %d" % (train_cost, train_cer[idx], ntrain))
+                    print("Validate cost ( language "+str(idx)+"): %.1f, ter: %.3f, #example: %d" % (cv_cost, cv_cer[idx], ncv))
+                    print(80 * "-")
+                    sys.stdout.flush()

@@ -8,7 +8,7 @@ class DeepBidirRNN:
             length = tf.cast(length, tf.int32)
         return length
 
-    def my_cudnn_lstm(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope, is_training = True):
+    def my_cudnn_lstm(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope, batch_norm ,is_training = True):
         """
         outputs: time, batch_size, feat_dim
         """
@@ -30,6 +30,10 @@ class DeepBidirRNN:
                         outputs = tf.contrib.layers.fully_connected(
                             activation_fn = None, inputs = outputs,
                             num_outputs = nproj, scope = "projection")
+
+                        if(batch_norm):
+                            outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True,decay=0.9, is_training=self.is_training,  updates_collections=None)
+
                         ninput = nproj
             else:
                 cudnn_model = tf.contrib.cudnn_rnn.CudnnLSTM(nlayer, nhidden, nfeat, direction = 'bidirectional')
@@ -42,6 +46,10 @@ class DeepBidirRNN:
                 outputs, _output_h, _output_c = cudnn_model(is_training=is_training,
                     input_data=outputs, input_h=input_h, input_c=input_c,
                     params=cudnn_params)
+
+                if(batch_norm):
+                    outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True,decay=0.9, is_training=self.is_training,  updates_collections=None)
+
         return outputs
 
     def my_fuse_block_lstm(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope):
@@ -103,6 +111,8 @@ class DeepBidirRNN:
         nlayer = config["nlayer"]
         clip = config["clip"]
         nproj = config["nproj"]
+        batch_norm = config["batch_norm"]
+
         try:
             featproj = config["feat_proj"]
         except:
@@ -116,11 +126,15 @@ class DeepBidirRNN:
 
         self.temperature = tf.placeholder(tf.float32, name = "temperature")
 
+        self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
+
         self.labels = [tf.sparse_placeholder(tf.int32)
           for _ in xrange(len(nclasses))]
 
-        self.priors =[tf.placeholder(tf.float32, nclass)
-          for count, nclass in enumerate(nclasses)]
+        self.prior = tf.placeholder(tf.float32, [nclasses[0]], name = "prior")
+
+        # self.prior =[tf.placeholder(tf.float32, nclass)
+          # for count, nclass in enumerate(nclasses)]
 
         self.seq_len = self.length(self.feats)
 
@@ -130,12 +144,17 @@ class DeepBidirRNN:
 
         outputs = tf.transpose(self.feats, (1, 0, 2), name = "feat_transpose")
 
+        if batch_norm:
+
+            outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training, updates_collections=None)
+
         if featproj > 0:
             outputs = tf.contrib.layers.fully_connected(
                 activation_fn = None, inputs = outputs, num_outputs = featproj,
                 scope = "input_fc", biases_initializer = tf.contrib.layers.xavier_initializer())
+
         if lstm_type == "cudnn":
-            outputs = self.my_cudnn_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "cudnn_lstm")
+            outputs = self.my_cudnn_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj,  "cudnn_lstm", batch_norm)
         elif lstm_type == "fuse":
             outputs = self.my_fuse_block_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "fuse_lstm")
         else:
@@ -143,7 +162,11 @@ class DeepBidirRNN:
 
         logits=[]
         for count_label, _ in enumerate(nclasses):
+
             logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = nclasses[count_label], scope = "output_fc_"+str(count_label), biases_initializer = tf.contrib.layers.xavier_initializer())
+
+            if batch_norm:
+                logit = tf.contrib.layers.batch_norm(logit, center=True, scale=True, decay=0.9, is_training=self.is_training,  updates_collections=None)
 
             logits.append(logit)
 
@@ -160,18 +183,25 @@ class DeepBidirRNN:
         self.softmax_probs=[]
         self.log_softmax_probs=[]
         self.log_likelihoods=[]
+        self.logits=[]
 
         with tf.variable_scope("eval_output"):
-            tran_logit = tf.transpose(logit, (1, 0, 2)) * self.temperature
 
-            softmax_prob = tf.nn.softmax(tran_logit, dim=-1, name=None)
-            self.softmax_probs.append(softmax_prob)
+            for idx, logit in enumerate(logits):
+                tran_logit = tf.transpose(logit, (1, 0, 2)) * self.temperature
+                self.logits.append(tran_logit)
 
-            log_softmax_prob = tf.log(softmax_prob)
-            self.log_softmax_probs.append(log_softmax_prob)
+                softmax_prob = tf.nn.softmax(tran_logit, dim=-1, name=None)
+                self.softmax_probs.append(softmax_prob)
 
-            log_likelihood = log_softmax_prob - tf.log(self.priors[0])
-            self.log_likelihoods.append(log_likelihood)
+                log_softmax_prob = tf.log(softmax_prob)
+                self.log_softmax_probs.append(log_softmax_prob)
+
+                log_likelihood = log_softmax_prob - tf.log(self.prior)
+                self.log_likelihoods.append(log_likelihood)
+
+                log_likelihood = log_softmax_prob - tf.log(self.prior)
+                self.log_likelihoods.append(log_likelihood)
 
         with tf.variable_scope("optimizer"):
             optimizer = None

@@ -24,18 +24,8 @@ def load_labels(dir, files=['labels.tr', 'labels.cv']):
     """
     labels = {}
     m = 0
-    min_label=sys.maxint
 
-    print('checking labels...')
-    for filename in files:
-        with open(os.path.join(dir, filename), "r") as f:
-            for line in f:
-                tokens = line.strip().split()
-                labels[tokens[0]] = [int(x) for x in tokens[1:]]
-                if min(labels[tokens[0]]) < min_label:
-                    min_label = min(labels[tokens[0]])
-
-    mapLabel = lambda x: x - min_label
+    mapLabel = lambda x: x - 1
 
     for filename in files:
         with open(os.path.join(dir, filename), "r") as f:
@@ -84,6 +74,7 @@ def get_batch_info(feat_info, label_dicts, start, height):
     return xinfo, yidx_r, yval_r, yshape_r
 
 def make_batches_info(feat_info, label_dicts, batch_size):
+
     batch_x, batch_y = [], []
     L = len(feat_info)
     uttids = [x[0] for x in feat_info]
@@ -126,6 +117,7 @@ def make_even_batches_info(feat_info, label_dicts, batch_size):
     return batch_x, batch_y, uttids
 
 def load_feat_info(args, part):
+
     nclass_all=[]
     label_dicts=[]
 
@@ -166,6 +158,8 @@ def load_feat_info(args, part):
         x, y, uttids = make_even_batches_info(feat_info, label_dicts, batch_size)
     else:
         x, y, uttids = make_batches_info(feat_info, label_dicts, batch_size)
+
+
     return nclass_all, nfeat, (x, y, uttids)
 
 def load_prior(prior_path):
@@ -226,6 +220,7 @@ def mainParser():
     parser.add_argument('--nhidden', default = 320, type=int, help='dimension of hidden units in single direction')
     parser.add_argument('--nproj', default = 0, type=int, help='dimension of projection units, set to 0 if no projection needed')
     parser.add_argument('--feat_proj', default = 0, type=int, help='dimension of feature projection units, set to 0 if no projection needed')
+    parser.add_argument('--batch_norm', default = False, dest='batch_norm', help='add batch normalitzation between layers')
     parser.add_argument('--half_period', default = 10, type=int, help='half period in epoch of learning rate')
     parser.add_argument('--temperature', default = 1, type=float, help='temperature used in softmax')
     parser.add_argument('--grad_opt', default = "grad", help='optimizer: grad, adam, momentum, cuddnn only work with grad')
@@ -240,6 +235,8 @@ def readConfig(args):
     config["temperature"] = args.temperature
     config["prior"] = load_prior(args.counts_file)
     config["lstm_type"] = "cudnn"
+    config["batch_norm"] = args.batch_norm
+
     if len(args.continue_ckpt):
         config["continue_ckpt"] = args.continue_ckpt
     for k, v in config.items():
@@ -259,6 +256,7 @@ def createConfig(args, nfeat, nclass, train_path):
         "nhidden": args.nhidden,
         "nproj": args.nproj,
         "feat_proj": args.feat_proj,
+        "batch_norm": args.batch_norm,
         "do_shuf": args.do_shuf,
         "lstm_type": args.lstm_type,
         "half_period": args.half_period,
@@ -268,6 +266,7 @@ def createConfig(args, nfeat, nclass, train_path):
         "store_model": args.store_model,
         "random_seed": 15213
     }
+
     if len(args.continue_ckpt):
         config["continue_ckpt"] = args.continue_ckpt
     for k, v in config.items():
@@ -290,6 +289,8 @@ def main():
     args = parser.parse_args()
 
     nclass, nfeat, cv_data = load_feat_info(args, 'cv')
+
+
     if len(args.continue_ckpt):
         train_path = os.path.join(args.train_dir, os.path.dirname(os.path.dirname(args.continue_ckpt)))
     else:
@@ -299,6 +300,7 @@ def main():
         config = readConfig(args)
         config["temperature"] = args.temperature
         config["prior"] = load_prior(args.counts_file)
+        config["nclass"]= nclass
         tf.eval(cv_data, config, args.eval_model)
     else:
         config = createConfig(args, nfeat, nclass, train_path)
@@ -307,6 +309,7 @@ def main():
         cv_xinfo, cv_y, _ = cv_data
         tr_xinfo, tr_y, _ = tr_data
         data = (cv_xinfo, tr_xinfo, cv_y, tr_y)
+
         tf.train(data, config)
 
 

@@ -57,20 +57,21 @@ def train(data,config):
             random.shuffle(train_order)
             start_ = time.time()
             for i, sid in enumerate(train_order, start=1):
-                if i % int(500 / batch_size) == 0:
+                if i % int(1600 / batch_size) == 0:
                     print('Updates so far: %d Loss: %f wps: %f' % (
-                    i - 1, sum(train_losses) / train_words, train_words / (time.time() - start_)))
+                        i - 1, sum(train_losses) / train_words, train_words / (time.time() - start_)))
                     all_tagged += train_words
                     train_losses = []
                     train_words = 0
                     all_time = time.time() - start_train
                     start_ = time.time()
-                if i % int(30000 / batch_size) == 0 :
+                if i % int(32000 / batch_size) == 0 :
                     dev_start = time.time()
                     test_losses = []
                     test_words = 0
                     all_time += time.time() - start_train
-                    print('Testing on dev set...')
+                    print('Validating ', end="")
+                    sys.stdout.flush()
                     for tid in test_order:
                         t_examples = test[tid:tid + batch_size]
                         x_lens_in = [len(example) for example in t_examples]
@@ -83,7 +84,7 @@ def train(data,config):
                     dev_time += time.time() - dev_start
                     train_time = time.time() - start_train - dev_time
                     print('nll=%.4f, ppl=%.4f, time=%.4f, words_per_sec=%.4f' % (
-                nll, math.exp(nll), train_time, all_tagged / train_time), file=sys.stderr)
+                        nll, math.exp(nll), train_time, all_tagged / train_time), file=sys.stderr)
                     start_ = start_ + (time.time() - dev_start)
 
                 # train on sent

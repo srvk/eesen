@@ -188,6 +188,7 @@ def readConfig(args):
     config["temperature"] = args.temperature
     config["prior"] = load_prior(args.counts_file)
     config["lstm_type"] = "cudnn"
+    config["augment"] = args.augment
     if len(args.continue_ckpt):
         config["continue_ckpt"] = args.continue_ckpt
     for k, v in config.items():
@@ -214,7 +215,8 @@ def createConfig(args, nfeat, nclass, train_path):
         "batch_size": args.batch_size,
         "train_path": train_path,
         "store_model": args.store_model,
-        "random_seed": 15213
+        "random_seed": 15213,
+        "augment": args.augment
     }
     if len(args.continue_ckpt):
         config["continue_ckpt"] = args.continue_ckpt
@@ -238,15 +240,16 @@ def main():
     args = parser.parse_args()
 
     nclass, nfeat, cv_data = load_feat_info(args, 'cv')
-    if len(args.continue_ckpt):
-        train_path = os.path.join(args.train_dir, os.path.dirname(os.path.dirname(args.continue_ckpt)))
-    else:
-        train_path = get_output_folder(args.train_dir)
+    #if len(args.continue_ckpt):
+    #    train_path = os.path.dirname(os.path.dirname(args.continue_ckpt))
+    #else:
+    train_path = get_output_folder(args.train_dir)
 
     if args.eval:
         config = readConfig(args)
         config["temperature"] = args.temperature
         config["prior"] = load_prior(args.counts_file)
+        config["train_path"] = args.data_dir
         tf.eval(cv_data, config, args.eval_model)
     else:
         config = createConfig(args, nfeat, nclass, train_path)

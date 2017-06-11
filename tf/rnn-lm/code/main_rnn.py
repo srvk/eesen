@@ -2,7 +2,8 @@ import argparse
 import json
 import pdb
 from train_rnn_lm import *
-from prepare_data import *
+from prepare_traindata import *
+
 def mainParser():
     parser = argparse.ArgumentParser(description='Train TF-RNN_LM')
     parser.add_argument('--batch_size', default = 16, type=int, help='batch size')
@@ -16,6 +17,7 @@ def mainParser():
     parser.add_argument('--num_layers', default = 1, type=int, help='#layer')
     parser.add_argument('--hidden_size', default = 1000, type=int, help='dimension of hidden units in single direction')
     parser.add_argument('--embed_size', default = 64, type=int, help='embedding size')
+    parser.add_argument('--start_idx', default = 1, type=int, help='ignore leading fields in transcriptions')
     parser.add_argument('--drop_emb', default = 1.0, type=float, help='embedding (1.0-dropout) probability')
     # parser.add_argument('--gpu_id', default = 1, type=int, help='gpu to use')
 
@@ -52,7 +54,7 @@ def main():
     args = parser.parse_args()
     config = createConfig(args)
     data = dict()
-    data['train'], data['test'], config['nwords'], data['eos'] = prep_data(config)
+    data['train'], data['test'], config['nwords'], data['eos'] = prep_data(config, startidx=args.start_idx)
     train(data,config)
     # pdb.set_trace()
 

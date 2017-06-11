@@ -2,9 +2,10 @@ import tensorflow as tf
 from DeepBidirRNN import *
 import numpy as np
 from multiprocessing import Process, Queue
-import sys, os, re, time, random
-from fileutils.kaldi import writeArk, readMatrixByOffset
+import sys, os, re, time, random, functools
+from fileutils.kaldi import writeArk, writeScp, readMatrixByOffset
 from Reader import run_reader
+from itertools import islice
 
 print("tf.py - version information follows:")
 try:
@@ -57,6 +58,10 @@ def eval(data, config, model_path):
         # roll to match the output of essen code, blank label first
         return [np.roll(a[i, :seq_len[i], :], 1, axis = 1) for i in range(len(a))]
 
+    def chunk(it, size):
+        it = iter(it)
+        return iter(lambda: tuple(islice(it, size)), ())
+
     with tf.Session() as sess:
         print ("load_ckpt", model_path)
         saver.restore(sess, model_path)
@@ -91,9 +96,38 @@ def eval(data, config, model_path):
         cv_wer /= float(ncv_label)
         print("Eval cost: %.1f, ter: %.3f, #example: %d" % (cv_cost, cv_wer, ncv))
         root_path = config["train_path"]
-        writeArk(root_path + "/soft_prob.ark", soft_prob, cv_uttids)
-        writeArk(root_path + "/log_soft_prob.ark", log_soft_prob, cv_uttids)
-        writeArk(root_path + "/log_like.ark", log_like, cv_uttids)
+        if config["augment"]:
+            # let's average the three(?) sub-sampled outputs
+            S1 = {}; P1 = {}; L1 = {}; S2 = {}; P2 = {}; L2 = {}; U = []
+            for u, s, p, l in zip(cv_uttids, soft_prob, log_soft_prob, log_like):
+                if not u in S1:
+                    S1[u] = s; P1[u] = p; L1[u] = l
+                elif not u in S2:
+                    S2[u] = s; P2[u] = p; L2[u] = l
+                else:
+                    L = min(S1[u].shape[0],S2[u].shape[0],s.shape[0])
+                    if S1[u].shape[0] > L:
+                        S1[u] = S1[u][0:L][:]; P1[u] = P1[u][0:L][:]; L1[u] = L1[u][0:L][:]
+                    if S2[u].shape[0] > L:
+                        S2[u] = S2[u][0:L][:]; P2[u] = P2[u][0:L][:]; L2[u] = L2[u][0:L][:]
+                    if s.shape[0] > L:
+                        s     =     s[0:L][:]; p     =     p[0:L][:]; l     =     l[0:L][:]
+                    S1[u]=(s+S1[u]+S2[u])/3; P1[u]=(p+P1[u]+P2[u])/3; L1[u]=(l+L1[u]+L2[u])/3
+                    del S2[u]; del P2[u]; del L2[u]
+                    U.append(u)
+            soft_prob = []; log_soft_prob = []; log_like = []
+            for u in U:
+                soft_prob += [S1[u]]
+                log_soft_prob += [P1[u]]
+                log_like += [L1[u]]
+
+        # let's write scp and ark files for our data
+        writeScp(os.path.join(root_path, "soft_prob.scp"), U,
+                 writeArk(os.path.join(root_path, "soft_prob.ark"), soft_prob, U))
+        writeScp(os.path.join(root_path, "log_soft_prob.scp"), U,
+                 writeArk(os.path.join(root_path, "log_soft_prob.ark"), log_soft_prob, U))
+        writeScp(os.path.join(root_path, "log_like.scp"), U,
+                 writeArk(os.path.join(root_path, "log_like.ark"), log_like, U))
 
 def train(data, config):
     tf.set_random_seed(config["random_seed"])
@@ -121,8 +155,8 @@ def train(data, config):
         # restore a training
         if "continue_ckpt" in config:
             alpha = int(re.match(".*epoch([-+]?\d+).ckpt", config["continue_ckpt"]).groups()[0])
-            print ("continue_ckpt", alpha, model_dir)
-            saver.restore(sess, "%s/epoch%02d.ckpt" % (model_dir, alpha))
+            print ("continue_ckpt", alpha, model_dir, config["continue_ckpt"])
+            saver.restore(sess, config["continue_ckpt"])
         print(80 * "-")
         sys.stdout.flush()
 
@@ -199,9 +233,9 @@ def train(data, config):
             if config["store_model"]:
                 saver.save(sess, "%s/epoch%02d.ckpt" % (model_dir, epoch + 1))
                 with open("%s/epoch%02d.log" % (model_dir, epoch + 1), 'w') as fp:
-                    fp.write("Time: %.2f seconds, lrate: %.4f" % (time.time() - tic, lr_rate))
-                    fp.write("Train cost: %.1f, ter: %.3f, #example: %d" % (train_cost, train_wer, ntrain))
-                    fp.write("Validate cost: %.1f, ter: %.3f, #example: %d" % (cv_cost, cv_wer, ncv))
+                    fp.write("Time: %.2f seconds, lrate: %.4f\n" % (time.time() - tic, lr_rate))
+                    fp.write("Train cost: %.1f, ter: %.3f, #example: %d\n" % (train_cost, train_wer, ntrain))
+                    fp.write("Validate cost: %.1f, ter: %.3f, #example: %d\n" % (cv_cost, cv_wer, ncv))
 
             info("Epoch %d finished in %.2f seconds, learning rate: %.4f" % (epoch + 1, time.time() - tic, lr_rate))
             print("Train cost: %.1f, ter: %.3f, #example: %d" % (train_cost, train_wer, ntrain))

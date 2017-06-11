@@ -151,15 +151,15 @@ print('Graph created.', file=sys.stderr)
 
 init = tf.global_variables_initializer()
 saver = tf.train.Saver()
-model_path='./saved_models/'
+model_path='./saved_models_4/'
 with tf.Session() as sess:
     sess.run(init)
 
     train_losses = []
-    print('startup time: %r' % (time.time() - start_))
+    print('startup time: %r' % (time.time() - start_), file=sys.stderr)
     i = all_time = dev_time = all_tagged = train_words = 0
     start_train = time.time()
-    for ITER in range(5):
+    for ITER in range(100):
         random.shuffle(train_order)
         start_ = time.time()
         for i, sid in enumerate(train_order, start=1):
@@ -176,7 +176,7 @@ with tf.Session() as sess:
                 test_losses = []
                 test_words = 0
                 all_time += time.time() - start_train
-                print('Testing on dev set...')
+                print('Testing on dev set...', file=sys.stderr)
                 for tid in test_order:
                     t_examples = test[tid:tid + args.MB_SIZE]
                     x_lens_in = [len(example) for example in t_examples]
@@ -194,11 +194,11 @@ with tf.Session() as sess:
                 dev_time += time.time() - dev_start
                 train_time = time.time() - start_train - dev_time
                 print('nll=%.4f, ppl=%.4f, time=%.4f, words_per_sec=%.4f' % (
-                nll, math.exp(nll), train_time, all_tagged / train_time), file=sys.stderr)
+                nll, math.exp(nll), train_time, all_tagged / train_time))
                 start_ = start_ + (time.time() - dev_start)
 
                 if all_time > args.TIMEOUT:
-                    print('TIMEOUT!!')
+                    print('TIMEOUT!!', file=sys.stderr)
                     sys.exit(0)
             # train on sent
             examples = train[sid: sid + args.MB_SIZE]

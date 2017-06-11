@@ -3,11 +3,11 @@ from collections import Counter, defaultdict
 from itertools import count
 import random
 import math
-import sys
+import sys, os, gzip
 import pdb
 import numpy as np
 
-def prep_data(config):
+def prep_data(config, startidx=1):
 
     train_file = config['train_file']
     dev_file = config['dev_file']
@@ -17,11 +17,17 @@ def prep_data(config):
     sos = '<s>'
     eos = '<s>'
     space = ' '
-    train_fil = io.open(train_file, encoding='utf-8').readlines()
+    if os.path.splitext(train_file)[1] == ".gz":
+        try:
+            train_fil = gzip.open(train_file, 'rt', encoding='utf-8').readlines()
+        except:
+            train_fil = [x.decode('utf-8') for x in gzip.open(train_file, 'rt').readlines()]
+    else:
+        train_fil = io.open(train_file, encoding='utf-8').readlines()
     dev_fil = io.open(dev_file, encoding='utf-8').readlines()
     units = io.open(units_file, encoding='utf-8').readlines()
     w2i['<s>']
-    for i in units[8:]:
+    for i in units:
         w2i[i.strip().split()[0]]
     w2i[eos]
     w2i[space]
@@ -31,22 +37,24 @@ def prep_data(config):
     for i in lexicon:
         lexicon_dict[i.strip().split()[0]] = i.strip().split()[1:]
     train_list = []
-    useless_list =['<nsn>','<hes>','<int>','<lgh>','<cgh>','<br>','<spn>','<sil>', '(())','<noise>','<spoken_noise>','<unk>','<breath>','<cough>','<foreign>','<hes>','<int>','<laugh>','<silence>','<unk>','<v-noise>']
+    useless_list =['<nsn>','<hes>','<int>','<lgh>','<cgh>','<br>','<spn>','<sil>', '(())','<noise>','<spoken_noise>','<unk>','<breath>','<cough>','<foreign>','<hes>','<int>','<laugh>','<silence>','<unk>','<v-noise>', '<space>', '[vocalized-noise]', '[noise]', '[laughter]']
 
     for tr in train_fil:
         temp = list()
         temp.append(w2i['<s>'])
-        words = tr.strip().split(' ')[1:]
+        words = tr.strip().split(' ')[startidx:]
         twords = list()
         for wo in words:
             if wo.lower() not in useless_list:
                 twords.append(wo)
         for w in twords:
+            
             for ch in lexicon_dict[w]:
-                temp.append(int(ch)-8)
-                if(int(ch)<=8):
-                    print('MISTAKE!')
-                    sys.exit(1)
+                temp.append(int(ch))
+                # -8
+                #if(int(ch)<=8):
+                #    print('MISTAKE!')
+                #    sys.exit(1)
             if(w != twords[-1]):
                 temp.append(w2i[space])
         temp.append(w2i['<s>'])
@@ -64,10 +72,11 @@ def prep_data(config):
                 twords.append(wo)
         for w in twords:
             for ch in lexicon_dict[w]:
-                temp.append(int(ch)-8)
-                if(int(ch)<=8):
-                    print('MISTAKE!')
-                    sys.exit(1)
+                temp.append(int(ch))
+                # -8
+                #if(int(ch)<=8):
+                #    print('MISTAKE!')
+                #    sys.exit(1)
             if(w != twords[-1]):
                 temp.append(w2i[space])
         temp.append(w2i['<s>'])
@@ -79,7 +88,7 @@ def prep_data(config):
     test = dev_list
     S = w2i[eos]
     assert (nwords == len(w2i))
-    print('N Words ', nwords)
+    print('#words=', nwords, 'start_index=', startidx)
     train.sort(key=lambda x: len(x), reverse=True)
     test.sort(key=lambda x: len(x), reverse=True)
     return train, test, nwords, S

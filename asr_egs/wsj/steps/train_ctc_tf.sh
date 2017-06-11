@@ -28,6 +28,7 @@ frame_num_limit=20000    # the number of frames to be processed at a time in tra
 learn_rate=0.02          # learning rate
 final_learn_rate=1e-6    # final learning rate
 momentum=0.9             # momentum
+l2=0.0001                # l2 regularization
 
 # learning rate schedule
 max_iters=25             # max number of iterations
@@ -66,24 +67,6 @@ halving=false
 
 ## End configuration section
 
-function shuffle_data() {
-    local iter=$1
-    local num_sequence=$2
-    local frame_num_limit=$3
-    local dir=$4
-    local tmpdir=$5
-    #
-    mkdir -p $tmpdir/shuffle
-    [ -f $tmpdir/train_local.org ] || cp $tmpdir/train_local.scp $tmpdir/train_local.org
-    [ -f $tmpdir/cv_local.org    ] || cp $tmpdir/cv_local.scp    $tmpdir/cv_local.org
-    utils/prep_scps.sh --cp false --nj 1 --cmd "run.pl" --seed $iter \
-        $tmpdir/train_local.org $tmpdir/cv_local.org $num_sequence $frame_num_limit $tmpdir/shuffle $tmpdir
-    if false; then
-        mv $tmpdir/feats_tr.1.scp $tmpdir/train_local.scp
-	mv $tmpdir/feats_cv.1.scp $tmpdir/cv_local.scp
-	rm $tmpdir/batch.tr.list  $tmpdir/batch.cv.list
-    fi
-}
 
 function prepare_features() {
     # this uses a lot of global variables
@@ -108,22 +91,12 @@ function prepare_features() {
         local data_tr=$sources
     fi
 
-    if $sort_by_len; then
-	gzip -cd $dir/labels.tr.gz | join <(feat-to-len scp:$data_tr/feats.scp ark,t:- | paste -d " " - $data_tr/feats.scp) - | sort -gk 2 | \
-	    awk -v c=$context_window '{out=""; for (i=5;i<=NF;i++) {out=out" "$i}; if (!(out in done) && $2 > (2*c+1)*NF) {done[out]=1; print $3 " " $4}}' > $dir/train.scp
-	feat-to-len scp:$data_cv/feats.scp ark,t:- | awk '{print $2}' | \
-	    paste -d " " $data_cv/feats.scp - | sort -k3 -n - | awk '{print $1 " " $2}' > $dir/cv.scp || exit 1;
-    else
-	cat $data_tr/feats.scp | utils/shuffle_list.pl --srand ${seed:-777} > $dir/train.scp
-	cat $data_cv/feats.scp | utils/shuffle_list.pl --srand ${seed:-777} > $dir/cv.scp
-    fi
-
     if [ $par -gt 1 ]; then
     feats_tr="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_tr/utt2spk scp:$data_tr/cmvn.scp scp:$tmpdir/xxxaa ark:- |"
     else
-    feats_tr="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_tr/utt2spk scp:$data_tr/cmvn.scp scp:$dir/train.scp ark:- |"
+    feats_tr="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_tr/utt2spk scp:$data_tr/cmvn.scp scp:$data_tr/feats.scp ark:- |"
     fi
-    feats_cv="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_cv/utt2spk scp:$data_cv/cmvn.scp scp:$dir/cv.scp ark:- |"
+    feats_cv="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_cv/utt2spk scp:$data_cv/cmvn.scp scp:$data_cv/feats.scp ark:- |"
 
     if [ 1 == $(bc <<< "$feats_std != 1.0") ]; then
 	compute-cmvn-stats "$feats_tr" $dir/global_cmvn_stats
@@ -140,78 +113,54 @@ function prepare_features() {
 
     mkdir -p $tmpdir
     if $subsample_feats; then
-	#tmpdir=$(mktemp -d)
-    
-	copy-feats "$feats_tr" "ark:-" | tee \
-            >(subsample-feats --n=3 --offset=2 ark:- ark,scp:$tmpdir/train2.ark,$tmpdir/train2local.scp) \
-	    >(subsample-feats --n=3 --offset=1 ark:- ark,scp:$tmpdir/train1.ark,$tmpdir/train1local.scp) | \
-	      subsample-feats --n=3 --offset=0 ark:- ark,scp:$tmpdir/train0.ark,$tmpdir/train0local.scp || exit 1;
-
-	copy-feats "$feats_cv" "ark:-" | tee \
-	    >(subsample-feats --n=3 --offset=2 ark:- ark,scp:$tmpdir/cv2.ark,$tmpdir/cv2local.scp) \
-	    >(subsample-feats --n=3 --offset=1 ark:- ark,scp:$tmpdir/cv1.ark,$tmpdir/cv1local.scp) | \
-	      subsample-feats --n=3 --offset=0 ark:- ark,scp:$tmpdir/cv0.ark,$tmpdir/cv0local.scp || exit 1;
-
-	sed 's/^/0x/' $tmpdir/train0local.scp        > $tmpdir/train_local.scp
-	sed 's/^/1x/' $tmpdir/train1local.scp | tac >> $tmpdir/train_local.scp
-	sed 's/^/2x/' $tmpdir/train2local.scp       >> $tmpdir/train_local.scp
-	sed 's/^/0x/' $tmpdir/cv0local.scp  > $tmpdir/cv_local.scp
-	sed 's/^/1x/' $tmpdir/cv1local.scp >> $tmpdir/cv_local.scp
-	sed 's/^/2x/' $tmpdir/cv2local.scp >> $tmpdir/cv_local.scp
-    
-	feats_tr="ark,s,cs:copy-feats scp:$tmpdir/shuffle/batch.tr.1.scp ark:- |"
-	feats_cv="ark,s,cs:copy-feats scp:$tmpdir/shuffle/batch.cv.1.scp ark:- |"
-    
-	gzip -cd $dir/labels.tr.gz | sed 's/^/0x/'  > $tmpdir/labels.tr
-	gzip -cd $dir/labels.cv.gz | sed 's/^/0x/'  > $tmpdir/labels.cv
-	gzip -cd $dir/labels.tr.gz | sed 's/^/1x/' >> $tmpdir/labels.tr
-	gzip -cd $dir/labels.cv.gz | sed 's/^/1x/' >> $tmpdir/labels.cv
-	gzip -cd $dir/labels.tr.gz | sed 's/^/2x/' >> $tmpdir/labels.tr
-	gzip -cd $dir/labels.cv.gz | sed 's/^/2x/' >> $tmpdir/labels.cv
-	
-	#labels_tr="ark:cat $tmpdir/labels.tr|"
-	#labels_cv="ark:cat $tmpdir/labels.cv|"
-    
-	trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; rm -r $tmpdir" EXIT
-    
-    elif $copy_feats; then
+	echo "subsampling not supported" && exit 1;
+    fi
+    if $copy_feats; then
 	# Save the features to a local dir on the GPU machine. On Linux, this usually points to /tmp
-	#tmpdir=$(mktemp -d)
 	if [ $par -gt 1 ]; then
-            split -n l/$par $dir/train.scp $tmpdir/xxx
+            split -l `wc -l $data_tr/feats.scp | awk -v c=$par '{print int((\$1+c)/c)}'` $data_tr/feats.scp $tmpdir/xxx
             f2=`echo $feats_tr | sed 's/xxxaa/xxxab/'`
             f3=`echo $feats_tr | sed 's/xxxaa/xxxac/'`
             copy-feats "$feats_tr" ark,scp:$tmpdir/train1.ark,$tmpdir/train1local.scp &
             copy-feats "$f2"       ark,scp:$tmpdir/train2.ark,$tmpdir/train2local.scp &
             copy-feats "$f3"       ark,scp:$tmpdir/train3.ark,$tmpdir/train3local.scp &
             wait
-            cat $tmpdir/train1local.scp $tmpdir/train2local.scp $tmpdir/train3local.scp > $tmpdir/train_local.scp
+            cat $tmpdir/train?local.scp > $tmpdir/train_local_raw.scp || exit 1;
 	else
-	copy-feats "$feats_tr" ark,scp:$tmpdir/train.ark,$tmpdir/train_local.scp || exit 1;
+	copy-feats "$feats_tr" ark,scp:$tmpdir/train.ark,$tmpdir/train_local_raw.scp || exit 1;
 	fi
 	copy-feats "$feats_cv" ark,scp:$tmpdir/cv.ark,$tmpdir/cv_local.scp || exit 1;
 	feats_tr="ark,s,cs:copy-feats scp:$tmpdir/feats_tr.scp ark:- |"
 	feats_cv="ark,s,cs:copy-feats scp:$tmpdir/feats_cv.scp ark:- |"
 
+	if $sort_by_len; then
+	    cp $data_tr/feats.scp $dir/train.scp
+	    gzip -cd $dir/labels.tr.gz | join <(feat-to-len scp:$tmpdir/train_local_raw.scp ark,t:- | paste -d " " - $tmpdir/train_local_raw.scp) - | sort -gk 2 | \
+	        awk -v c=$context_window '{out=""; for (i=5;i<=NF;i++) {out=out" "$i}; if (!(out in done) && $2 > (2*c+1)*NF) {done[out]=1; print $3 " " $4}}' > $tmpdir/train_local.scp
+	    feat-to-len scp:$data_cv/feats.scp ark,t:- | awk '{print $2}' | \
+		paste -d " " $data_cv/feats.scp - | sort -k3 -n - | awk '{print $1 " " $2}' > $dir/cv.scp || exit 1;
+	else
+	    echo "sorting required" && exit 1;
+	fi
+	
 	gzip -cd $dir/labels.tr.gz > $tmpdir/labels.tr
 	gzip -cd $dir/labels.cv.gz > $tmpdir/labels.cv
 	
-	trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; rm -r $tmpdir" EXIT
+	trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; rm -r $tmpdir" EXIT ERR
+    else
+	echo "copying required" && exit 1;
     fi
 
     if $add_deltas; then
-	feats_tr="$feats_tr add-deltas ark:- ark:- |"
-	feats_cv="$feats_cv add-deltas ark:- ark:- |"
+	echo "delta not supported" && exit 1;
     fi
-
-    # shuffle and partition the (current) data
-    #shuffle_data $m $num_sequence $frame_num_limit $dir $tmpdir
 
     # let's return the value of feats_tr and feats_cv
     echo "$feats_tr" > $trfile
     echo "$feats_cv" > $cvfile
 }
 ## End function section
+
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -276,7 +225,8 @@ feats_cv=`cat $tmpdir/.cv 2>/dev/null`
 
 ## Adjust parameter variables
 if [ $start_epoch_num -gt 1 ]; then
-    ckpt="--continue_ckpt dbr-run*/model/`printf 'epoch%02d.ckpt' $[start_epoch_num-1]`"
+    ckpt="$dir/dbr-run*/model/`printf 'epoch%02d.ckpt.index' $[start_epoch_num-1]`"
+    ckpt="--continue_ckpt `echo $ckpt|sed 's/.index//'`"
 else
     ckpt=""
 fi
@@ -290,6 +240,9 @@ if [ $feat_proj -gt 0 ]; then
 else
     feat_proj=""
 fi
+if [ -n "$max_iters" ]; then
+    max_iters="--nepoch $max_iters"
+fi
 
 
 ## Main loop
@@ -302,8 +255,8 @@ echo "TRAINING STARTS [$cur_time]"
 # - continuation of training
 # - data mixing in multiple directories
 # 
-$train_tool $train_opts --lr_rate $learn_rate --batch_size $num_sequence \
-    --nhidden $nhidden --nlayer $nlayer $nproj $feat_proj $ckpt \
+$train_tool $train_opts --lr_rate $learn_rate --batch_size $num_sequence --l2 $l2 \
+    --nhidden $nhidden --nlayer $nlayer $nproj $feat_proj $ckpt $max_iters \
     --train_dir $dir --data_dir $tmpdir || exit 1;
 
 ## Done

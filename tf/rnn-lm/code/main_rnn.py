@@ -4,6 +4,15 @@ import pdb
 from train_rnn_lm import *
 from prepare_traindata import *
 
+
+print("main_rnn.py - version information follows:")
+try:
+    print(sys.version)
+    print(tf.__version__)
+except:
+    print("tf.py: could not get version information for logging")
+
+
 def mainParser():
     parser = argparse.ArgumentParser(description='Train TF-RNN_LM')
     parser.add_argument('--batch_size', default = 16, type=int, help='batch size')

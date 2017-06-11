@@ -16,6 +16,16 @@ import io
 import json
 from prepare_data import *
 from build_tree import *
+
+
+print("decode_new_tr.py - version information follows:")
+try:
+    print(sys.version)
+    print(tf.__version__)
+except:
+    print("tf.py: could not get version information for logging")
+
+
 BLANK = u'<eps>'
 BLANK_ID = 0
 

@@ -46,13 +46,23 @@ def save_scalar(step, name, value, writer):
     summary_value.tag = name
     writer.add_summary(summary, step)
 
-def eval(data, config, model_path): 
+def eval(data, config, model_path):
+    """ Evaluate the model    
+    """
     model = DeepBidirRNN(config)
     cv_xinfo, cv_y, cv_uttids = data
     saver = tf.train.Saver()
-    soft_prob = []
-    log_soft_prob = []
-    log_like = []
+
+    soft_probs = []
+    log_soft_probs = []
+    log_likes = []
+    logits = []
+    nclass= config["nclass"]
+    for idx, _ in enumerate(nclass):
+        soft_probs.append([])
+        log_soft_probs.append([])
+        log_likes.append([])
+        logits.append([])
 
     def mat2list(a, seq_len):
         # roll to match the output of essen code, blank label first
@@ -66,74 +76,107 @@ def eval(data, config, model_path):
         print ("load_ckpt", model_path)
         saver.restore(sess, model_path)
 
-        ncv, ncv_label = 0, 0
-        cv_cost = cv_wer = 0.0
+        ncv = 0
+        cv_cost = 0.0
+        cv_ters = [0] * len(nclass)
+        ncv_labels = [0] * len(nclass)
+
         data_queue = Queue(config["batch_size"])
-        p=Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, False))
+        p = Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, False))
         p.start()
+
         while True:
             data = data_queue.get()
             if data is None:
                 break
+
             xbatch, ybatch = data
             batch_size = len(xbatch)
             ncv += batch_size
-            ncv_label += get_label_len(ybatch)
-            feed = {model.feats: xbatch, model.labels: ybatch,
-                model.temperature: config["temperature"], model.prior: config["prior"]}
-            batch_cost, batch_wer, batch_soft_prob, batch_log_soft_prob, batch_log_like, batch_seq_len = \
-                sess.run([model.cost, model.wer, model.softmax_prob,
-                model.log_softmax_prob, model.log_likelihood, model.seq_len], feed)
+
+            for idx, y_element_batch in enumerate(ybatch):
+                 ncv_labels[idx] += get_label_len(y_element_batch)
+
+            feed = {i: y for i, y in zip(model.labels, ybatch)}
+
+            feed[model.feats] = xbatch
+            feed[model.temperature] = config["temperature"]
+            feed[model.prior] = config["prior"]
+
+            batch_cost, batch_ters, batch_soft_probs, batch_log_soft_probs, batch_log_likes, batch_seq_len, batch_logits = sess.run([model.cost, model.ters, model.softmax_probs,
+                model.log_softmax_probs, model.log_likelihoods, model.seq_len, model.logits], feed)
+
             cv_cost += batch_cost * batch_size
-            cv_wer += batch_wer
-            soft_prob += mat2list(batch_soft_prob, batch_seq_len)
-            log_soft_prob += mat2list(batch_log_soft_prob, batch_seq_len)
-            log_like += mat2list(batch_log_like, batch_seq_len)
+            for idx, _ in enumerate(nclass):
+                cv_ters[idx] += batch_ters[idx]
+                soft_probs[idx] += mat2list(batch_soft_probs[idx], batch_seq_len)
+                log_soft_probs[idx] += mat2list(batch_log_soft_probs[idx], batch_seq_len)
+                log_likes[idx] += mat2list(batch_log_likes[idx], batch_seq_len)
+                logits[idx] += mat2list(batch_logits[idx], batch_seq_len)
 
         p.join()
         p.terminate()
 
-        cv_wer /= float(ncv_label)
-        print("Eval cost: %.1f, ter: %.3f, #example: %d" % (cv_cost, cv_wer, ncv))
-        root_path = config["train_path"]
-        if config["augment"]:
-            # let's average the three(?) sub-sampled outputs
-            S1 = {}; P1 = {}; L1 = {}; S2 = {}; P2 = {}; L2 = {}; U = []
-            for u, s, p, l in zip(cv_uttids, soft_prob, log_soft_prob, log_like):
-                if not u in S1:
-                    S1[u] = s; P1[u] = p; L1[u] = l
-                elif not u in S2:
-                    S2[u] = s; P2[u] = p; L2[u] = l
-                else:
-                    L = min(S1[u].shape[0],S2[u].shape[0],s.shape[0])
-                    if S1[u].shape[0] > L:
-                        S1[u] = S1[u][0:L][:]; P1[u] = P1[u][0:L][:]; L1[u] = L1[u][0:L][:]
-                    if S2[u].shape[0] > L:
-                        S2[u] = S2[u][0:L][:]; P2[u] = P2[u][0:L][:]; L2[u] = L2[u][0:L][:]
-                    if s.shape[0] > L:
-                        s     =     s[0:L][:]; p     =     p[0:L][:]; l     =     l[0:L][:]
-                    S1[u]=(s+S1[u]+S2[u])/3; P1[u]=(p+P1[u]+P2[u])/3; L1[u]=(l+L1[u]+L2[u])/3
-                    del S2[u]; del P2[u]; del L2[u]
-                    U.append(u)
-            soft_prob = []; log_soft_prob = []; log_like = []
-            for u in U:
-                soft_prob += [S1[u]]
-                log_soft_prob += [P1[u]]
-                log_like += [L1[u]]
+        # for all classes
+        cv_cost = cv_cost/ncv
+        for idx, _ in enumerate(nclass):
+            cv_ters[idx] /= float(ncv_labels[idx])
+ 
+            if config["augment"]:
+                # let's average the three(?) sub-sampled outputs
+                S1 = {}; P1 = {}; L1 = {}; O1 = {}; S2 = {}; P2 = {}; L2 = {}; O2 = {}; U = []
+                for u, s, p, l, o in zip(cv_uttids, soft_probs[idx], log_soft_prob[idx], log_like[idx], logits[idx]):
+                    if not u in S1:
+                        S1[u] = s; P1[u] = p; L1[u] = l; O1[u] = o
+                    elif not u in S2:
+                        S2[u] = s; P2[u] = p; L2[u] = l; O2[u] = o
+                    else:
+                        L = min(S1[u].shape[0],S2[u].shape[0],s.shape[0])
+                        if S1[u].shape[0] > L:
+                            S1[u] = S1[u][0:L][:]; P1[u] = P1[u][0:L][:]; L1[u] = L1[u][0:L][:]; O1[u] = O1[u][0:L][:]
+                        if S2[u].shape[0] > L:
+                            S2[u] = S2[u][0:L][:]; P2[u] = P2[u][0:L][:]; L2[u] = L2[u][0:L][:]; O2[u] = O2[u][0:L][:]
+                        if s.shape[0] > L:
+                            s     =     s[0:L][:]; p     =     p[0:L][:]; l     =     l[0:L][:]; o     =     o[0:L][:]
+                        S1[u]=(s+S1[u]+S2[u])/3; P1[u]=(p+P1[u]+P2[u])/3; L1[u]=(l+L1[u]+L2[u])/3; O1[u]=(o+O1[u]+O2[u])/3
+                        del S2[u]; del P2[u]; del L2[u]; del O2[u]
+                        U.append(u)
+                soft_prob = []; log_soft_prob = []; log_like = []; logit = []
+                for u in U:
+                    soft_prob += [S1[u]]
+                    log_soft_prob += [P1[u]]
+                    log_like += [L1[u]]
+                    logit += [O1[u]]
 
-        # let's write scp and ark files for our data
-        writeScp(os.path.join(root_path, "soft_prob.scp"), U,
-                 writeArk(os.path.join(root_path, "soft_prob.ark"), soft_prob, U))
-        writeScp(os.path.join(root_path, "log_soft_prob.scp"), U,
-                 writeArk(os.path.join(root_path, "log_soft_prob.ark"), log_soft_prob, U))
-        writeScp(os.path.join(root_path, "log_like.scp"), U,
-                 writeArk(os.path.join(root_path, "log_like.ark"), log_like, U))
+            # Output
+            if (len(nclass) > 1):
+                z = "."+str(idx)
+                print("Eval cost: %.1f, ter: %.3f, #example: %d (language %s)" %
+                      (cv_cost, cv_ters[idx], ncv, str(idx)))
+            else:
+                z = ""
+                print("Eval cost: %.1f, ter: %.3f, #example: %d" %
+                      (cv_cost, cv_ters[idx], ncv))
+                    
+            # let's write scp and ark files for our data
+            root_path = config["train_path"]
+            writeScp(os.path.join(root_path, "soft_prob"+z+".scp"), U,
+                     writeArk(os.path.join(root_path, "soft_prob"+z+".ark"), soft_prob, U))
+            writeScp(os.path.join(root_path, "log_soft_prob"+z+".scp"), U,
+                     writeArk(os.path.join(root_path, "log_soft_prob"+z+".ark"), log_soft_prob, U))
+            writeScp(os.path.join(root_path, "log_like"+z+".scp"), U,
+                     writeArk(os.path.join(root_path, "log_like"+z+".ark"), log_like, U))
+            writeScp(os.path.join(root_path, "logits"+z+".scp"), U,
+                     writeArk(os.path.join(root_path, "logits"+z+".ark"), logit, U))
 
 def train(data, config):
+    """ Train the model
+    """
     tf.set_random_seed(config["random_seed"])
     random.seed(config["random_seed"])
     model = DeepBidirRNN(config)
     cv_xinfo, tr_xinfo, cv_y, tr_y = data
+
     for var in tf.trainable_variables():
         print(var)
 
@@ -142,7 +185,8 @@ def train(data, config):
     nepoch = config["nepoch"]
     init_lr_rate = config["lr_rate"]
     half_period = config["half_period"]
-    model_dir = config["train_path"] + "/model" 
+    model_dir = config["train_path"] + "/model"
+    nclass = config["nclass"]
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
     saver = tf.train.Saver(max_to_keep=nepoch)
@@ -162,32 +206,45 @@ def train(data, config):
 
         data_queue = Queue(config["batch_size"])
         for epoch in range(alpha,nepoch):
-            lr_rate = init_lr_rate * (0.5 ** (epoch / half_period)) 
+            lr_rate = init_lr_rate * (0.5 ** (epoch / half_period))
             tic = time.time()
-            ntrain, ntr_label, train_step = 0, 0, 0
-            train_cost = train_wer = 0.0
+
+            ntrain, train_step = 0, 0
+            train_cost = 0.0
+            ntr_label = [0] * len(nclass)
+            train_ter = [0] * len(nclass)
             ntrain_batch = len(tr_xinfo)
             ncv_batch = len(cv_xinfo)
 
-            p=Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, config["do_shuf"]))
+            p = Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, config["do_shuf"]))
             p.start()
             while True:
                 data = data_queue.get()
                 if data is None:
                     break
+
                 xbatch, ybatch = data
                 batch_size = len(xbatch)
                 ntrain += batch_size
-                ntr_label += get_label_len(ybatch)
-                feed = {model.feats: xbatch, model.labels: ybatch, model.lr_rate: lr_rate}
-                batch_cost, batch_wer, _ = sess.run(
-                    [model.cost, model.wer, model.opt], feed)
+
+                for idx, y_element_batch in enumerate(ybatch):
+                    ntr_label[idx] += get_label_len(y_element_batch)
+
+                feed = {i: y for i, y in zip(model.labels, ybatch)}
+                feed[model.feats] = xbatch
+                feed[model.lr_rate] = lr_rate
+
+                batch_cost, batch_ters, _ = sess.run(
+                    [model.cost, model.ters, model.opt], feed)
                 train_cost += batch_cost * batch_size
-                train_wer += batch_wer
+
+                for idx, ters in enumerate(batch_ters):
+                    train_ter[idx] += ters
+
                 if train_step % log_freq == 0:
                     global_step = train_step + ntrain_batch * epoch
                     save_scalar(global_step, "train/batch_cost", batch_cost, writer)
-                    save_scalar(global_step, "train/batch_ce", batch_wer, writer)
+
                 if debug:
                     print("batch",train_step,"of",ntrain_batch,"size",batch_size,
                           "queue",data_queue.empty(),data_queue.full(),data_queue.qsize())
@@ -196,49 +253,78 @@ def train(data, config):
             p.join()
             p.terminate()
 
+            # save the training progress
             train_cost /= ntrain
-            train_wer /= float(ntr_label)
             save_scalar(epoch, "train/epoch_cost", train_cost, writer)
-            save_scalar(epoch, "train/epoch_cer", train_wer, writer)
+            for idx, ind_ter in enumerate(train_ter):
+                train_ter[idx] = train_ter[idx]/float(ntr_label[idx])
+                save_scalar(epoch, "train/epoch_ter", train_ter[idx], writer)
 
-            ncv, ncv_label, cv_step = 0, 0, 0
-            cv_cost = cv_wer = 0.0
-            p=Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, False))
+            # now for validation
+            ncv, cv_step = 0, 0
+            ncv_label = [0] * len(nclass)
+            cv_cost = 0.0
+            cv_ter = [0] * len(nclass)
+
+            p = Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, False))
             p.start()
             while True:
                 data = data_queue.get()
                 if data is None:
                     break
+
                 xbatch, ybatch = data
                 batch_size = len(xbatch)
                 ncv += batch_size
-                ncv_label += get_label_len(ybatch)
-                feed = {model.feats: xbatch, model.labels: ybatch, model.lr_rate: lr_rate}
-                batch_cost, batch_wer = sess.run([model.cost, model.wer], feed)
+                for idx, y_element_batch in enumerate(ybatch):
+                    ncv_label[idx] += get_label_len(y_element_batch)
+
+                feed = {i: y for i, y in zip(model.labels, ybatch)}
+                feed[model.feats] = xbatch
+                feed[model.lr_rate] = lr_rate
+
+                batch_cost, batch_ters = sess.run([model.cost, model.ters], feed)
+
+                for idx, ter in enumerate(batch_ters):
+                    cv_ter[idx] += ter
                 cv_cost += batch_cost * batch_size
-                cv_wer += batch_wer
+
                 if cv_step % log_freq == 0:
                     global_step = cv_step + ncv_batch * epoch
                     save_scalar(global_step, "test/batch_cost", batch_cost, writer)
-                    save_scalar(global_step, "test/batch_ce", batch_wer, writer)
+                    for idx, _ in enumerate(nclass):
+                        save_scalar(global_step, "test/batch_ter", batch_ters[idx], writer)
                 cv_step += 1
 
             p.join()
             p.terminate()
 
+            # logging
             cv_cost /= ncv
-            cv_wer /= float(ncv_label)
             save_scalar(epoch, "test/epoch_cost", cv_cost, writer)
-            save_scalar(epoch, "test/epoch_cer", cv_wer, writer)
+            for idx, _ in enumerate(cv_ter):
+                cv_ter[idx] = cv_ter[idx]/float(ncv_label[idx])
+                save_scalar(epoch, "test/epoch_ter", cv_ter[idx], writer)
+
             if config["store_model"]:
                 saver.save(sess, "%s/epoch%02d.ckpt" % (model_dir, epoch + 1))
                 with open("%s/epoch%02d.log" % (model_dir, epoch + 1), 'w') as fp:
                     fp.write("Time: %.2f seconds, lrate: %.4f\n" % (time.time() - tic, lr_rate))
-                    fp.write("Train cost: %.1f, ter: %.3f, #example: %d\n" % (train_cost, train_wer, ntrain))
-                    fp.write("Validate cost: %.1f, ter: %.3f, #example: %d\n" % (cv_cost, cv_wer, ncv))
+                    if (len(nclass) > 1):
+                        for idx, _ in enumerate(nclass):
+                            fp.write("Train cost: %.1f, ter: %.3f, #example: %d (language %s)" % (train_cost, train_ter[idx], ntrain, str(idx)))
+                            fp.write("Validate cost: %.1f, ter: %.3f, #example: %d (language %s)" % (cv_cost, cv_ter[idx], ncv, str(idx)))
+                    else:
+                        fp.write("Train cost: %.1f, ter: %.3f, #example: %d" % (train_cost, train_ter[0], ntrain))
+                        fp.write("Validate cost: %.1f, ter: %.3f, #example: %d" % (cv_cost, cv_ter[0], ncv))
 
             info("Epoch %d finished in %.2f seconds, learning rate: %.4f" % (epoch + 1, time.time() - tic, lr_rate))
-            print("Train cost: %.1f, ter: %.3f, #example: %d" % (train_cost, train_wer, ntrain))
-            print("Validate cost: %.1f, ter: %.3f, #example: %d" % (cv_cost, cv_wer, ncv))
+            if (len(nclass) > 1):
+                for idx, _ in enumerate(nclass):
+                    print("Train cost: %.1f, ter: %.3f, #example: %d (language %s)" % (train_cost, train_ter[idx], ntrain, str(idx)))
+                    print("Validate cost: %.1f, ter: %.3f, #example: %d (language %s)" % (cv_cost, cv_ter[idx], ncv, str(idx)))
+            else:
+                print("Train cost: %.1f, ter: %.3f, #example: %d" % (train_cost, train_ter[0], ntrain))
+                print("Validate cost: %.1f, ter: %.3f, #example: %d" % (cv_cost, cv_ter[0], ncv))
             print(80 * "-")
             sys.stdout.flush()

@@ -117,7 +117,6 @@ def make_even_batches_info(feat_info, label_dicts, batch_size):
     return batch_x, batch_y, uttids
 
 def load_feat_info(args, part):
-
     nclass_all=[]
     label_dicts=[]
 
@@ -147,7 +146,7 @@ def load_feat_info(args, part):
     nfeat = feat_info[0][4]
 
     if args.augment:
-        print("Augmenting data from", filename, "#features=", nfeat, "#classes=", nclass, "#examples=", len(feat_info))
+        print("Augmenting data from", filename, "#features=", nfeat, "#classes=", nclass_all, "#examples=", len(feat_info))
         nfeat *= 3
         feat_info = [(tup[0], tup[1], tup[2], int((tup[3]+2-shift)/3), 3*tup[4], shift) for shift in range(3) for tup in feat_info]
     else:
@@ -220,8 +219,10 @@ def mainParser():
     parser.add_argument('--nhidden', default = 320, type=int, help='dimension of hidden units in single direction')
     parser.add_argument('--nproj', default = 0, type=int, help='dimension of projection units, set to 0 if no projection needed')
     parser.add_argument('--feat_proj', default = 0, type=int, help='dimension of feature projection units, set to 0 if no projection needed')
-    parser.add_argument('--batch_norm', default = False, dest='batch_norm', help='add batch normalitzation between layers')
+    parser.add_argument('--batch_norm', default = False, dest='batch_norm', action='store_true', help='add batch normalization to FC layers')
     parser.add_argument('--half_period', default = 10, type=int, help='half period in epoch of learning rate')
+    parser.add_argument('--half_rate', default = 0.5, type=float, help='halving factor')
+    parser.add_argument('--half_after', default = 0, type=int, help='halving becomes enabled after this many epochs')
     parser.add_argument('--temperature', default = 1, type=float, help='temperature used in softmax')
     parser.add_argument('--grad_opt', default = "grad", help='optimizer: grad, adam, momentum, cuddnn only work with grad')
     parser.add_argument('--train_dir', default = "log", help='log and model (output) dir')
@@ -260,6 +261,8 @@ def createConfig(args, nfeat, nclass, train_path):
         "do_shuf": args.do_shuf,
         "lstm_type": args.lstm_type,
         "half_period": args.half_period,
+        "half_rate": args.half_rate,
+        "half_after": args.half_after,
         "grad_opt": args.grad_opt,
         "batch_size": args.batch_size,
         "train_path": train_path,

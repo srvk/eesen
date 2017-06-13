@@ -18,6 +18,7 @@ beam=15.0       # beam used
 lattice_beam=8.0
 max_mem=50000000 # approx. limit to memory consumption during minimization in bytes
 mdl=final.nnet
+scoredir=
 label_counts=
 blank_scale=
 block_softmax=
@@ -87,21 +88,35 @@ feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data/utt2spk sc
 #$add_deltas && feats="$feats add-deltas ark:- ark:- |"
 ##
 
-tmpdir=`mktemp -d`
-#trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; rm -r $tmpdir" EXIT ERR
-copy-feats "${feats}" ark,scp:$tmpdir/f.ark,$tmpdir/cv_local.scp
-
-# we need (fake) references
-if [ -f $data/textn ]; then
-    local/prep_ctc_trans.py data/lang_phn/lexicon_numbers.txt  $data/text "<unk>" > $tmpdir/labels.cv
+# maybe we want to keep this
+if [ -z "$scoredir" ]; then
+    tmpdir=`mktemp -d`
+    trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; rm -r $tmpdir" EXIT ERR
 else
-    cat $data/feats.scp | awk ' { print $1,1 } ' > $tmpdir/labels.cv
+    mkdir -p $scoredir
+    tmpdir=$scoredir
 fi
-cp $tmpdir/labels.cv $tmpdir/labels.tr
 
-# let's call tensorflow, output will be in tmpdir
-python -m main --eval --augment --eval_model $mdl \
-       --data_dir $tmpdir --counts_file $label_counts || exit 1;
+if [ ! -f $tmpdir/labels.cv ]; then
+    # we need (fake) references
+    if [ -f $data/textn ]; then
+	local/prep_ctc_trans.py data/lang_phn/lexicon_numbers.txt  $data/text "<unk>" > $tmpdir/labels.cv
+    else
+	cat $data/feats.scp | awk ' { print $1,1 } ' > $tmpdir/labels.cv
+    fi
+    cp $tmpdir/labels.cv $tmpdir/labels.tr
+
+    # copy features
+    copy-feats "${feats}" ark,scp:$tmpdir/f.ark,$tmpdir/cv_local.scp
+
+    # let's call tensorflow, output will be in tmpdir
+    python -m main --eval --augment --eval_model $mdl \
+	   --data_dir $tmpdir --counts_file $label_counts || exit 1;
+
+    rm -f $tmpdir/f.ark
+else
+    echo Assuming data is already in $tmpdir
+fi
 
 # Decode for each of the acoustic scales
 $cmd JOB=1:$nj $dir/log/decode.JOB.log \

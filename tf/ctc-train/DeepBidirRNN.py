@@ -112,7 +112,6 @@ class DeepBidirRNN:
         clip = config["clip"]
         nproj = config["nproj"]
         batch_norm = config["batch_norm"]
-
         try:
             featproj = config["feat_proj"]
         except:
@@ -123,29 +122,19 @@ class DeepBidirRNN:
         # build the graph
         self.lr_rate = tf.placeholder(tf.float32, name = "learning_rate")[0]
         self.feats = tf.placeholder(tf.float32, [None, None, nfeat], name = "feats")
-
         self.temperature = tf.placeholder(tf.float32, name = "temperature")
-
         self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
-
-        self.labels = [tf.sparse_placeholder(tf.int32)
-          for _ in xrange(len(nclasses))]
-
+        self.labels = [tf.sparse_placeholder(tf.int32) for _ in xrange(len(nclasses))]
         self.prior = tf.placeholder(tf.float32, [nclasses[0]], name = "prior")
-
         # self.prior =[tf.placeholder(tf.float32, nclass)
           # for count, nclass in enumerate(nclasses)]
-
         self.seq_len = self.length(self.feats)
 
         output_size = 2 * nhidden if nproj == 0 else nproj
-
         batch_size = tf.shape(self.feats)[0]
-
         outputs = tf.transpose(self.feats, (1, 0, 2), name = "feat_transpose")
 
         if batch_norm:
-
             outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training, updates_collections=None)
 
         if featproj > 0:
@@ -162,12 +151,9 @@ class DeepBidirRNN:
 
         logits=[]
         for count_label, _ in enumerate(nclasses):
-
             logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = nclasses[count_label], scope = "output_fc_"+str(count_label), biases_initializer = tf.contrib.layers.xavier_initializer())
-
             if batch_norm:
                 logit = tf.contrib.layers.batch_norm(logit, center=True, scale=True, decay=0.9, is_training=self.is_training,  updates_collections=None)
-
             logits.append(logit)
 
         with tf.variable_scope("loss"):
@@ -186,7 +172,6 @@ class DeepBidirRNN:
         self.logits=[]
 
         with tf.variable_scope("eval_output"):
-
             for idx, logit in enumerate(logits):
                 tran_logit = tf.transpose(logit, (1, 0, 2)) * self.temperature
                 self.logits.append(tran_logit)
@@ -218,14 +203,13 @@ class DeepBidirRNN:
 
         self.decodes=[]
         self.log_probs=[]
-        self.cers=[]
+        self.ters=[]
 
         for idx, _ in enumerate(nclasses):
-            decoded, log_prob = tf.nn.ctc_greedy_decoder(logit, self.seq_len)
-            cer = tf.reduce_sum(
-                tf.edit_distance(tf.cast(decoded[0], tf.int32), self.labels[idx] , normalize = False), name = "cer")
+            decoded, log_prob = tf.nn.ctc_greedy_decoder(logits[idx], self.seq_len)
+            ter = tf.reduce_sum(
+                tf.edit_distance(tf.cast(decoded[0], tf.int32), self.labels[idx] , normalize = False), name = "ter")
 
             self.decodes.append(decoded)
             self.log_probs.append(log_prob)
-            self.cers.append(cer)
-
+            self.ters.append(ter)

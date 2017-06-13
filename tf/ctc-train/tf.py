@@ -7,12 +7,14 @@ from fileutils.kaldi import writeArk, writeScp, readMatrixByOffset
 from Reader import run_reader
 from itertools import islice
 
-print("tf.py - version information follows:")
+print("Eesen TF library:", os.path.realpath(__file__))
+print("CWD:", os.getcwd(), " - version information follows:")
 try:
     print(sys.version)
     print(tf.__version__)
 except:
     print("tf.py: could not get version information for logging")
+print(80 * "-")
 
 
 # -----------------------------------------------------------------
@@ -102,6 +104,7 @@ def eval(data, config, model_path):
             feed[model.feats] = xbatch
             feed[model.temperature] = config["temperature"]
             feed[model.prior] = config["prior"]
+            feed[model.is_training] = False
 
             batch_cost, batch_ters, batch_soft_probs, batch_log_soft_probs, batch_log_likes, batch_seq_len, batch_logits = sess.run([model.cost, model.ters, model.softmax_probs,
                 model.log_softmax_probs, model.log_likelihoods, model.seq_len, model.logits], feed)
@@ -166,8 +169,8 @@ def eval(data, config, model_path):
                      writeArk(os.path.join(root_path, "log_soft_prob"+z+".ark"), log_soft_prob, U))
             writeScp(os.path.join(root_path, "log_like"+z+".scp"), U,
                      writeArk(os.path.join(root_path, "log_like"+z+".ark"), log_like, U))
-            writeScp(os.path.join(root_path, "logits"+z+".scp"), U,
-                     writeArk(os.path.join(root_path, "logits"+z+".ark"), logit, U))
+            writeScp(os.path.join(root_path, "logit"+z+".scp"), U,
+                     writeArk(os.path.join(root_path, "logit"+z+".ark"), logit, U))
 
 def train(data, config):
     """ Train the model
@@ -185,6 +188,8 @@ def train(data, config):
     nepoch = config["nepoch"]
     init_lr_rate = config["lr_rate"]
     half_period = config["half_period"]
+    half_rate = config["half_rate"]
+    half_after = config["half_after"]
     model_dir = config["train_path"] + "/model"
     nclass = config["nclass"]
     if not os.path.exists(model_dir):
@@ -206,7 +211,11 @@ def train(data, config):
 
         data_queue = Queue(config["batch_size"])
         for epoch in range(alpha,nepoch):
-            lr_rate = init_lr_rate * (0.5 ** (epoch / half_period))
+            if epoch > half_after:
+                lr_rate = init_lr_rate * (half_rate ** ((epoch - half_after) // half_period))
+            else:
+                lr_rate = init_lr_rate
+
             tic = time.time()
 
             ntrain, train_step = 0, 0
@@ -233,6 +242,7 @@ def train(data, config):
                 feed = {i: y for i, y in zip(model.labels, ybatch)}
                 feed[model.feats] = xbatch
                 feed[model.lr_rate] = lr_rate
+                feed[model.is_training] = True
 
                 batch_cost, batch_ters, _ = sess.run(
                     [model.cost, model.ters, model.opt], feed)
@@ -282,6 +292,7 @@ def train(data, config):
                 feed = {i: y for i, y in zip(model.labels, ybatch)}
                 feed[model.feats] = xbatch
                 feed[model.lr_rate] = lr_rate
+                feed[model.is_training] = False
 
                 batch_cost, batch_ters = sess.run([model.cost, model.ters], feed)
 
@@ -312,11 +323,11 @@ def train(data, config):
                     fp.write("Time: %.2f seconds, lrate: %.4f\n" % (time.time() - tic, lr_rate))
                     if (len(nclass) > 1):
                         for idx, _ in enumerate(nclass):
-                            fp.write("Train cost: %.1f, ter: %.3f, #example: %d (language %s)" % (train_cost, train_ter[idx], ntrain, str(idx)))
-                            fp.write("Validate cost: %.1f, ter: %.3f, #example: %d (language %s)" % (cv_cost, cv_ter[idx], ncv, str(idx)))
+                            fp.write("Train cost: %.1f, ter: %.3f, #example: %d (language %s)\n" % (train_cost, train_ter[idx], ntrain, str(idx)))
+                            fp.write("Validate cost: %.1f, ter: %.3f, #example: %d (language %s)\n" % (cv_cost, cv_ter[idx], ncv, str(idx)))
                     else:
-                        fp.write("Train cost: %.1f, ter: %.3f, #example: %d" % (train_cost, train_ter[0], ntrain))
-                        fp.write("Validate cost: %.1f, ter: %.3f, #example: %d" % (cv_cost, cv_ter[0], ncv))
+                        fp.write("Train cost: %.1f, ter: %.3f, #example: %d\n" % (train_cost, train_ter[0], ntrain))
+                        fp.write("Validate cost: %.1f, ter: %.3f, #example: %d\n" % (cv_cost, cv_ter[0], ncv))
 
             info("Epoch %d finished in %.2f seconds, learning rate: %.4f" % (epoch + 1, time.time() - tic, lr_rate))
             if (len(nclass) > 1):

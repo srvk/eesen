@@ -12,6 +12,10 @@ from fileutils.kaldi import readScpInfo
 from multiprocessing import Pool
 from functools import partial
 import tf
+try:
+    from h5_Reader import H5Dataset
+except:
+    pass
 
 
 # -----------------------------------------------------------------
@@ -22,10 +26,9 @@ def load_labels(dir, files=['labels.tr', 'labels.cv']):
     """
     Load a set of labels in (local) Eesen format
     """
+    mapLabel = lambda x: x - 1
     labels = {}
     m = 0
-
-    mapLabel = lambda x: x - 1
 
     for filename in files:
         with open(os.path.join(dir, filename), "r") as f:
@@ -61,7 +64,6 @@ def get_batch_info(feat_info, label_dicts, start, height):
                 yidx[count_label].append([i, j])
                 yval[count_label].append(label[j])
 
-
     yshape_r=[]
     yidx_r=[]
     yval_r=[]
@@ -74,15 +76,12 @@ def get_batch_info(feat_info, label_dicts, start, height):
     return xinfo, yidx_r, yval_r, yshape_r
 
 def make_batches_info(feat_info, label_dicts, batch_size):
-
     batch_x, batch_y = [], []
     L = len(feat_info)
     uttids = [x[0] for x in feat_info]
     for idx in range(0, L, batch_size):
         height = min(batch_size, L - idx)
         xinfo, yidx, yval, yshape = get_batch_info(feat_info, label_dicts, idx, height)
-
-
         batch_y=[]
         for idx, _ in enumerate(label_dicts):
             element=((yidx[idx], yval[idx], yshape[dx]))
@@ -122,7 +121,6 @@ def load_feat_info(args, part):
 
     data_dir = args.data_dir
     batch_size = args.batch_size
-
     nclass, label_dict = load_labels(data_dir)
 
     nclass_all.append(nclass)
@@ -157,7 +155,6 @@ def load_feat_info(args, part):
         x, y, uttids = make_even_batches_info(feat_info, label_dicts, batch_size)
     else:
         x, y, uttids = make_batches_info(feat_info, label_dicts, batch_size)
-
 
     return nclass_all, nfeat, (x, y, uttids)
 
@@ -209,7 +206,23 @@ def mainParser():
     parser.add_argument('--eval_model', default = "", help = "model to load for evaluation")
     parser.add_argument('--batch_size', default = 32, type=int, help='batch size')
     parser.add_argument('--data_dir', default = "/data/ASR5/fmetze/eesen/asr_egs/swbd/v1/tmp.LHhAHROFia/T22/", help = "data dir")
+
+    parser.add_argument('--h5_mode', default=False, action='store_true', help='Enable reading HDF5 files')
+    parser.add_argument('--h5_train', help='h5 train data', type=str, default=None)
+    parser.add_argument('--h5_valid', help='h5 valid data', type=str, default=None)
+    parser.add_argument('--h5_input_dim', default=None, type=int, help='Size of input features')
+    parser.add_argument('--h5_input_feat', default=None, type=str, help='Name of input feature(s)')
+    parser.add_argument('--h5_target', default=None, type=str, help='Name of target feature')
+    parser.add_argument('--h5_labels', default=None, help='JSON-file containing all characters for prediction')
+    parser.add_argument('--h5_uttSkip', default=None, type=str, help='Skip these utts')
+    parser.add_argument('--h5_filter', default=None, type=str, help='evaluate only speakers containing this string')
+    parser.add_argument('--h5_spkList', default=None, type=str, help='File(s) containing list of speakers')
+    parser.add_argument('--h5_mapping', default=None, type=str, help='Token mapping file(s)')
+    parser.add_argument('--h5_augment_feat', default=None, type=str, help='Name of feature for augmentation')
+    parser.add_argument('--h5_augment_size', default=None, type=int, help='Size of feature for augmentation')
+
     parser.add_argument('--extra_labels', help = "extra labels (e.g. phn set when your main target are char) IMPORTANT: the feature files are the master")
+
     parser.add_argument('--counts_file', default = "/data/ASR5/fmetze/eesen/asr_egs/swbd/v1/label.counts", help = "data dir")
     parser.add_argument('--nepoch', default = 30, type=int, help='#epoch')
     parser.add_argument('--lr_rate', default = 0.03, type=float, help='learning rate')
@@ -268,6 +281,7 @@ def createConfig(args, nfeat, nclass, train_path):
         "train_path": train_path,
         "store_model": args.store_model,
         "random_seed": 15213,
+        "h5_mode": args.h5_mode,
         "augment": args.augment
     }
 
@@ -292,10 +306,15 @@ def main():
     parser = mainParser()
     args = parser.parse_args()
 
-    nclass, nfeat, cv_data = load_feat_info(args, 'cv')
-    #if len(args.continue_ckpt):
-    #    train_path = os.path.dirname(os.path.dirname(args.continue_ckpt))
-    #else:
+    if args.h5_mode:
+        valid_dataset = H5Dataset(args, input_file=args.h5_valid)
+        valid_dataset.readData()
+        valid_dataset.make_even_batches(args.batch_size)
+        nclass, nfeat, cv_data = valid_dataset.load_feat_info()
+    else:
+        valid_dataset = None
+        nclass, nfeat, cv_data = load_feat_info(args, 'cv')
+
     train_path = get_output_folder(args.train_dir)
 
     if args.eval:
@@ -308,10 +327,19 @@ def main():
     else:
         config = createConfig(args, nfeat, nclass, train_path)
 
-        _, _, tr_data = load_feat_info(args, 'train')
+        if args.h5_mode:
+            train_dataset = H5Dataset(args, input_file=args.h5_train)
+            train_dataset.readData()
+            train_dataset.make_even_batches(args.batch_size)
+            _, _, tr_data = train_dataset.load_feat_info()
+        else:
+            train_dataset = None
+            _, _, tr_data = load_feat_info(args, 'train')
+
+        # this needs to be cleaned up for H5 support
         cv_xinfo, cv_y, _ = cv_data
         tr_xinfo, tr_y, _ = tr_data
-        data = (cv_xinfo, tr_xinfo, cv_y, tr_y)
+        data = (cv_xinfo, tr_xinfo, cv_y, tr_y, valid_dataset, train_dataset)
 
         tf.train(data, config)
 

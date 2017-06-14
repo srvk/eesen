@@ -4,11 +4,17 @@ import numpy as np
 from multiprocessing import Process, Queue
 import sys, os, re, time, random, functools
 from fileutils.kaldi import writeArk, writeScp, readMatrixByOffset
-from Reader import run_reader
 from itertools import islice
+from Reader import run_reader
+try:
+    from h5_Reader import h5_run_reader
+except:
+    pass
 
+
+print(80 * "-")
 print("Eesen TF library:", os.path.realpath(__file__))
-print("CWD:", os.getcwd(), " - version information follows:")
+print("CWD:", os.getcwd(), "version info:")
 try:
     print(sys.version)
     print(tf.__version__)
@@ -178,7 +184,7 @@ def train(data, config):
     tf.set_random_seed(config["random_seed"])
     random.seed(config["random_seed"])
     model = DeepBidirRNN(config)
-    cv_xinfo, tr_xinfo, cv_y, tr_y = data
+    cv_xinfo, tr_xinfo, cv_y, tr_y, valid_dataset, train_dataset = data
 
     for var in tf.trainable_variables():
         print(var)
@@ -215,17 +221,20 @@ def train(data, config):
                 lr_rate = init_lr_rate * (half_rate ** ((epoch - half_after) // half_period))
             else:
                 lr_rate = init_lr_rate
-
             tic = time.time()
 
             ntrain, train_step = 0, 0
             train_cost = 0.0
             ntr_label = [0] * len(nclass)
             train_ter = [0] * len(nclass)
-            ntrain_batch = len(tr_xinfo)
-            ncv_batch = len(cv_xinfo)
-
-            p = Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, config["do_shuf"]))
+            if config["h5_mode"]:
+                ntrain_batch = len(train_dataset.batches)
+                ncv_batch = len(valid_dataset.batches)
+                p=Process(target = h5_run_reader, args = (data_queue, train_dataset, False if epoch == alpha else config["do_shuf"]))
+            else:
+                ntrain_batch = len(tr_xinfo)
+                ncv_batch = len(cv_xinfo)
+                p=Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, config["do_shuf"]))
             p.start()
             while True:
                 data = data_queue.get()
@@ -247,17 +256,18 @@ def train(data, config):
                 batch_cost, batch_ters, _ = sess.run(
                     [model.cost, model.ters, model.opt], feed)
                 train_cost += batch_cost * batch_size
-
                 for idx, ters in enumerate(batch_ters):
                     train_ter[idx] += ters
 
                 if train_step % log_freq == 0:
                     global_step = train_step + ntrain_batch * epoch
                     save_scalar(global_step, "train/batch_cost", batch_cost, writer)
-
+                    save_scalar(global_step, "train/batch_ter", batch_ters[0], writer)
                 if debug:
+                    print("epoch={} batch={}/{} size={} batch_cost={} batch_wer={}".format(epoch, train_step, ntrain_batch, batch_size, batch_cost, batch_ters[0]))
                     print("batch",train_step,"of",ntrain_batch,"size",batch_size,
                           "queue",data_queue.empty(),data_queue.full(),data_queue.qsize())
+
                 train_step += 1
 
             p.join()
@@ -268,7 +278,7 @@ def train(data, config):
             save_scalar(epoch, "train/epoch_cost", train_cost, writer)
             for idx, ind_ter in enumerate(train_ter):
                 train_ter[idx] = train_ter[idx]/float(ntr_label[idx])
-                save_scalar(epoch, "train/epoch_ter", train_ter[idx], writer)
+                save_scalar(epoch, "train/epoch_ter{}".format(idx), train_ter[idx], writer)
 
             # now for validation
             ncv, cv_step = 0, 0
@@ -276,7 +286,10 @@ def train(data, config):
             cv_cost = 0.0
             cv_ter = [0] * len(nclass)
 
-            p = Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, False))
+            if config["h5_mode"]:
+                p=Process(target = h5_run_reader, args = (data_queue, valid_dataset, False))
+            else:
+                p=Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, False))
             p.start()
             while True:
                 data = data_queue.get()
@@ -304,7 +317,7 @@ def train(data, config):
                     global_step = cv_step + ncv_batch * epoch
                     save_scalar(global_step, "test/batch_cost", batch_cost, writer)
                     for idx, _ in enumerate(nclass):
-                        save_scalar(global_step, "test/batch_ter", batch_ters[idx], writer)
+                        save_scalar(global_step, "test/batch_ter{}".format(idx), batch_ters[idx], writer)
                 cv_step += 1
 
             p.join()

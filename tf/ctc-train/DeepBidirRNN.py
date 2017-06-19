@@ -185,6 +185,7 @@ class DeepBidirRNN:
                 log_likelihood = log_softmax_prob - tf.log(self.prior)
                 self.log_likelihoods.append(log_likelihood)
 
+                # aren't we doing this twice here?
                 log_likelihood = log_softmax_prob - tf.log(self.prior)
                 self.log_likelihoods.append(log_likelihood)
 

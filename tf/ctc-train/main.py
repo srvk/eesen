@@ -130,6 +130,7 @@ def load_feat_info(args, part):
         extra_labels=args.extra_labels
         extra_dirs=extra_labels.split(':')
         for extra_dir in extra_dirs:
+            print("Extra dir:", extra_dir)
             nclass, label_dict = load_labels(extra_dir)
             nclass_all.append(nclass)
             label_dicts.append(label_dict)
@@ -201,7 +202,8 @@ def mainParser():
     parser.add_argument('--store_model', default=False, dest='store_model', action='store_true', help='store model')
     parser.add_argument('--eval', default=False, dest='eval', action='store_true', help='enable evaluation mode')
     parser.add_argument('--debug', default=False, dest='debug', action='store_true', help='enable debug mode')
-    parser.add_argument('--augment', default=False, dest='augment', action='store_true', help='do data augmentation')
+    parser.add_argument('--augment', default=False, dest='augment', action='store_true', help='do internal data augmentation')
+    parser.add_argument('--mix', default=False, dest='mix', action='store_true', help='do external data augmentation')
     parser.add_argument('--noshuffle', default=True, dest='do_shuf', action='store_false', help='do not shuffle training samples')
     parser.add_argument('--eval_model', default = "", help = "model to load for evaluation")
     parser.add_argument('--batch_size', default = 32, type=int, help='batch size')
@@ -250,6 +252,7 @@ def readConfig(args):
     config["prior"] = load_prior(args.counts_file)
     config["lstm_type"] = "cudnn"
     config["augment"] = args.augment
+    config["mix"] = args.mix
     config["batch_norm"] = args.batch_norm
     if len(args.continue_ckpt):
         config["continue_ckpt"] = args.continue_ckpt
@@ -282,6 +285,7 @@ def createConfig(args, nfeat, nclass, train_path):
         "store_model": args.store_model,
         "random_seed": 15213,
         "h5_mode": args.h5_mode,
+        "mix": args.mix,
         "augment": args.augment
     }
 
@@ -314,7 +318,7 @@ def main():
     else:
         valid_dataset = None
         nclass, nfeat, cv_data = load_feat_info(args, 'cv')
-
+    #print("NCLASS=", nclass)
     train_path = get_output_folder(args.train_dir)
 
     if args.eval:
@@ -324,21 +328,36 @@ def main():
         config["train_path"] = args.data_dir
         config["nclass"] = nclass
         tf.eval(cv_data, config, args.eval_model)
+
     else:
         config = createConfig(args, nfeat, nclass, train_path)
 
+        train_dataset = None
         if args.h5_mode:
             train_dataset = H5Dataset(args, input_file=args.h5_train)
             train_dataset.readData()
             train_dataset.make_even_batches(args.batch_size)
             _, _, tr_data = train_dataset.load_feat_info()
+            tr_xinfo, tr_y, _ = tr_data
+
+        elif config["mix"]:
+            print('Fixing data dir for mixing')
+            tr_xinfo = {}; tr_y = {}
+            p = args.data_dir
+            for epoch in range(0,args.nepoch):
+                args.data_dir = p+"/X"+str(epoch)
+                _, _, tr_data = load_feat_info(args, 'train')
+                tr_xinfo[epoch], tr_y[epoch], _ = tr_data
+            args.data_dir = p
+
         else:
-            train_dataset = None
             _, _, tr_data = load_feat_info(args, 'train')
+            tr_xinfo, tr_y, _ = tr_data
 
         # this needs to be cleaned up for H5 support
         cv_xinfo, cv_y, _ = cv_data
-        tr_xinfo, tr_y, _ = tr_data
+        #import pdb; pdb.set_trace()
+
         data = (cv_xinfo, tr_xinfo, cv_y, tr_y, valid_dataset, train_dataset)
 
         tf.train(data, config)

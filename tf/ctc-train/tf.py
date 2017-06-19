@@ -14,7 +14,7 @@ except:
 
 print(80 * "-")
 print("Eesen TF library:", os.path.realpath(__file__))
-print("CWD:", os.getcwd(), "version info:")
+print("cwd:", os.getcwd(), "version info:")
 try:
     print(sys.version)
     print(tf.__version__)
@@ -103,7 +103,8 @@ def eval(data, config, model_path):
             ncv += batch_size
 
             for idx, y_element_batch in enumerate(ybatch):
-                 ncv_labels[idx] += get_label_len(y_element_batch)
+                #print(idx,y_element_batch)
+                ncv_labels[idx] += get_label_len(y_element_batch)
 
             feed = {i: y for i, y in zip(model.labels, ybatch)}
 
@@ -134,7 +135,7 @@ def eval(data, config, model_path):
             if config["augment"]:
                 # let's average the three(?) sub-sampled outputs
                 S1 = {}; P1 = {}; L1 = {}; O1 = {}; S2 = {}; P2 = {}; L2 = {}; O2 = {}; U = []
-                for u, s, p, l, o in zip(cv_uttids, soft_probs[idx], log_soft_prob[idx], log_like[idx], logits[idx]):
+                for u, s, p, l, o in zip(cv_uttids, soft_probs[idx], log_soft_probs[idx], log_likes[idx], logits[idx]):
                     if not u in S1:
                         S1[u] = s; P1[u] = p; L1[u] = l; O1[u] = o
                     elif not u in S2:
@@ -227,14 +228,20 @@ def train(data, config):
             train_cost = 0.0
             ntr_label = [0] * len(nclass)
             train_ter = [0] * len(nclass)
+            #import pdb; pdb.set_trace()
+
             if config["h5_mode"]:
                 ntrain_batch = len(train_dataset.batches)
                 ncv_batch = len(valid_dataset.batches)
-                p=Process(target = h5_run_reader, args = (data_queue, train_dataset, False if epoch == alpha else config["do_shuf"]))
+                p = Process(target = h5_run_reader, args = (data_queue, train_dataset, False if epoch == alpha else config["do_shuf"]))
+            elif config["mix"]:
+                ntrain_batch = len(tr_xinfo[epoch])
+                ncv_batch = len(cv_xinfo)
+                p = Process(target = run_reader, args = (data_queue, tr_xinfo[epoch], tr_y[epoch], config["do_shuf"]))
             else:
                 ntrain_batch = len(tr_xinfo)
                 ncv_batch = len(cv_xinfo)
-                p=Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, config["do_shuf"]))
+                p = Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, config["do_shuf"]))
             p.start()
             while True:
                 data = data_queue.get()
@@ -264,10 +271,10 @@ def train(data, config):
                     save_scalar(global_step, "train/batch_cost", batch_cost, writer)
                     save_scalar(global_step, "train/batch_ter", batch_ters[0], writer)
                 if debug:
-                    print("epoch={} batch={}/{} size={} batch_cost={} batch_wer={}".format(epoch, train_step, ntrain_batch, batch_size, batch_cost, batch_ters[0]))
+                    print("epoch={} batch={}/{} size={} batch_cost={} batch_wer={}".format(epoch,
+                        train_step, ntrain_batch, batch_size, batch_cost, batch_ters[0]/get_label_len(y_element_batch)))
                     print("batch",train_step,"of",ntrain_batch,"size",batch_size,
-                          "queue",data_queue.empty(),data_queue.full(),data_queue.qsize())
-
+                        "queue",data_queue.empty(),data_queue.full(),data_queue.qsize())
                 train_step += 1
 
             p.join()
@@ -333,22 +340,22 @@ def train(data, config):
             if config["store_model"]:
                 saver.save(sess, "%s/epoch%02d.ckpt" % (model_dir, epoch + 1))
                 with open("%s/epoch%02d.log" % (model_dir, epoch + 1), 'w') as fp:
-                    fp.write("Time: %.2f seconds, lrate: %.4f\n" % (time.time() - tic, lr_rate))
+                    fp.write("Time: %.0f minutes, lrate: %.4g\n" % ((time.time() - tic)/60.0, lr_rate))
                     if (len(nclass) > 1):
                         for idx, _ in enumerate(nclass):
-                            fp.write("Train cost: %.1f, ter: %.3f, #example: %d (language %s)\n" % (train_cost, train_ter[idx], ntrain, str(idx)))
-                            fp.write("Validate cost: %.1f, ter: %.3f, #example: %d (language %s)\n" % (cv_cost, cv_ter[idx], ncv, str(idx)))
+                            fp.write("Train    cost: %.1f, ter: %.1f%%, #example: %d (language %s)\n" % (train_cost, 100.0*train_ter[idx], ntrain, str(idx)))
+                            fp.write("Validate cost: %.1f, ter: %.1f%%, #example: %d (language %s)\n" % (cv_cost, 100.0*cv_ter[idx], ncv, str(idx)))
                     else:
-                        fp.write("Train cost: %.1f, ter: %.3f, #example: %d\n" % (train_cost, train_ter[0], ntrain))
-                        fp.write("Validate cost: %.1f, ter: %.3f, #example: %d\n" % (cv_cost, cv_ter[0], ncv))
+                        fp.write("Train    cost: %.1f, ter: %.1f%%, #example: %d\n" % (train_cost, 100.0*train_ter[0], ntrain))
+                        fp.write("Validate cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost, 100.0*cv_ter[0], ncv))
 
-            info("Epoch %d finished in %.2f seconds, learning rate: %.4f" % (epoch + 1, time.time() - tic, lr_rate))
+            info("Epoch %d finished in %.0f minutes, learning rate: %.4g" % (epoch + 1, (time.time() - tic)/60.0, lr_rate))
             if (len(nclass) > 1):
                 for idx, _ in enumerate(nclass):
-                    print("Train cost: %.1f, ter: %.3f, #example: %d (language %s)" % (train_cost, train_ter[idx], ntrain, str(idx)))
-                    print("Validate cost: %.1f, ter: %.3f, #example: %d (language %s)" % (cv_cost, cv_ter[idx], ncv, str(idx)))
+                    print("Train    cost: %.1f, ter: %.1f%%, #example: %d (language %s)" % (train_cost, 100.0*train_ter[idx], ntrain, str(idx)))
+                    print("Validate cost: %.1f, ter: %.1f%%, #example: %d (language %s)" % (cv_cost, 100.0*cv_ter[idx], ncv, str(idx)))
             else:
-                print("Train cost: %.1f, ter: %.3f, #example: %d" % (train_cost, train_ter[0], ntrain))
-                print("Validate cost: %.1f, ter: %.3f, #example: %d" % (cv_cost, cv_ter[0], ncv))
+                print("Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost, 100.0*train_ter[0], ntrain))
+                print("Validate cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost, 100.0*cv_ter[0], ncv))
             print(80 * "-")
             sys.stdout.flush()

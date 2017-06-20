@@ -35,9 +35,15 @@ def load_labels(dir, files=['labels.tr', 'labels.cv']):
             for line in f:
                 tokens = line.strip().split()
                 labels[tokens[0]] = [mapLabel(int(x)) for x in tokens[1:]]
-                if max(labels[tokens[0]]) > m:
-                    m = max(labels[tokens[0]])
-
+                try:
+                    # this can be empty
+                    if max(labels[tokens[0]]) > m:
+                        m = max(labels[tokens[0]])
+                except:
+                    pass
+    if not m:
+        m = 56
+        print("Set m to hard-coded value:", m+2)
     return m+2, labels
 
 def get_batch_info(feat_info, label_dicts, start, height):

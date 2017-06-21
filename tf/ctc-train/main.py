@@ -10,7 +10,7 @@ import argparse
 import numpy as np
 from fileutils.kaldi import readScpInfo
 from multiprocessing import Pool
-from functools import partial
+from functools import partial, reduce
 import tf
 try:
     from h5_Reader import H5Dataset
@@ -41,9 +41,7 @@ def load_labels(dir, files=['labels.tr', 'labels.cv']):
                         m = max(labels[tokens[0]])
                 except:
                     pass
-    if not m:
-        m = 56
-        print("Set m to hard-coded value:", m+2)
+
     return m+2, labels
 
 def get_batch_info(feat_info, label_dicts, start, height):
@@ -168,8 +166,10 @@ def load_feat_info(args, part):
 def load_prior(prior_path):
     prior = None
     with open(prior_path, "r") as f:
-        for line in f:
-            parts = map(int, line.split(" ")[1:-1])
+        #for line in f:
+        #    parts = map(int, line.split(" ")[1:-1])
+        for line in f.readlines():
+            parts = [int(x) for x in line.strip().split(" ")[1:-1]]
             counts = parts[1:]
             counts.append(parts[0])
             cnt_sum = reduce(lambda x, y: x + y, counts)
@@ -213,7 +213,7 @@ def mainParser():
     parser.add_argument('--noshuffle', default=True, dest='do_shuf', action='store_false', help='do not shuffle training samples')
     parser.add_argument('--eval_model', default = "", help = "model to load for evaluation")
     parser.add_argument('--batch_size', default = 32, type=int, help='batch size')
-    parser.add_argument('--data_dir', default = "/data/ASR5/fmetze/eesen/asr_egs/swbd/v1/tmp.LHhAHROFia/T22/", help = "data dir")
+    parser.add_argument('--data_dir', default = "./tmp", help = "data dir")
 
     parser.add_argument('--h5_mode', default=False, action='store_true', help='Enable reading HDF5 files')
     parser.add_argument('--h5_train', help='h5 train data', type=str, default=None)
@@ -231,7 +231,7 @@ def mainParser():
 
     parser.add_argument('--extra_labels', help = "extra labels (e.g. phn set when your main target are char) IMPORTANT: the feature files are the master")
 
-    parser.add_argument('--counts_file', default = "/data/ASR5/fmetze/eesen/asr_egs/swbd/v1/label.counts", help = "data dir")
+    parser.add_argument('--counts_file', default = "label.counts", help = "data dir")
     parser.add_argument('--nepoch', default = 30, type=int, help='#epoch')
     parser.add_argument('--lr_rate', default = 0.03, type=float, help='learning rate')
     parser.add_argument('--l2', default = 0.0, type=float, help='l2 normalization')
@@ -290,6 +290,7 @@ def createConfig(args, nfeat, nclass, train_path):
         "train_path": train_path,
         "store_model": args.store_model,
         "random_seed": 15213,
+        "temperature": args.temperature,
         "h5_mode": args.h5_mode,
         "mix": args.mix,
         "augment": args.augment

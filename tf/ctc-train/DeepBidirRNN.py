@@ -124,7 +124,13 @@ class DeepBidirRNN:
         self.feats = tf.placeholder(tf.float32, [None, None, nfeat], name = "feats")
         self.temperature = tf.placeholder(tf.float32, name = "temperature")
         self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
-        self.labels = [tf.sparse_placeholder(tf.int32) for _ in xrange(len(nclasses))]
+        try:
+            # this is because of Python2 vs 3
+            self.labels = [tf.sparse_placeholder(tf.int32)
+                           for _ in xrange(len(nclasses))]
+        except:
+            self.labels = [tf.sparse_placeholder(tf.int32)
+                           for _ in range(len(nclasses))]                        
         self.prior = tf.placeholder(tf.float32, [nclasses[0]], name = "prior")
         # self.prior =[tf.placeholder(tf.float32, nclass)
           # for count, nclass in enumerate(nclasses)]

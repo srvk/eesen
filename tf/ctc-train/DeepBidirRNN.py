@@ -157,7 +157,10 @@ class DeepBidirRNN:
 
         logits=[]
         for count_label, _ in enumerate(nclasses):
-            logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = nclasses[count_label], scope = "output_fc_"+str(count_label), biases_initializer = tf.contrib.layers.xavier_initializer())
+            scope = "output_fc"
+            if len(nclasses) > 1:
+                scope = "output_fc_"+str(count_label)
+            logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = nclasses[count_label], scope = scope, biases_initializer = tf.contrib.layers.xavier_initializer())
             if batch_norm:
                 logit = tf.contrib.layers.batch_norm(logit, center=True, scale=True, decay=0.9, is_training=self.is_training,  updates_collections=None)
             logits.append(logit)

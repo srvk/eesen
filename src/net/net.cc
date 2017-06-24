@@ -100,7 +100,7 @@ void Net::Backpropagate(const CuMatrixBase<BaseFloat> &out_diff, CuMatrix<BaseFl
                               backpropagate_buf_[i+1], &backpropagate_buf_[i]);
     if (layers_[i]->IsTrainable()) {
       TrainableLayer *tl = dynamic_cast<TrainableLayer*>(layers_[i]);
-      tl->Update(propagate_buf_[i], backpropagate_buf_[i+1]);
+      tl->Update(propagate_buf_[i], backpropagate_buf_[i+1], update_algorithm);
     }
   }
   // eventually export the derivative
@@ -438,6 +438,22 @@ void Net::Destroy() {
   backpropagate_buf_.resize(0);
 }
 
+void Net::SetUpdateAlgorithm(std::string opt) {
+  if (opt.compare("SGD")==0) {
+    KALDI_LOG << "Selecting SGD with momentum as optimization algorithm.";
+    update_algorithm=sgd_update;
+  }else if (opt.compare("Adagrad")==0) {
+    KALDI_LOG << "Selecting Adagrad as optimization algorithm.";
+    update_algorithm=adagrad_update;
+  }else if (opt.compare("RMSProp")==0) {
+    KALDI_LOG << "Selecting RMSProp as optimization algorithm.";
+    update_algorithm=rmsprop_update;
+  }else{
+    KALDI_ERR << "This optimization algorithm is unsupported: " << opt;
+    KALDI_LOG << "Selecting SGD with momentum as optimization algorithm.";
+    update_algorithm=sgd_update;
+  }
+}
 
 void Net::SetTrainOptions(const NetTrainOptions& opts) {
   opts_ = opts;

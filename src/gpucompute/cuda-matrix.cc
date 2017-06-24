@@ -549,7 +549,53 @@ void CuMatrixBase<Real>::AddVecToRows(Real alpha,
   }
 }
 
+//cudaF_sqrt_elements(int Gr, int Bl, float* data,
+//MatrixDim d);
 
+template<typename Real>
+void CuMatrixBase<Real>::ApplySqrt(Real epsilon) {
+  #if HAVE_CUDA == 1 
+  if (CuDevice::Instantiate().Enabled()) {
+    if (num_rows_ == 0) return;
+    Timer tim;
+
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
+
+    cuda_sqrt_elements(dimGrid, dimBlock, data_, epsilon, Dim());
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    printf("ApplySqrt is currently not available on CPU.");
+    exit(-101);
+    //Mat().ApplySqrt(epsilon);
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::InvertElements() {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
+
+    cuda_invert_elements(dimGrid, dimBlock, data_, Dim());
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    printf("InvertElements is currently not available on CPU.");
+    exit(-101);
+    //Mat().InvertElements();
+  }
+}
 
 /*
  * Method wrapping the CUBLAS function GEMM
@@ -592,6 +638,28 @@ void CuMatrixBase<Real>::AddMatMat(
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::AddMatMatElements(Real alpha,
+    const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B, Real beta) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(SameDim(*this, A) && SameDim(A, B));
+    Timer tim;
+    
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
+    
+    cuda_add_mat_mat_elements(dimGrid, dimBlock, this->data_, A.Data(),
+                              B.Data(), Dim(), A.Stride(), B.Stride(), alpha, beta);
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    printf("ApplySqrt is currently not available on CPU.");
+    exit(-101);
+    //Mat().AddMatMatElements(alpha, A.Mat(), B.Mat(), beta);
+  }
+}
 
 // <jiayu>
 template<typename Real>
@@ -1060,6 +1128,24 @@ void CuMatrixBase<Real>::ApplyCeiling(Real ceiling_val) {
 #endif
   {
     Mat().ApplyCeiling(ceiling_val);
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::ApplyPow(Real power) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
+
+    cuda_apply_pow(dimGrid, dimBlock, data_, power, Dim());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().ApplyPow(power);
   }
 }
 

@@ -29,8 +29,8 @@ class Lstm : public TrainableLayer {
 public:
     Lstm(int32 input_dim, int32 output_dim) :
         TrainableLayer(input_dim, output_dim),
-        cell_dim_(output_dim),
-        learn_rate_coef_(1.0), max_grad_(0.0)
+        cell_dim_(output_dim), learn_rate_coef_(1.0), 
+        max_grad_(0.0), adaBuffersInitialized(false)
     { }
 
     ~Lstm()
@@ -77,7 +77,32 @@ public:
       max_grad_ = max_grad;
     }
 
+    void InitAdaBuffers () {
+      //for Ada:
+      wei_gifo_m_corr_accu.Resize(4 * cell_dim_, cell_dim_);  wei_gifo_m_corr_accu.Set(0.0);
+      wei_gifo_m_corr_accu_scale.Resize(4 * cell_dim_, cell_dim_);
+      
+      wei_gifo_x_corr_accu.Resize(4 * cell_dim_, input_dim_); wei_gifo_x_corr_accu.Set(0.0);
+      wei_gifo_x_corr_accu_scale.Resize(4 * cell_dim_, input_dim_);
+      
+      bias_corr_accu.Resize(4 * cell_dim_);  bias_corr_accu.Set(0.0);
+      bias_corr_accu_scale.Resize(4 * cell_dim_);
+
+      phole_i_c_corr_accu.Resize(cell_dim_); phole_i_c_corr_accu.Set(0.0);
+      phole_i_c_corr_accu_scale.Resize(cell_dim_); 
+
+      phole_f_c_corr_accu.Resize(cell_dim_); phole_f_c_corr_accu.Set(0.0);
+      phole_f_c_corr_accu_scale.Resize(cell_dim_);
+      
+      phole_o_c_corr_accu.Resize(cell_dim_); phole_o_c_corr_accu.Set(0.0);
+      phole_o_c_corr_accu_scale.Resize(cell_dim_);
+
+      adaBuffersInitialized = true;
+    }
+
     void ReadData(std::istream &is, bool binary) {
+      adaBuffersInitialized = false;
+      
       // optional learning-rate coefs
       if ('<' == Peek(is, binary)) {
         ExpectToken(is, binary, "<LearnRateCoef>");
@@ -86,6 +111,20 @@ public:
       if ('<' == Peek(is, binary)) {
         ExpectToken(is, binary, "<MaxGrad>");
         ReadBasicType(is, binary, &max_grad_);
+      }
+
+      // optionally read in accumolators for AdaGrad and RMSProp
+      if ('<' == Peek(is, binary)) {
+        ExpectToken(is, binary, "<LstmAccus>");
+
+        InitAdaBuffers();
+
+        wei_gifo_x_corr_accu.Read(is, binary);
+        wei_gifo_m_corr_accu.Read(is, binary);
+        bias_corr_accu.Read(is, binary);
+        phole_i_c_corr_accu.Read(is, binary);
+        phole_f_c_corr_accu.Read(is, binary);
+        phole_o_c_corr_accu.Read(is, binary);
       }
 
       // read parameters
@@ -102,6 +141,7 @@ public:
       phole_i_c_corr_ = phole_i_c_; phole_i_c_corr_.SetZero();
       phole_f_c_corr_ = phole_f_c_; phole_f_c_corr_.SetZero();
       phole_o_c_corr_ = phole_o_c_; phole_o_c_corr_.SetZero();
+
     }
 
     void WriteData(std::ostream &os, bool binary) const {
@@ -109,6 +149,18 @@ public:
       WriteBasicType(os, binary, learn_rate_coef_);
       WriteToken(os, binary, "<MaxGrad>");
       WriteBasicType(os, binary, max_grad_);
+
+      if(adaBuffersInitialized)
+      {
+        WriteToken(os, binary, "<LstmAccus>");
+
+        wei_gifo_x_.Write(os, binary);
+        wei_gifo_m_.Write(os, binary);
+        bias_.Write(os, binary);
+        phole_i_c_.Write(os, binary);
+        phole_f_c_.Write(os, binary);
+        phole_o_c_.Write(os, binary);
+      }
 
       // write parameters of the forward layer
       wei_gifo_x_.Write(os, binary);
@@ -290,7 +342,8 @@ public:
         phole_o_c_corr_.AddDiagMatMat(1.0, DO.RowRange(1,T), kTrans, YC.RowRange(1,T), kNoTrans, mmt);
     }
 
-    void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
+    void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff, const UpdateRule
+    rule=sgd_update) {
       // clip gradients 
       if (max_grad_ > 0) {
         wei_gifo_x_corr_.ApplyFloor(-max_grad_); wei_gifo_x_corr_.ApplyCeiling(max_grad_);
@@ -302,14 +355,57 @@ public:
       }
 
       // update parameters
-      const BaseFloat lr = opts_.learn_rate * learn_rate_coef_;
+      BaseFloat lr = opts_.learn_rate;
+      
+      if (rule==sgd_update) {
+        lr *= learn_rate_coef_;
 
-      wei_gifo_x_.AddMat(-lr, wei_gifo_x_corr_);
-      wei_gifo_m_.AddMat(-lr, wei_gifo_m_corr_);
-      bias_.AddVec(-lr, bias_corr_, 1.0);
-      phole_i_c_.AddVec(-lr, phole_i_c_corr_, 1.0);
-      phole_f_c_.AddVec(-lr, phole_f_c_corr_, 1.0);
-      phole_o_c_.AddVec(-lr, phole_o_c_corr_, 1.0);
+        wei_gifo_x_.AddMat(-lr, wei_gifo_x_corr_);
+        wei_gifo_m_.AddMat(-lr, wei_gifo_m_corr_);
+        bias_.AddVec(-lr, bias_corr_, 1.0);
+        phole_i_c_.AddVec(-lr, phole_i_c_corr_, 1.0);
+        phole_f_c_.AddVec(-lr, phole_f_c_corr_, 1.0);
+        phole_o_c_.AddVec(-lr, phole_o_c_corr_, 1.0); 
+      } 
+      else if (rule==adagrad_update || rule==rmsprop_update) {
+        if (!adaBuffersInitialized) {
+          InitAdaBuffers();
+        }
+
+        // update the accumolators
+        if (rule==adagrad_update)
+        {
+          AdagradAccuUpdate(wei_gifo_x_corr_accu, wei_gifo_x_corr_, wei_gifo_x_corr_accu_scale);
+          AdagradAccuUpdate(wei_gifo_m_corr_accu, wei_gifo_m_corr_, wei_gifo_m_corr_accu_scale); 
+          AdagradAccuUpdate(bias_corr_accu, bias_corr_, bias_corr_accu_scale);
+          AdagradAccuUpdate(phole_i_c_corr_accu, phole_i_c_corr_, phole_i_c_corr_accu_scale);
+          AdagradAccuUpdate(phole_f_c_corr_accu, phole_f_c_corr_, phole_f_c_corr_accu_scale);
+          AdagradAccuUpdate(phole_o_c_corr_accu, phole_o_c_corr_, phole_o_c_corr_accu_scale);
+        } else {
+          RMSPropAccuUpdate(wei_gifo_x_corr_accu, wei_gifo_x_corr_, wei_gifo_x_corr_accu_scale);
+          RMSPropAccuUpdate(wei_gifo_m_corr_accu, wei_gifo_m_corr_, wei_gifo_m_corr_accu_scale); 
+          RMSPropAccuUpdate(bias_corr_accu, bias_corr_, bias_corr_accu_scale);
+          RMSPropAccuUpdate(phole_i_c_corr_accu, phole_i_c_corr_, phole_i_c_corr_accu_scale);
+          RMSPropAccuUpdate(phole_f_c_corr_accu, phole_f_c_corr_, phole_f_c_corr_accu_scale);
+          RMSPropAccuUpdate(phole_o_c_corr_accu, phole_o_c_corr_, phole_o_c_corr_accu_scale);
+        }
+       
+        // calculate 1.0 / sqrt(accu + epsilon)
+        AdagradScaleCompute(wei_gifo_x_corr_accu_scale,wei_gifo_x_corr_accu);
+        AdagradScaleCompute(wei_gifo_m_corr_accu_scale,wei_gifo_m_corr_accu);
+        AdagradScaleCompute(bias_corr_accu_scale,bias_corr_accu);
+        AdagradScaleCompute(phole_i_c_corr_accu_scale,phole_i_c_corr_accu);
+        AdagradScaleCompute(phole_f_c_corr_accu_scale,phole_f_c_corr_accu);
+        AdagradScaleCompute(phole_o_c_corr_accu_scale,phole_o_c_corr_accu);
+        
+        // update the parameters
+        wei_gifo_x_.AddMatMatElements(-lr, wei_gifo_x_corr_accu_scale, wei_gifo_x_corr_, 1.0);
+        wei_gifo_m_.AddMatMatElements(-lr, wei_gifo_m_corr_accu_scale, wei_gifo_m_corr_, 1.0);
+        bias_.AddVecVec(-lr, bias_corr_accu_scale, bias_corr_, 1.0);
+        phole_i_c_.AddVecVec(-lr, phole_i_c_corr_accu_scale, phole_i_c_corr_, 1.0);
+        phole_f_c_.AddVecVec(-lr, phole_f_c_corr_accu_scale, phole_f_c_corr_, 1.0);
+        phole_o_c_.AddVecVec(-lr, phole_o_c_corr_accu_scale, phole_o_c_corr_, 1.0);
+      }
     }
 
     void Scale(BaseFloat scale) {
@@ -358,11 +454,16 @@ public:
       wei_copy->Range(offset, size).CopyFromVec(phole_o_c_); offset += size;
     }
 
+    void SetDropFactor(BaseFloat dropfactor) {
+      //TODO
+    }
+
 //private:
 protected:
     int32 cell_dim_;
     BaseFloat learn_rate_coef_;
     BaseFloat max_grad_;
+    bool adaBuffersInitialized;
 
     // parameters of the forward layer
     CuMatrix<BaseFloat> wei_gifo_x_;
@@ -378,6 +479,22 @@ protected:
     CuVector<BaseFloat> phole_i_c_corr_;
     CuVector<BaseFloat> phole_f_c_corr_;
     CuVector<BaseFloat> phole_o_c_corr_;
+
+    // accumolators for e.g. AdaGrad
+    CuMatrix<BaseFloat> wei_gifo_x_corr_accu;
+    CuMatrix<BaseFloat> wei_gifo_m_corr_accu;
+    CuVector<BaseFloat> bias_corr_accu;
+    CuVector<BaseFloat> phole_i_c_corr_accu;
+    CuVector<BaseFloat> phole_f_c_corr_accu;
+    CuVector<BaseFloat> phole_o_c_corr_accu;
+
+    // for scale computation, e.g. AdaGrad
+    CuMatrix<BaseFloat> wei_gifo_x_corr_accu_scale;
+    CuMatrix<BaseFloat> wei_gifo_m_corr_accu_scale;
+    CuVector<BaseFloat> bias_corr_accu_scale;
+    CuVector<BaseFloat> phole_i_c_corr_accu_scale;
+    CuVector<BaseFloat> phole_f_c_corr_accu_scale;
+    CuVector<BaseFloat> phole_o_c_corr_accu_scale;
 
     // propagation buffer
     CuMatrix<BaseFloat> propagate_buf_;

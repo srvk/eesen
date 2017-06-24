@@ -594,6 +594,25 @@ static void _apply_ceiling(Real* mat, Real ceiling_val, MatrixDim d) {
   }
 }
 
+template<typename Real>
+__global__
+static void _invert_elements(Real* data, MatrixDim d) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int index = i + j * d.stride;
+  if (i < d.cols && j < d.rows)
+    data[index] = 1.0 / data[index];
+}
+
+template<typename Real>
+__global__
+static void _sqrt_elements(Real* data, Real epsilon, MatrixDim d) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int index = i + j * d.stride;
+  if (i < d.cols && j < d.rows)
+    data[index] = sqrt(data[index]+epsilon);
+}
 
 template<typename Real>
 __global__
@@ -642,6 +661,23 @@ static void _add_col_sum_mat(const Real* mat, Real* vec_sum, MatrixDim d) {
   //add to previously accumulated sum
   if(threadIdx.x == 0) 
     vec_sum[j] += sum;
+}
+
+template<typename Real>
+__global__
+static void _add_mat_mat_elements(Real *data, const Real *srcA_data,
+                                  const Real *srcB_data, MatrixDim dim,
+                                  int srcA_stride, int srcB_stride, Real alpha,
+                                  Real beta) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda tgt_index = i + j * dim.stride;
+  int32_cuda srcA_index = i + j * srcA_stride;
+  int32_cuda srcB_index = i + j * srcB_stride;
+  if (i < dim.cols && j < dim.rows) {
+    data[tgt_index] = alpha * srcA_data[srcA_index] * srcB_data[srcB_index]
+        + beta * data[tgt_index];
+  }
 }
 
 /*
@@ -990,6 +1026,16 @@ void cudaD_add_vec_to_rows(dim3 Gr, dim3 Bl, double alpha, const double* row, do
   _add_vec_to_rows<<<Gr,Bl>>>(alpha,row,beta,dst,d);
 }
 
+void cudaF_add_mat_mat_elements(dim3 Gr, dim3 Bl, float *data, const float *srcA_data, const float *srcB_data,
+MatrixDim dim, int srcA_stride, int srcB_stride, float alpha, float beta) {
+  _add_mat_mat_elements<<<Gr, Bl>>>(data, srcA_data, srcB_data, dim, srcA_stride, srcB_stride, alpha, beta);
+}
+
+void cudaD_add_mat_mat_elements(dim3 Gr, dim3 Bl, double *data, const double *srcA_data, const double *srcB_data,
+MatrixDim dim, int srcA_stride, int srcB_stride, double alpha, double beta) {
+  _add_mat_mat_elements<<<Gr, Bl>>>(data, srcA_data, srcB_data, dim, srcA_stride, srcB_stride, alpha, beta);
+}
+
 /*
  * CuVector
  */
@@ -1075,6 +1121,20 @@ void cudaF_vec_apply_exp(int Gr, int Bl, float* v, int dim) {
 }
 void cudaD_vec_apply_exp(int Gr, int Bl, double* v, int dim) {
   _vec_apply_exp<<<Gr,Bl>>>(v,dim);
+}
+
+void cudaF_sqrt_elements(dim3 Gr, dim3 Bl, float* data, float epsilon, MatrixDim d) {
+    _sqrt_elements<<<Gr,Bl>>>(data, epsilon, d);
+}
+void cudaD_sqrt_elements(dim3 Gr, dim3 Bl, double* data, double epsilon, MatrixDim d) {
+    _sqrt_elements<<<Gr,Bl>>>(data, epsilon, d);
+}
+
+void cudaF_invert_elements(dim3 Gr, dim3 Bl, float* data, MatrixDim d) {
+    _invert_elements<<<Gr,Bl>>>(data, d);
+}
+void cudaD_invert_elements(dim3 Gr, dim3 Bl, double* data, MatrixDim d) {
+    _invert_elements<<<Gr,Bl>>>(data, d);
 }
 
 void cudaF_vec_apply_log(int Gr, int Bl, float* v, float* flag, int dim) {
@@ -1204,6 +1264,7 @@ void cuda_copy_from_mat_fd_trans(dim3 Gr, dim3 Bl, float *mat_out, const double*
 void cuda_copy_from_mat_dd_trans(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) {
   _copy_from_mat_trans<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
 }
+
 
 /*
  * lstm::

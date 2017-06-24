@@ -36,7 +36,8 @@ class AffineTransform : public TrainableLayer {
     : TrainableLayer(dim_in, dim_out), 
       linearity_(dim_out, dim_in), bias_(dim_out),
       linearity_corr_(dim_out, dim_in), bias_corr_(dim_out),
-      learn_rate_coef_(1.0)
+      learn_rate_coef_(1.0), max_grad_(0.0),
+      adaBuffersInitialized(false)
   { }
   ~AffineTransform()
   { }
@@ -47,7 +48,7 @@ class AffineTransform : public TrainableLayer {
  
   void InitData(std::istream &is) {
     // define options
-    float param_range = 0.02;
+    float param_range = 0.02, max_grad = 0.0;
     float learn_rate_coef = 1.0;
     // parse config
     std::string token; 
@@ -55,6 +56,7 @@ class AffineTransform : public TrainableLayer {
       ReadToken(is, false, &token); 
       /**/ if (token == "<ParamRange>") ReadBasicType(is, false, &param_range);
       else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef);
+      else if (token == "<MaxGrad>") ReadBasicType(is, false, &max_grad);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (ParamStddev|BiasMean|BiasRange|LearnRateCoef|BiasLearnRateCoef)";
       is >> std::ws; // eat-up whitespace
@@ -63,16 +65,46 @@ class AffineTransform : public TrainableLayer {
     // initialize
     linearity_.Resize(output_dim_, input_dim_, kUndefined); linearity_.InitRandUniform(param_range);
     bias_.Resize(output_dim_, kUndefined); bias_.InitRandUniform(param_range);
+    
     //
     learn_rate_coef_ = learn_rate_coef;
+    max_grad_ = max_grad;
+  }
+
+  void InitAdaBuffers() {
+    // initialize Ada vars
+    linearity_corr_accu.Resize(output_dim_, input_dim_, kUndefined); linearity_corr_accu.Set(0.0);
+    bias_corr_accu.Resize(output_dim_, kUndefined); bias_corr_accu.Set(0.0);
+    linearity_corr_accu_scale.Resize(output_dim_, input_dim_, kUndefined); linearity_corr_accu_scale.Set(0.0);
+    bias_corr_accu_scale.Resize(output_dim_, kUndefined); bias_corr_accu_scale.Set(0.0);
+    adaBuffersInitialized = true;
   }
 
   void ReadData(std::istream &is, bool binary) {
+    
+    adaBuffersInitialized = false;
+    
     // optional learning-rate coefs
     if ('<' == Peek(is, binary)) {
       ExpectToken(is, binary, "<LearnRateCoef>");
       ReadBasicType(is, binary, &learn_rate_coef_);
     }
+
+    if ('<' == Peek(is, binary)) {
+      ExpectToken(is, binary, "<MaxGrad>");
+      ReadBasicType(is, binary, &max_grad_);
+    }
+
+    // optionally read in accumolators for AdaGrad and RMSProp
+    if ('<' == Peek(is, binary)) {
+      ExpectToken(is, binary, "<AffineAccus>");
+   
+      InitAdaBuffers();
+
+      linearity_corr_accu.Read(is, binary);
+      bias_corr_accu.Read(is, binary);
+    }
+
     // weights
     linearity_.Read(is, binary);
     bias_.Read(is, binary);
@@ -85,6 +117,17 @@ class AffineTransform : public TrainableLayer {
   void WriteData(std::ostream &os, bool binary) const {
     WriteToken(os, binary, "<LearnRateCoef>");
     WriteBasicType(os, binary, learn_rate_coef_);
+    WriteToken(os, binary, "<MaxGrad>");
+    WriteBasicType(os, binary, max_grad_);
+
+    // write out optional accumolators
+    if(adaBuffersInitialized)
+    {
+        WriteToken(os, binary, "<AffineAccus>");
+        linearity_corr_accu.Write(os, binary);
+        bias_corr_accu.Write(os, binary);
+    }
+
     // weights
     linearity_.Write(os, binary);
     bias_.Write(os, binary);
@@ -104,9 +147,14 @@ class AffineTransform : public TrainableLayer {
            "\n  bias" + MomentStatistics(bias_);
   }
   std::string InfoGradient() const {
-    return std::string("\n  linearity_grad") + MomentStatistics(linearity_corr_) + 
-                       "\n  bias_grad" + MomentStatistics(bias_corr_);
-           
+    std::string extra = std::string("");
+    if (adaBuffersInitialized)
+    {
+      extra += "\n  linearity_grad_accu" + MomentStatistics(linearity_corr_accu) +
+               "\n  bias_grad_accu" + MomentStatistics(bias_corr_accu);
+    }
+    return std::string("\n  linearity_corr_") + MomentStatistics(linearity_corr_) + 
+                       "\n  bias_corr_" + MomentStatistics(bias_corr_) + extra;
   }
 
 
@@ -123,17 +171,51 @@ class AffineTransform : public TrainableLayer {
     in_diff->AddMatMat(1.0, out_diff, kNoTrans, linearity_, kNoTrans, 0.0);
   }
 
-  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
+  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff, const UpdateRule
+  rule=sgd_update) {
+
     // we use following hyperparameters from the option class
-    const BaseFloat lr = opts_.learn_rate * learn_rate_coef_;
+    BaseFloat lr = opts_.learn_rate;
     const BaseFloat mmt = opts_.momentum;
-    // we will also need the number of frames in the mini-batch
+    
     // compute gradient (incl. momentum)
     linearity_corr_.AddMatMat(1.0, diff, kTrans, input, kNoTrans, mmt);
     bias_corr_.AddRowSumMat(1.0, diff, mmt);
-    // update
-    linearity_.AddMat(-lr, linearity_corr_);
-    bias_.AddVec(-lr, bias_corr_);
+    
+    // clip gradients
+    if (max_grad_ > 0) {
+      linearity_corr_.ApplyFloor(-max_grad_); linearity_corr_.ApplyCeiling(max_grad_);
+      bias_corr_.ApplyFloor(-max_grad_); bias_corr_.ApplyCeiling(max_grad_);
+    }
+    
+    if (rule==sgd_update) {
+      // update
+      lr *= learn_rate_coef_;
+      linearity_.AddMat(-lr, linearity_corr_);
+      bias_.AddVec(-lr, bias_corr_);
+    } else if (rule==adagrad_update || rule==rmsprop_update) {
+
+      if (!adaBuffersInitialized) {
+        InitAdaBuffers();
+        adaBuffersInitialized=true;
+      }
+
+      // update the accumolatorsi
+      if (rule==adagrad_update)
+      {
+        AdagradAccuUpdate(linearity_corr_accu, linearity_corr_, linearity_corr_accu_scale);
+        AdagradAccuUpdate(bias_corr_accu, bias_corr_, bias_corr_accu_scale);
+      }else {
+        RMSPropAccuUpdate(linearity_corr_accu, linearity_corr_, linearity_corr_accu_scale);
+        RMSPropAccuUpdate(bias_corr_accu, bias_corr_, bias_corr_accu_scale);
+      }
+      // calculate 1.0 / sqrt(accu + epsilon)
+      AdagradScaleCompute(linearity_corr_accu_scale, linearity_corr_accu);
+      AdagradScaleCompute(bias_corr_accu_scale, bias_corr_accu);
+      // update the parameters
+      linearity_.AddMatMatElements(-lr, linearity_corr_accu_scale, linearity_corr_, 1.0);
+      bias_.AddVecVec(-lr, bias_corr_accu_scale, bias_corr_, 1.0);
+    }
   }
   
   void Scale(BaseFloat scale) {
@@ -150,6 +232,10 @@ class AffineTransform : public TrainableLayer {
   void SetBias(const CuVectorBase<BaseFloat>& bias) {
     KALDI_ASSERT(bias.Dim() == bias_.Dim());
     bias_.CopyFromVec(bias);
+  }
+
+  void SetDropFactor(BaseFloat dropfactor) {
+      //TODO
   }
 
   const CuMatrixBase<BaseFloat>& GetLinearity() const {
@@ -178,7 +264,16 @@ class AffineTransform : public TrainableLayer {
   CuMatrix<BaseFloat> linearity_corr_;
   CuVector<BaseFloat> bias_corr_;
 
+  CuMatrix<BaseFloat> linearity_corr_accu;
+  CuVector<BaseFloat> bias_corr_accu;
+
+  CuMatrix<BaseFloat> linearity_corr_accu_scale;
+  CuVector<BaseFloat> bias_corr_accu_scale;
+
   BaseFloat learn_rate_coef_;
+  BaseFloat max_grad_;
+
+  bool adaBuffersInitialized;
 };
 
 } // namespace eesen

@@ -28,6 +28,7 @@
 #include <cmath>
 #include <limits>
 #include <vector>
+#include <random>
 
 #include "base/kaldi-types.h"
 #include "base/kaldi-common.h"
@@ -102,14 +103,44 @@ bool WithProb(BaseFloat prob, struct RandomState* state=NULL); // Returns true w
 // Internally calls Rand().  This function is carefully implemented so
 // that it should work even if prob is very small.
 
+// thread safe random number generator based on the CPP library.
+inline float RandUniformSTD() {
+  // returns value in the interval [0.0,1.0) numbers from 0.0 (incl. 0.0) to 1.0 (excl. 1.0)
+  thread_local static std::mt19937 r_state(std::random_device{}());
+  thread_local static std::uniform_real_distribution<float> random_value(0.0, 1.0);
+
+  float val = random_value(r_state);
+
+  return val;
+}
+
+inline bool BernoulliDist(float prob) {
+
+    thread_local static std::mt19937 r_state(std::random_device{}());
+    thread_local static std::bernoulli_distribution rand_bool(prob);
+
+    bool val = rand_bool(r_state);
+
+    return val;
+}
+
 /// Returns a random number strictly between 0 and 1.
 inline float RandUniform(struct RandomState* state = NULL) {
+  //return static_cast<float>((Rand(state) + 1.0) / (RAND_MAX+2.0));
+  return RandUniformSTD();
+}
+
+/// Returns a random number strictly between 0 and 1.
+inline float RandUniformOld(struct RandomState* state = NULL) {
   return static_cast<float>((Rand(state) + 1.0) / (RAND_MAX+2.0));
 }
 
 inline float RandGauss(struct RandomState* state = NULL) {
-  return static_cast<float>(sqrtf (-2 * logf(RandUniform(state)))
-                            * cosf(2*M_PI*RandUniform(state)));
+  float a = RandUniform(state);
+  float b = RandUniform(state);
+  if (a <= 0.0)  a = a + FLT_EPSILON;
+  return static_cast<float>(sqrtf (-2 * logf(a))
+                            * cosf(2*M_PI*b));
 }
 
 // Returns poisson-distributed random number.  Uses Knuth's algorithm.
@@ -230,7 +261,7 @@ static inline bool ApproxEqual(float a, float b,
   float diff = std::abs(a-b);
   if (diff == std::numeric_limits<float>::infinity()
       || diff != diff) return false; // diff is +inf or nan.
-  return (diff <= relative_tolerance*(std::abs(a)+std::abs(b))); 
+  return (diff <= relative_tolerance*(std::abs(a)+std::abs(b)));
 }
 
 /// assert abs(a - b) <= relative_tolerance * (abs(a)+abs(b))
@@ -314,7 +345,7 @@ inline double Log1p(double x) {
     const double cutoff = 1.0e-08;
     if (x < cutoff)
         return x - 2 * x * x;
-    else 
+    else
         return log(1.0 + x);
 }
 
@@ -322,7 +353,7 @@ inline float Log1p(float x) {
     const float cutoff = 1.0e-07;
     if (x < cutoff)
         return x - 2 * x * x;
-    else 
+    else
         return log(1.0 + x);
 }
 #endif

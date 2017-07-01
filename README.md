@@ -34,3 +34,7 @@ Refer to RESULTS under each [example setup](asr_egs/).
 For more information, please refer to the following paper(s):
 
 Yajie Miao, Mohammad Gowayyed, and Florian Metze, "[EESEN: End-to-End Speech Recognition using Deep RNN Models and WFST-based Decoding](http://arxiv.org/abs/1507.08240)," in Proc. ASRU 2015.
+
+For max perturbation and dropout:
+
+Jayadev Billa, "[Improving LSTM-CTC based ASR performance in domains with limited training data](papers/LSTM-CTCperf2017.pdf)"

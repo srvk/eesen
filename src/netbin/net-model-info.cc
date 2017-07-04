@@ -1,7 +1,8 @@
-// netbin/net-copy.cc
+// netbin/net-model-info.cc
 
 // Copyright 2012-2015  Brno University of Technology (author: Karel Vesely)
 //                2015  Yajie Miao
+//                2017  Jayadev Billa (based on net-copy.cc)
 
 // See ../../COPYING for clarification regarding multiple authors
 //

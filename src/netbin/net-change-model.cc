@@ -1,7 +1,8 @@
-// netbin/net-copy.cc
+// netbin/net-change-model.cc
 
 // Copyright 2012-2015  Brno University of Technology (author: Karel Vesely)
 //                2015  Yajie Miao
+// Copyright 2017 Jayadev Billa
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -30,9 +31,9 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Change network model with specified options and possibly change binary/text format\n"
         "Note: Model options must be fully specified, options will default to false otherwise\n"
-        "Usage:  net-copy [options] <model-in> <model-out>\n"
+        "Usage:  net-change-model [options] <model-in> <model-out>\n"
         "e.g.:\n"
-        " net-copy --binary=false final.nnet final_txt.nnet\n";
+        " net-change-model --binary=false in.nnet out.nnet\n";
 
 
     bool binary_write = true;
@@ -48,20 +49,18 @@ int main(int argc, char *argv[]) {
     bool recurrentseq   = false;
 
     bool twiddleforward = false;
-    bool twiddlerecurrent = false;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("forwarddrop", &forwarddrop, "Write output in binary mode");
-    po.Register("forwardstep", &forwardstep, "Write output in binary mode");
-    po.Register("forwardseq", &forwardseq, "Write output in binary mode");
-    po.Register("rnndrop", &rnndrop, "Write output in binary mode");
-    po.Register("nmldrop", &nmldrop, "Write output in binary mode");
-    po.Register("recurrentdrop", &recurrentdrop, "Write output in binary mode");
-    po.Register("recurrentstep", &recurrentstep, "Write output in binary mode");
-    po.Register("recurrentseq", &recurrentseq, "Write output in binary mode");
-    po.Register("twiddleforward", &twiddleforward, "Write output in binary mode");
-    po.Register("twiddlerecurrent", &twiddlerecurrent, "Write output in binary mode");
+    po.Register("forwarddrop", &forwarddrop, "Forward dropout factor (default: 0.0 -- disabled)");
+    po.Register("forwardstep", &forwardstep, "Change forward dropout mask every time step (default: false)");
+    po.Register("forwardseq",  &forwardseq,  "Change forward dropout mask every sequence (default: false)");
+    po.Register("rnndrop",     &rnndrop,     "Apply RNNDrop on recurrent connections (default: false)");
+    po.Register("nmldrop",     &nmldrop,     "Apply no memory loss (NML) dropout on recurrent connections (default: false)");
+    po.Register("recurrentdrop",  &recurrentdrop, "Recurrent dropout factor (default: 0.0 -- disabled)");
+    po.Register("recurrentstep",  &recurrentstep, "Change recurrent dropout mask every time step (default: false)");
+    po.Register("recurrentseq",   &recurrentseq,  "Change recurrent dropout mask every sequence (default: false)");
+    po.Register("twiddleforward", &twiddleforward, "Apply stochastic dropout combination (default: false)");
 
     po.Read(argc, argv);
 
@@ -74,7 +73,7 @@ int main(int argc, char *argv[]) {
         model_out_filename = po.GetArg(2);
 
     // Load the network
-    Net net; 
+    Net net;
     {
       bool binary_read;
       Input ki(model_in_filename, &binary_read);
@@ -82,7 +81,7 @@ int main(int argc, char *argv[]) {
     }
 
     net.ChangeDropoutParameters(forwarddrop,forwardstep,forwardseq,rnndrop,nmldrop,
-                                recurrentdrop,recurrentstep,recurrentseq,twiddleforward,twiddlerecurrent);
+                                recurrentdrop,recurrentstep,recurrentseq,twiddleforward);
 
     // Store the network
     {

@@ -125,8 +125,7 @@ class Net {
                                   bool recurrent_step_dropout,
                                   bool recurrent_sequence_dropout,
 
-                                  bool twiddleforward,
-                                  bool twiddle_rnnd_nml);
+                                  bool twiddleforward);
 
   /// Create string with human readable description of the nnet
   std::string Info() const;

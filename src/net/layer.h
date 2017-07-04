@@ -102,8 +102,7 @@ class Layer {
                                   bool recurrent_step_dropout,
                                   bool recurrent_sequence_dropout,
 
-                                  bool twiddleforward,
-                                  bool twiddle_rnnd_nml) {};
+                                  bool twiddleforward) {};
   bool IsBiLstm(LayerType t) {
     return ( t == l_BiLstm);
   }

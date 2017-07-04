@@ -421,15 +421,14 @@ void Net::ChangeDropoutParameters(BaseFloat forward_dropout,
                                   bool recurrent_step_dropout,
                                   bool recurrent_sequence_dropout,
 
-                                  bool twiddleforward,
-                                  bool twiddle_rnnd_nml) {
+                                  bool twiddleforward) {
   for(int32 i=0; i < (int32)layers_.size(); i++) {
     if (layers_[i]->IsBiLstm(layers_[i]->GetTypeNonParal())) {
         KALDI_LOG << "Changing dropout params for layer " << i;
         layers_[i]->ChangeDropoutParameters(forward_dropout, fw_step_dropout, fw_sequence_dropout,
                                             rnndrop, no_mem_loss_dropout, recurrent_dropout,
                                             recurrent_step_dropout, recurrent_sequence_dropout,
-                                            twiddleforward, twiddle_rnnd_nml);
+                                            twiddleforward);
     }
   }
 }

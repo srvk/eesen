@@ -22,7 +22,7 @@ except:
 #   Function definitions
 # -----------------------------------------------------------------
 
-def load_labels(dir, files=['labels.tr', 'labels.cv']):
+def load_labels(dir, files=['labels.tr', 'labels.cv'], nclass=0):
     """
     Load a set of labels in (local) Eesen format
     """
@@ -42,6 +42,10 @@ def load_labels(dir, files=['labels.tr', 'labels.cv']):
                 except:
                     pass
 
+    # sanity check - did we provide a value, and the actual is different?
+    if nclass > 0 and m+2 != nclass:
+        print("Warning: provided nclass=", nclass, " while observed nclass=", m+2)
+        m = nclass-2
     return m+2, labels
 
 def get_batch_info(feat_info, label_dicts, start, height):
@@ -119,13 +123,13 @@ def make_even_batches_info(feat_info, label_dicts, batch_size):
         idx = j
     return batch_x, batch_y, uttids
 
-def load_feat_info(args, part):
+def load_feat_info(args, part, nclass=0):
     nclass_all=[]
     label_dicts=[]
 
     data_dir = args.data_dir
     batch_size = args.batch_size
-    nclass, label_dict = load_labels(data_dir)
+    nclass, label_dict = load_labels(data_dir, nclass=nclass)
 
     nclass_all.append(nclass)
     label_dicts.append(label_dict)
@@ -214,7 +218,7 @@ def mainParser():
     parser.add_argument('--eval_model', default = "", help = "model to load for evaluation")
     parser.add_argument('--batch_size', default = 32, type=int, help='batch size')
     parser.add_argument('--data_dir', default = "./tmp", help = "data dir")
-
+    parser.add_argument('--use_kaldi_io', default=False, action='store_true', help='Do not use Kaldi IO library')
     parser.add_argument('--h5_mode', default=False, action='store_true', help='Enable reading HDF5 files')
     parser.add_argument('--h5_train', help='h5 train data', type=str, default=None)
     parser.add_argument('--h5_valid', help='h5 valid data', type=str, default=None)
@@ -256,7 +260,7 @@ def readConfig(args):
     config = pickle.load(open(config_path, "rb"))
     config["temperature"] = args.temperature
     config["prior"] = load_prior(args.counts_file)
-    config["lstm_type"] = "cudnn"
+    config["use_kaldi_io"] = args.use_kaldi_io
     config["augment"] = args.augment
     config["mix"] = args.mix
     config["batch_norm"] = args.batch_norm
@@ -292,6 +296,7 @@ def createConfig(args, nfeat, nclass, train_path):
         "random_seed": 15213,
         "temperature": args.temperature,
         "h5_mode": args.h5_mode,
+        "use_kaldi_io": args.use_kaldi_io,
         "mix": args.mix,
         "augment": args.augment
     }
@@ -324,8 +329,8 @@ def main():
         nclass, nfeat, cv_data = valid_dataset.load_feat_info()
     else:
         valid_dataset = None
+        # can specify the value of nclass here (373,688)
         nclass, nfeat, cv_data = load_feat_info(args, 'cv')
-    #print("NCLASS=", nclass)
     train_path = get_output_folder(args.train_dir)
 
     if args.eval:

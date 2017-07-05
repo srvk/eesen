@@ -8,13 +8,14 @@ from itertools import islice
 from Reader import run_reader
 try:
     from h5_Reader import h5_run_reader
+    import kaldi_io
 except:
     pass
 
 
 print(80 * "-")
 print("Eesen TF library:", os.path.realpath(__file__))
-print("cwd:", os.getcwd(), "version info:")
+print("cwd:", os.getcwd(), "version:")
 try:
     print(sys.version)
     print(tf.__version__)
@@ -113,8 +114,8 @@ def eval(data, config, model_path):
             feed[model.prior] = config["prior"]
             feed[model.is_training] = False
 
-            batch_cost, batch_ters, batch_soft_probs, batch_log_soft_probs, batch_log_likes, batch_seq_len, batch_logits = sess.run([model.cost, model.ters, model.softmax_probs,
-                model.log_softmax_probs, model.log_likelihoods, model.seq_len, model.logits], feed)
+            batch_cost, batch_ters, batch_soft_probs, batch_log_soft_probs, batch_log_likes, batch_seq_len, batch_logits = sess.run([model.cost,
+                model.ters, model.softmax_probs, model.log_softmax_probs, model.log_likelihoods, model.seq_len, model.logits], feed)
 
             cv_cost += batch_cost * batch_size
             for idx, _ in enumerate(nclass):
@@ -170,14 +171,20 @@ def eval(data, config, model_path):
                     
             # let's write scp and ark files for our data
             root_path = config["train_path"]
-            writeScp(os.path.join(root_path, "soft_prob"+z+".scp"), U,
-                     writeArk(os.path.join(root_path, "soft_prob"+z+".ark"), soft_prob, U))
-            writeScp(os.path.join(root_path, "log_soft_prob"+z+".scp"), U,
-                     writeArk(os.path.join(root_path, "log_soft_prob"+z+".ark"), log_soft_prob, U))
-            writeScp(os.path.join(root_path, "log_like"+z+".scp"), U,
-                     writeArk(os.path.join(root_path, "log_like"+z+".ark"), log_like, U))
-            writeScp(os.path.join(root_path, "logit"+z+".scp"), U,
-                     writeArk(os.path.join(root_path, "logit"+z+".ark"), logit, U))
+            if config["use_kaldi_io"]:
+                # this is quite slow ...
+                with open(os.path.join(root_path, "logit_new.ark"), 'wb') as f:
+                    for key,mat in zip(U,logit):
+                          kaldi_io.write_mat(f, mat, key=key)
+            else:    
+                writeScp(os.path.join(root_path, "soft_prob"+z+".scp"), U,
+                         writeArk(os.path.join(root_path, "soft_prob"+z+".ark"), soft_prob, U))
+                writeScp(os.path.join(root_path, "log_soft_prob"+z+".scp"), U,
+                         writeArk(os.path.join(root_path, "log_soft_prob"+z+".ark"), log_soft_prob, U))
+                writeScp(os.path.join(root_path, "log_like"+z+".scp"), U,
+                         writeArk(os.path.join(root_path, "log_like"+z+".ark"), log_like, U))
+                writeScp(os.path.join(root_path, "logit"+z+".scp"), U,
+                         writeArk(os.path.join(root_path, "logit"+z+".ark"), logit, U))
 
 def train(data, config):
     """ Train the model

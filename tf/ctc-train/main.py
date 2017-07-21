@@ -72,11 +72,8 @@ def get_batch_info(feat_info, label_dicts, start, height):
         max_label_len.append(0)
 
     for i in range(height):
-        uttid, arkfile, offset, feat_len, feat_dim, a_info = feat_info[start + i]
-        # uttid_aux, arkfile, offset, feat_len, feat_dim, a_info = feat_info[start + i]
-        # xinfo.append((arkfile, offset, feat_len, feat_dim, a_info))
-        # uttid.append(uttid_aux)
-
+        uttid_aux, arkfile, offset, feat_len, feat_dim, a_info = feat_info[start + i]
+        uttid.append(uttid_aux)
         for count_label, label_dict in enumerate(label_dicts):
             label = label_dict[uttid_aux]
             max_label_len[count_label] = max(max_label_len[count_label], len(label))

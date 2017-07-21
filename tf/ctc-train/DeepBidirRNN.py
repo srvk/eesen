@@ -158,8 +158,8 @@ class DeepBidirRNN:
         self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
         self.labels = [tf.sparse_placeholder(tf.int32)
                        for _ in range(len(nclasses))]                        
-        self.prior = [tf.placeholder(tf.float32, nclass, name = "prior"+str(count))
-                      for count, nclass in enumerate(nclasses)]
+        self.priors = [tf.placeholder(tf.float32, nclass, name = "prior"+str(count))
+                       for count, nclass in enumerate(nclasses)]
         self.seq_len = self.length(self.feats)
 
         output_size = 2 * nhidden if nproj == 0 else nproj

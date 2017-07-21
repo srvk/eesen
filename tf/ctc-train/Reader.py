@@ -16,14 +16,23 @@ def read_batch(xinfo):
         feat = readMatrixByOffset(arkfile, offset)
         if not augment is None:
             # data augmentation
-            #shift = augment[0]
-            #stride = augment[1]
-            stride=3
-            shift=augment
-            if stride is 3:
-                feat = np.concatenate((np.roll(feat,1,axis=0), feat, np.roll(feat,-1,axis=0)), 1)[shift::stride,]
+            shift = augment[0]
+            stride = augment[1]
+            win = augment[2]
+            #stride=3
+            #shift=augment
+            if win == 1:
+                feat = feat[shift::stride,]
+            elif win == 2:
+                feat = np.concatenate((np.roll(feat,1,axis=0), feat), axis=1)[shift::stride,]
+            elif win == 3:
+                feat = np.concatenate((np.roll(feat,1,axis=0), feat, np.roll(feat,-1,axis=0)), axis=1)[shift::stride,]
+            elif win == 5:
+                feat = np.concatenate((np.roll(feat,2,axis=0), np.roll(feat,1,axis=0), feat, np.roll(feat,-1,axis=0), np.roll(feat,-2,axis=0)), axis=1)[shift::stride,]
+            elif win == 7:
+                feat = np.concatenate((np.roll(feat,3,axis=0), np.roll(feat,2,axis=0), np.roll(feat,1,axis=0), feat, np.roll(feat,-1,axis=0), np.roll(feat,-2,axis=0), np.roll(feat,-3,axis=0)), axis=1)[shift::stride,]
             else:
-                print("stride not supported", stride)
+                print("win not supported", win)
                 exit()
 
         if feat_len != feat.shape[0] or feat_dim != feat.shape[1]:

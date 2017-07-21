@@ -8,10 +8,12 @@ from itertools import islice
 from Reader import run_reader
 try:
     from h5_Reader import h5_run_reader
+except:
+    pass
+try:
     import kaldi_io
 except:
     pass
-
 
 print(80 * "-")
 print("Eesen TF library:", os.path.realpath(__file__))
@@ -81,7 +83,9 @@ def eval(data, config, model_path):
         it = iter(it)
         return iter(lambda: tuple(islice(it, size)), ())
 
-    with tf.Session() as sess:
+    tfconfig = tf.ConfigProto()
+    tfconfig.gpu_options.allow_growth=True
+    with tf.Session(config=tfconfig) as sess:
         print ("load_ckpt", model_path)
         saver.restore(sess, model_path)
 
@@ -111,7 +115,7 @@ def eval(data, config, model_path):
 
             feed[model.feats] = xbatch
             feed[model.temperature] = config["temperature"]
-            feed[model.prior] = config["prior"]
+            #feed[model.prior] = config["prior"]
             feed[model.is_training] = False
 
             batch_cost, batch_ters, batch_soft_probs, batch_log_soft_probs, batch_log_likes, batch_seq_len, batch_logits = sess.run([model.cost,
@@ -173,9 +177,12 @@ def eval(data, config, model_path):
             root_path = config["train_path"]
             if config["use_kaldi_io"]:
                 # this is quite slow ...
-                with open(os.path.join(root_path, "logit_new.ark"), 'wb') as f:
+                with open(os.path.join(root_path, "logit"+z+".ark"), 'wb') as f:
                     for key,mat in zip(U,logit):
                           kaldi_io.write_mat(f, mat, key=key)
+                #with open(os.path.join(root_path, "log_soft_prob"+z+".ark"), 'wb') as f:
+                #    for key,mat in zip(U,log_soft_prob):
+                #          kaldi_io.write_mat(f, mat, key=key)
             else:    
                 writeScp(os.path.join(root_path, "soft_prob"+z+".scp"), U,
                          writeArk(os.path.join(root_path, "soft_prob"+z+".ark"), soft_prob, U))
@@ -220,22 +227,38 @@ def train(data, config):
             alpha = int(re.match(".*epoch([-+]?\d+).ckpt", config["continue_ckpt"]).groups()[0])
             print ("continue_ckpt", alpha, model_dir, config["continue_ckpt"])
             saver.restore(sess, config["continue_ckpt"])
+            if alpha > half_after:
+                half_after = alpha
         print(80 * "-")
         sys.stdout.flush()
 
         data_queue = Queue(config["batch_size"])
         for epoch in range(alpha,nepoch):
             if epoch > half_after:
-                lr_rate = init_lr_rate * (half_rate ** ((epoch - half_after) // half_period))
+                new_lr_rate = init_lr_rate * (half_rate ** ((epoch - half_after) // half_period))
+                try:
+                    lr_rate
+                except NameError:
+                    # lr_rate has not been defined yet
+                    pass
+                else:
+                    if new_lr_rate != lr_rate and cv_ters[0] > best_ter and config["store_model"]:
+                        # if we reduce the learning rate, we want to do it from the 
+                        # previously best configuration (on language 0, for now)
+                        # only works if we store the models
+                        print ("load_ckpt", best_idx, 100.0*best_ter, epoch, 100.0*cv_ters[0], new_lr_rate)
+                        saver.restore(sess, "%s/epoch%02d.ckpt" % (model_dir, best_idx+1))
+                    
+                lr_rate = new_lr_rate
             else:
                 lr_rate = init_lr_rate
+
             tic = time.time()
 
             ntrain, train_step = 0, 0
             train_cost = 0.0
             ntr_label = [0] * len(nclass)
             train_ter = [0] * len(nclass)
-            #import pdb; pdb.set_trace()
 
             if config["h5_mode"]:
                 ntrain_batch = len(train_dataset.batches)
@@ -298,7 +321,7 @@ def train(data, config):
             ncv, cv_step = 0, 0
             ncv_label = [0] * len(nclass)
             cv_cost = 0.0
-            cv_ter = [0] * len(nclass)
+            cv_ters = [0] * len(nclass)
 
             if config["h5_mode"]:
                 p=Process(target = h5_run_reader, args = (data_queue, valid_dataset, False))
@@ -324,7 +347,7 @@ def train(data, config):
                 batch_cost, batch_ters = sess.run([model.cost, model.ters], feed)
 
                 for idx, ter in enumerate(batch_ters):
-                    cv_ter[idx] += ter
+                    cv_ters[idx] += ter
                 cv_cost += batch_cost * batch_size
 
                 if cv_step % log_freq == 0:
@@ -340,29 +363,48 @@ def train(data, config):
             # logging
             cv_cost /= ncv
             save_scalar(epoch, "test/epoch_cost", cv_cost, writer)
-            for idx, _ in enumerate(cv_ter):
-                cv_ter[idx] = cv_ter[idx]/float(ncv_label[idx])
-                save_scalar(epoch, "test/epoch_ter", cv_ter[idx], writer)
+            for idx, _ in enumerate(cv_ters):
+                cv_ters[idx] = cv_ters[idx]/float(ncv_label[idx])
+                save_scalar(epoch, "test/epoch_ter", cv_ters[idx], writer)
 
+            # let's remember the best iteration so far
+            try:
+                best_ter
+            except NameError:
+                best_ter = cv_ters[0]; best_idx = epoch
+            else:
+                if cv_ters[0] < best_ter:
+                    best_ter = cv_ters[0]; best_idx = epoch
+                
             if config["store_model"]:
                 saver.save(sess, "%s/epoch%02d.ckpt" % (model_dir, epoch + 1))
                 with open("%s/epoch%02d.log" % (model_dir, epoch + 1), 'w') as fp:
-                    fp.write("Time: %.0f minutes, lrate: %.4g\n" % ((time.time() - tic)/60.0, lr_rate))
+                    fp.write("Time: %.0f minutes, lrate: %.4g\n" %
+                             ((time.time() - tic)/60.0, lr_rate))
                     if (len(nclass) > 1):
                         for idx, _ in enumerate(nclass):
-                            fp.write("Train    cost: %.1f, ter: %.1f%%, #example: %d (language %s)\n" % (train_cost, 100.0*train_ter[idx], ntrain, str(idx)))
-                            fp.write("Validate cost: %.1f, ter: %.1f%%, #example: %d (language %s)\n" % (cv_cost, 100.0*cv_ter[idx], ncv, str(idx)))
+                            fp.write("Train    cost: %.1f, ter: %.1f%%, #example: %d (language %s)\n" %
+                                     (train_cost, 100.0*train_ter[idx], ntrain, str(idx)))
+                            fp.write("Validate cost: %.1f, ter: %.1f%%, #example: %d (language %s)\n" %
+                                     (cv_cost, 100.0*cv_ters[idx], ncv, str(idx)))
                     else:
-                        fp.write("Train    cost: %.1f, ter: %.1f%%, #example: %d\n" % (train_cost, 100.0*train_ter[0], ntrain))
-                        fp.write("Validate cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost, 100.0*cv_ter[0], ncv))
+                        fp.write("Train    cost: %.1f, ter: %.1f%%, #example: %d\n" %
+                                 (train_cost, 100.0*train_ter[0], ntrain))
+                        fp.write("Validate cost: %.1f, ter: %.1f%%, #example: %d\n" %
+                                 (cv_cost, 100.0*cv_ters[0], ncv))
 
-            info("Epoch %d finished in %.0f minutes, learning rate: %.4g" % (epoch + 1, (time.time() - tic)/60.0, lr_rate))
+            info("Epoch %d finished in %.0f minutes, learning rate: %.4g" %
+                 (epoch + 1, (time.time() - tic)/60.0, lr_rate))
             if (len(nclass) > 1):
                 for idx, _ in enumerate(nclass):
-                    print("Train    cost: %.1f, ter: %.1f%%, #example: %d (language %s)" % (train_cost, 100.0*train_ter[idx], ntrain, str(idx)))
-                    print("Validate cost: %.1f, ter: %.1f%%, #example: %d (language %s)" % (cv_cost, 100.0*cv_ter[idx], ncv, str(idx)))
+                    print("Train    cost: %.1f, ter: %.1f%%, #example: %d (language %s)" %
+                          (train_cost, 100.0*train_ter[idx], ntrain, str(idx)))
+                    print("Validate cost: %.1f, ter: %.1f%%, #example: %d (language %s)" %
+                          (cv_cost, 100.0*cv_ters[idx], ncv, str(idx)))
             else:
-                print("Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost, 100.0*train_ter[0], ntrain))
-                print("Validate cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost, 100.0*cv_ter[0], ncv))
+                print("Train    cost: %.1f, ter: %.1f%%, #example: %d" %
+                      (train_cost, 100.0*train_ter[0], ntrain))
+                print("Validate cost: %.1f, ter: %.1f%%, #example: %d" %
+                      (cv_cost, 100.0*cv_ters[0], ncv))
             print(80 * "-")
             sys.stdout.flush()

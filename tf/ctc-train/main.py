@@ -17,6 +17,8 @@ try:
 except:
     pass
 
+#import pdb; pdb.set_trace()
+
 
 # -----------------------------------------------------------------
 #   Function definitions
@@ -44,8 +46,10 @@ def load_labels(dir, files=['labels.tr', 'labels.cv'], nclass=0):
 
     # sanity check - did we provide a value, and the actual is different?
     if nclass > 0 and m+2 != nclass:
-        print("Warning: provided nclass=", nclass, " while observed nclass=", m+2)
+        print("Warning: provided nclass=", nclass, " while observed nclass=", m+2, "in", dir, files)
         m = nclass-2
+    else:
+        print("Load labels in", dir, files, "nclass=", m+2)
     return m+2, labels
 
 def get_batch_info(feat_info, label_dicts, start, height):
@@ -71,6 +75,7 @@ def get_batch_info(feat_info, label_dicts, start, height):
             for j in range(len(label)):
                 yidx[count_label].append([i, j])
                 yval[count_label].append(label[j])
+            #print("paired", uttid, feat_len, len(label))
 
     yshape_r=[]
     yidx_r=[]
@@ -92,7 +97,7 @@ def make_batches_info(feat_info, label_dicts, batch_size):
         xinfo, yidx, yval, yshape = get_batch_info(feat_info, label_dicts, idx, height)
         batch_y=[]
         for idx, _ in enumerate(label_dicts):
-            element=((yidx[idx], yval[idx], yshape[dx]))
+            element=((yidx[idx], yval[idx], yshape[idx]))
             batch_y.append(element)
     return batch_x, batch_y, uttids
 
@@ -139,6 +144,7 @@ def load_feat_info(args, part, nclass=0):
         extra_dirs=extra_labels.split(':')
         for extra_dir in extra_dirs:
             print("Extra dir:", extra_dir)
+            # Fixme - 47 or 388 for chars or bpe300 during testing
             nclass, label_dict = load_labels(extra_dir)
             nclass_all.append(nclass)
             label_dicts.append(label_dict)
@@ -153,9 +159,18 @@ def load_feat_info(args, part, nclass=0):
     nfeat = feat_info[0][4]
 
     if args.augment:
-        print("Augmenting data from", filename, "#features=", nfeat, "#classes=", nclass_all, "#examples=", len(feat_info))
-        nfeat *= 3
-        feat_info = [(tup[0], tup[1], tup[2], int((tup[3]+2-shift)/3), 3*tup[4], shift) for shift in range(3) for tup in feat_info]
+        if args.h5_augment_size is None:
+            factor = 3
+        else:
+            factor = args.h5_augment_size
+        if args.h5_input_dim is None:
+            win = 3
+        else:
+            win = args.h5_input_dim
+        nfeat *= win
+        print("Augmenting data x", factor, "from", filename, "#features=", nfeat, "#classes=", nclass_all, "#examples=", len(feat_info))
+        feat_info = [(tup[0], tup[1], tup[2], (tup[3]+factor-1-shift) // factor, win*tup[4], (shift, factor, win))
+                     for shift in range(factor) for tup in feat_info]
     else:
         feat_info = [tup+(None,) for tup in feat_info]
     feat_info = sorted(feat_info, key = lambda x: x[3])
@@ -252,6 +267,7 @@ def mainParser():
     parser.add_argument('--grad_opt', default = "grad", help='optimizer: grad, adam, momentum, cuddnn only work with grad')
     parser.add_argument('--train_dir', default = "log", help='log and model (output) dir')
     parser.add_argument('--continue_ckpt', default = "", help='continue this experiment')
+    parser.add_argument('--nclass', default = 0, type=int, help='dimensionality, if not auto-detecable from labels')
 
     return parser
 
@@ -330,7 +346,7 @@ def main():
     else:
         valid_dataset = None
         # can specify the value of nclass here (373,688)
-        nclass, nfeat, cv_data = load_feat_info(args, 'cv')
+        nclass, nfeat, cv_data = load_feat_info(args, 'cv', nclass=args.nclass)
     train_path = get_output_folder(args.train_dir)
 
     if args.eval:
@@ -368,7 +384,6 @@ def main():
 
         # this needs to be cleaned up for H5 support
         cv_xinfo, cv_y, _ = cv_data
-        #import pdb; pdb.set_trace()
 
         data = (cv_xinfo, tr_xinfo, cv_y, tr_y, valid_dataset, train_dataset)
 

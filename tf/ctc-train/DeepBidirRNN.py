@@ -65,7 +65,7 @@ class DeepBidirRNN:
                     with tf.variable_scope("bw_lstm"):
                         bw_lstm = tf.contrib.rnn.TimeReversedFusedRNN(tf.contrib.rnn.LSTMBlockFusedCell(nhidden, cell_clip = 0))
                         bw_out, _ = bw_lstm(outputs, dtype=tf.float32, sequence_length = self.seq_len)
-                    outputs = tf.concat_v2([fw_out, bw_out], 2, name = "output")
+                    outputs = tf.concat(values = [fw_out, bw_out], axis = 2, name = "output")
                     # outputs = tf.concat([fw_out, bw_out], 2, name = "output")
                     if nproj > 0:
                         outputs = tf.contrib.layers.fully_connected(
@@ -89,7 +89,7 @@ class DeepBidirRNN:
                     outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs,
                         self.seq_len, time_major = True, dtype = tf.float32)
                     # also some API change
-                    outputs = tf.concat_v2(values = outputs, axis = 2, name = "output")
+                    outputs = tf.concat(values = outputs, axis = 2, name = "output")
                     # outputs = tf.concat(values = outputs, axis = 2, name = "output")
             # for i in range(nlayer):
                 # with tf.variable_scope("layer%d" % i):
@@ -124,16 +124,11 @@ class DeepBidirRNN:
         self.feats = tf.placeholder(tf.float32, [None, None, nfeat], name = "feats")
         self.temperature = tf.placeholder(tf.float32, name = "temperature")
         self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
-        try:
-            # this is because of Python2 vs 3
-            self.labels = [tf.sparse_placeholder(tf.int32)
-                           for _ in xrange(len(nclasses))]
-        except:
-            self.labels = [tf.sparse_placeholder(tf.int32)
-                           for _ in range(len(nclasses))]                        
-        self.prior = tf.placeholder(tf.float32, [nclasses[0]], name = "prior")
-        # self.prior =[tf.placeholder(tf.float32, nclass)
-          # for count, nclass in enumerate(nclasses)]
+        self.labels = [tf.sparse_placeholder(tf.int32)
+                       for _ in range(len(nclasses))]                        
+        #self.prior = tf.placeholder(tf.float32, [nclasses[0]], name = "prior")
+        self.prior =[tf.placeholder(tf.float32, nclass, name = "prior"+str(count))
+                     for count, nclass in enumerate(nclasses)]
         self.seq_len = self.length(self.feats)
 
         output_size = 2 * nhidden if nproj == 0 else nproj
@@ -170,7 +165,7 @@ class DeepBidirRNN:
 
         losses=[]
         for idx, logit in enumerate(logits):
-            loss = tf.nn.ctc_loss(labels=self.labels[idx], inputs=logit, sequence_length=self.seq_len)
+            loss = tf.nn.ctc_loss(labels=self.labels[idx], inputs=logit, sequence_length=self.seq_len), ignore_longer_outputs_than_inputs=True)
             losses.append(loss)
 
         self.cost = tf.reduce_mean(losses) + l2 * regularized_loss
@@ -190,12 +185,10 @@ class DeepBidirRNN:
 
                 log_softmax_prob = tf.log(softmax_prob)
                 self.log_softmax_probs.append(log_softmax_prob)
-
-                log_likelihood = log_softmax_prob - tf.log(self.prior)
-                self.log_likelihoods.append(log_likelihood)
-
-                # aren't we doing this twice here?
-                log_likelihood = log_softmax_prob - tf.log(self.prior)
+                
+                # log_likelihood = log_softmax_prob - tf.log(self.prior)
+                # Fixme: need priors for other streams, too...
+                log_likelihood = log_softmax_prob
                 self.log_likelihoods.append(log_likelihood)
 
         with tf.variable_scope("optimizer"):

@@ -28,10 +28,10 @@ frame_num_limit=20000    # the number of frames to be processed at a time in tra
 learn_rate=0.02          # learning rate
 final_learn_rate=1e-6    # final learning rate
 momentum=0.9             # momentum
-l2=0.0001                # l2 regularization
+l2=0.001                 # l2 regularization
 
 # learning rate schedule
-max_iters=25             # max number of iterations
+max_iters=30             # max number of iterations
 min_iters=               # min number of iterations
 start_epoch_num=1        # start from which epoch, used for resuming training from a break point
 
@@ -70,31 +70,28 @@ halving=false
 
 function prepare_features() {
     # this uses a lot of global variables
-    # in particular it sets feats_tr and feats_cv (amongst others)
-    local trfile=$1
-    local cvfile=$2
-    local m=$3
-    local targetdir=$4
-    local tmpdir=$5
-    local sources=( $@ ) && sources="${sources[@]:5}"
+    local m=$1
+    local tmpdir=$2
+    local sources=( $@ ) && sources="${sources[@]:2}"
 
     # This can be 1 or 3 and controls parallelization
     local par=3
-    
+
     # do we do data augmentation?
-    if [ -d $targetdir ]; then
+    if [ -d $tmpdir ]; then
 	: # no need to do anything
     elif [ `echo "$sources"|wc -w` -gt 1 ]; then
-        utils/mix_data_dirs.sh $m $data_tr $targetdir $sources >& $dir/log/mix.iter${m}.log || exit 1;
-        local data_tr=$targetdir
+        utils/mix_data_dirs.sh $m $data_tr $tmpdir $sources >& $dir/log/mix.iter${m}.log || exit 1;
+        local data_tr=$tmpdir
     else
         local data_tr=$sources
+        mkdir $tmpdir
     fi
 
     if [ $par -gt 1 ]; then
-    feats_tr="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_tr/utt2spk scp:$data_tr/cmvn.scp scp:$tmpdir/xxxaa ark:- |"
+	feats_tr="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_tr/utt2spk scp:$data_tr/cmvn.scp scp:$tmpdir/xxxaa ark:- |"
     else
-    feats_tr="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_tr/utt2spk scp:$data_tr/cmvn.scp scp:$data_tr/feats.scp ark:- |"
+	feats_tr="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_tr/utt2spk scp:$data_tr/cmvn.scp scp:$data_tr/feats.scp ark:- |"
     fi
     feats_cv="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_cv/utt2spk scp:$data_cv/cmvn.scp scp:$data_cv/feats.scp ark:- |"
 
@@ -111,53 +108,20 @@ function prepare_features() {
 	feats_cv="$feats_cv splice-feats --left-context=$context_window --right-context=$context_window ark:- ark:- |"
     fi
 
-    mkdir -p $tmpdir
-    if $subsample_feats; then
-	echo "subsampling not supported" && exit 1;
-    fi
-    if $copy_feats; then
-	# Save the features to a local dir on the GPU machine. On Linux, this usually points to /tmp
-	if [ $par -gt 1 ]; then
-            split -l `wc -l $data_tr/feats.scp | awk -v c=$par '{print int((\$1+c)/c)}'` $data_tr/feats.scp $tmpdir/xxx
-            f2=`echo $feats_tr | sed 's/xxxaa/xxxab/'`
-            f3=`echo $feats_tr | sed 's/xxxaa/xxxac/'`
-            copy-feats "$feats_tr" ark,scp:$tmpdir/train1.ark,$tmpdir/train1local.scp &
-            copy-feats "$f2"       ark,scp:$tmpdir/train2.ark,$tmpdir/train2local.scp &
-            copy-feats "$f3"       ark,scp:$tmpdir/train3.ark,$tmpdir/train3local.scp &
-            wait
-            cat $tmpdir/train?local.scp > $tmpdir/train_local_raw.scp || exit 1;
-	else
-	copy-feats "$feats_tr" ark,scp:$tmpdir/train.ark,$tmpdir/train_local_raw.scp || exit 1;
-	fi
-	copy-feats "$feats_cv" ark,scp:$tmpdir/cv.ark,$tmpdir/cv_local.scp || exit 1;
-	feats_tr="ark,s,cs:copy-feats scp:$tmpdir/feats_tr.scp ark:- |"
-	feats_cv="ark,s,cs:copy-feats scp:$tmpdir/feats_cv.scp ark:- |"
-
-	if $sort_by_len; then
-	    cp $data_tr/feats.scp $dir/train.scp
-	    gzip -cd $dir/labels.tr.gz | join <(feat-to-len scp:$tmpdir/train_local_raw.scp ark,t:- | paste -d " " - $tmpdir/train_local_raw.scp) - | sort -gk 2 | \
-	        awk -v c=$context_window '{out=""; for (i=5;i<=NF;i++) {out=out" "$i}; if (!(out in done) && $2 > (2*c+1)*NF) {done[out]=1; print $3 " " $4}}' > $tmpdir/train_local.scp
-	    feat-to-len scp:$data_cv/feats.scp ark,t:- | awk '{print $2}' | \
-		paste -d " " $data_cv/feats.scp - | sort -k3 -n - | awk '{print $1 " " $2}' > $dir/cv.scp || exit 1;
-	else
-	    echo "sorting required" && exit 1;
-	fi
-	
-	gzip -cd $dir/labels.tr.gz > $tmpdir/labels.tr
-	gzip -cd $dir/labels.cv.gz > $tmpdir/labels.cv
-	
-	trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; rm -r $tmpdir" EXIT ERR
+    # Save the features to a local dir on the GPU machine. On Linux, this usually points to /tmp
+    if [ $par -gt 1 ]; then
+        split -l `wc -l $data_tr/feats.scp | awk -v c=$par '{print int((\$1+c)/c)}'` $data_tr/feats.scp $tmpdir/xxx
+        f2=`echo $feats_tr | sed 's/xxxaa/xxxab/'`
+        f3=`echo $feats_tr | sed 's/xxxaa/xxxac/'`
+        copy-feats "$feats_tr" ark,scp:$tmpdir/train1.ark,$tmpdir/train1local.scp &
+        copy-feats "$f2"       ark,scp:$tmpdir/train2.ark,$tmpdir/train2local.scp &
+        copy-feats "$f3"       ark,scp:$tmpdir/train3.ark,$tmpdir/train3local.scp &
+        wait
+        cat $tmpdir/train?local.scp > $tmpdir/train_local.scp || exit 1;
     else
-	echo "copying required" && exit 1;
+	copy-feats "$feats_tr" ark,scp:$tmpdir/train.ark,$tmpdir/train_local.scp || exit 1;
     fi
-
-    if $add_deltas; then
-	echo "delta not supported" && exit 1;
-    fi
-
-    # let's return the value of feats_tr and feats_cv
-    echo "$feats_tr" > $trfile
-    echo "$feats_cv" > $cvfile
+    copy-feats "$feats_cv" ark,scp:$tmpdir/cv.ark,$tmpdir/cv_local.scp || exit 1;
 }
 ## End function section
 
@@ -183,11 +147,6 @@ for f in $data_tr/feats.scp $data_cv/feats.scp $dir/labels.tr.gz $dir/labels.cv.
   [ ! -f $f ] && echo `basename "$0"`": no such file $f" && exit 1;
 done
 
-if [ -z "$augment_dirs" ]; then
-    augment__dirs=( $data_tr )
-    augment_dirs=${augment__dirs[0]}
-fi
-
 
 ## Read the training status for resuming
 [ -f $dir/.epoch ]   && start_epoch_num=`cat $dir/.epoch 2>/dev/null`
@@ -204,8 +163,13 @@ gunzip -c $dir/labels.tr.gz | awk '{line=$0; gsub(" "," 0 ",line); print line " 
 
 
 ## Set up labels
+tmpdir=`mktemp -d`
 labels_tr="ark:gunzip -c $dir/labels.tr.gz|"
 labels_cv="ark:gunzip -c $dir/labels.cv.gz|"
+if [ -f $dir/labels.tr.gz ]; then
+    gzip -cd $dir/labels.tr.gz > $tmpdir/labels.tr
+    gzip -cd $dir/labels.cv.gz > $tmpdir/labels.cv
+fi
 
 
 ## Setup features
@@ -216,11 +180,42 @@ echo $splice_feats > $dir/splice_feats
 echo $subsample_feats > $dir/subsample_feats
 echo $context_window > $dir/context_window
 #
-tmpdir=`mktemp -d`
+if [ -n "$augment_dirs" ]; then
+    #augment__dirs=( $data_tr )
+    #augment_dirs=${augment__dirs[0]}
+    {
+    i=0 && d=
+    # create per-set folders
+    for j in $data_tr $augment_dirs; do
+	echo preparing $tmpdir/A$i from $j ...
+	prepare_features 0 $tmpdir/A$i $j || exit 1;
+	mv $tmpdir/A$i/train_local.scp $tmpdir/A$i/feats.scp
+	cp $j/utt2spk $j/spk2utt $j/segments $tmpdir/A$i
+	d="$d $tmpdir/A$i"
+	wc $tmpdir/A$i/*
+	((i++))
+    done
+    #
+    # create the per-iteration folders
+    mkdir $tmpdir/X0 && ln -s $tmpdir/A0/* $tmpdir/X0
+    mv $tmpdir/X0/feats.scp $tmpdir/X0/train_local.scp
+    ln -s $tmpdir/X0/cv_local.scp $tmpdir
+    ln -s $tmpdir/labels.* $tmpdir/X0
+    echo mixing $d $max_iters times ...
+    for i in `seq 1 $max_iters`; do
+	./utils/mix_data_dirs.sh $i $data_tr $tmpdir/X$i $d
+        mv $tmpdir/X$i/feats.scp $tmpdir/X$i/train_local.scp
+        utils/filter_scp.pl $tmpdir/X$i/utt2spk $tmpdir/X0/labels.tr > $tmpdir/X$i/labels.tr
+        ln -s $tmpdir/A0/*cv* $tmpdir/labels.cv $tmpdir/X$i
+    done
+    } >& $dir/log/augment.log
+else
+    echo preparing $dir to $tmpdir
+    prepare_features 0 $tmpdir $data_tr
+fi
+
+# it is safe to do this now (hopefully)
 trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; rm -r $tmpdir" EXIT ERR
-prepare_features $tmpdir/.tr $tmpdir/.cv 1 $tmpdir $tmpdir $data_tr || exit 1;
-feats_tr=`cat $tmpdir/.tr 2>/dev/null`
-feats_cv=`cat $tmpdir/.cv 2>/dev/null`
 
 
 ## Adjust parameter variables

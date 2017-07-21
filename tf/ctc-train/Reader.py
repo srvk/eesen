@@ -1,4 +1,4 @@
-import random, sys
+import random, sys, os
 import numpy as np
 from fileutils.kaldi import writeArk, readMatrixByOffset
 
@@ -44,12 +44,70 @@ def read_batch(xinfo):
         i += 1
     return tmpx
 
-def run_reader(q, xinfo, ys, do_shuf):
+def read_adapt_csv_matrix_folder(uttids, visual_vector_path, ndims_sat, read_first):
+    first=False
+    count =0
+    batch_vector=np.zeros((len(uttids), 1, ndims_sat))
+    first=True
+    for uttid in uttids:
+        if not os.path.isfile(os.path.join(visual_vector_path, uttid)):
+            print(uttid+' not present in '+visual_vector_path)
+            sys.exit()
+        all_vectors = np.loadtxt(os.path.join(visual_vector_path, uttid), delimiter=',')
+        if read_first:
+            feat=all_vectorsa[-1,:]
+        else:
+            feat=all_vectors[0,:]
+        batch_vector[count,0,:]=feat
+        count=count+1
+    return batch_vector
+
+
+#TODO check if this works
+def read_adapt_csv_folder(uttids, visual_vector_path, ndims_sat):
+    first=False
+    count =0
+    batch_vector=np.zeros((len(uttids), 1, ndims_sat))
+    first=True
+    for uttid in uttids:
+        if not os.path.isfile(os.path.join(visual_vector_path, uttid)):
+            print(uttid+' not present in '+visual_vector_path)
+    count =0
+    batch_vector=np.zeros((len(uttids), 1, 100))
+    first=True
+    with open(visual_vector_path) as f:
+        reader = csv.reader((line.strip() for line in f), delimiter=' ')
+        visual_vectors = dict(reader)
+
+    for uttid in uttids:
+        if uttid in visual_vectors:
+            feat = readMatrixByOffset(visual_vectors[uttid].split(":")[0], int(visual_vectors[uttid].split(":")[1]))
+            feat=feat.reshape((1, ndims_sat))
+            batch_vector[count,0,:]=feat
+        else:
+            print("visual vector "+uttids+" not find")
+            sys.exit()
+        count=count+1
+    return batch_vector
+
+def run_reader(q, xinfo, ys, uttids, do_shuf, ndims_sat=0, visual_vector_path="", reader_type=""):
+
     idx_shuf = list(range(len(xinfo)))
     if do_shuf:
         random.shuffle(idx_shuf)
     for i in idx_shuf:
         x = read_batch(xinfo[i])
         y = ys[i]
-        q.put((x, y))
+        if(visual_vector_path == ""):
+            q.put((x, y))
+        else:
+            if(reader_type=="kaldi_file"):
+                adapt_vector=read_adapt_kaldi(uttids[i], visual_vector_path, ndims_sat)
+            elif(reader_type=="csv_folder"):
+                adapt_vector=read_adapt_csv_folder(uttids[i], visual_vector_path, ndims_sat)
+            elif(reader_type=="csv_matrix_folder_first"):
+                adapt_vector=read_adapt_csv_matrix_folder(uttids[i], visual_vector_path, ndims_sat, True)
+            elif(reader_type=="csv_matrix_folder_last"):
+                adapt_vector=read_adapt_csv_matrix_folder(uttids[i], visual_vector_path, ndims_sat, False)
+            q.put((x, y, adapt_vector))
     q.put(None)

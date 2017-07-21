@@ -48,7 +48,6 @@ def prep_data(config, startidx=1):
             if wo.lower() not in useless_list:
                 twords.append(wo)
         for w in twords:
-            
             for ch in lexicon_dict[w]:
                 temp.append(int(ch))
                 # -8

@@ -29,7 +29,9 @@ def mainParser():
     parser.add_argument('--start_idx', default = 1, type=int, help='ignore leading fields in transcriptions')
     parser.add_argument('--drop_emb', default = 1.0, type=float, help='embedding (1.0-dropout) probability')
     # parser.add_argument('--gpu_id', default = 1, type=int, help='gpu to use')
-
+    parser.add_argument('--optimizer', default= 'Adam', help='Training Optimizer')
+    parser.add_argument('--lr', default=0, type=float,help='0 for default parameters')
+    parser.add_argument('--cont', default=0,type=int, help='continue_training with model number')
     return parser
 
 def createConfig(args):
@@ -43,9 +45,13 @@ def createConfig(args):
         'units_file' : args.units_file ,
         'dev_file' : args.dev_file ,
         'train_file' : args.train_file ,
-        'batch_size' : args.batch_size
+        'batch_size' : args.batch_size,
+        'optimizer' : args.optimizer,
+        'lr' : args.lr,
+        'cont' : args.cont
     }
     config['random_seed']= 15213
+
     model_name = 'train_l' + str(config['num_layers'])+ '_e' + str(config['embed_size']) + '_h' + str(config['hidden_size']) + '_b' + str(config['batch_size']) + '_d' + str(config['drop_emb'])
 
     config['exp_path'] = './exp/' + model_name + '/'

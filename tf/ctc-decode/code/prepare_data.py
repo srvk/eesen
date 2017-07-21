@@ -10,7 +10,7 @@ def prep_data(config):
     space = u' '
     units = io.open(config['lm_config']['units_file'], encoding='utf-8').readlines()
     w2i[sos]
-    for i in units:
+    for i in units[8:]:
         # [8:]
         w2i[i.strip().split()[0]]
     w2i[eos]

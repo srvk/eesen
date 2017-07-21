@@ -58,8 +58,9 @@ def save_scalar(step, name, value, writer):
     writer.add_summary(summary, step)
 
 def eval(data, config, model_path):
-    """ Evaluate the model    
+    """ Evaluate the model
     """
+
     model = DeepBidirRNN(config)
     cv_xinfo, cv_y, cv_uttids = data
     saver = tf.train.Saver()
@@ -87,7 +88,9 @@ def eval(data, config, model_path):
     tfconfig.gpu_options.allow_growth=True
     with tf.Session(config=tfconfig) as sess:
         print ("load_ckpt", model_path)
+
         saver.restore(sess, model_path)
+
 
         ncv = 0
         cv_cost = 0.0
@@ -99,6 +102,8 @@ def eval(data, config, model_path):
         p.start()
 
         while True:
+
+            ncv, cv_step = 0, 0
             data = data_queue.get()
             if data is None:
                 break
@@ -108,10 +113,13 @@ def eval(data, config, model_path):
             ncv += batch_size
 
             for idx, y_element_batch in enumerate(ybatch):
-                #print(idx,y_element_batch)
                 ncv_labels[idx] += get_label_len(y_element_batch)
 
             feed = {i: y for i, y in zip(model.labels, ybatch)}
+
+            feed_priors={i: y for i, y in zip(model.priors, config["prior"])}
+
+            feed.update(feed_priors)
 
             feed[model.feats] = xbatch
             feed[model.temperature] = config["temperature"]
@@ -136,7 +144,7 @@ def eval(data, config, model_path):
         cv_cost = cv_cost/ncv
         for idx, _ in enumerate(nclass):
             cv_ters[idx] /= float(ncv_labels[idx])
- 
+
             if config["augment"]:
                 # let's average the three(?) sub-sampled outputs
                 S1 = {}; P1 = {}; L1 = {}; O1 = {}; S2 = {}; P2 = {}; L2 = {}; O2 = {}; U = []
@@ -172,7 +180,7 @@ def eval(data, config, model_path):
                 z = ""
                 print("Eval cost: %.1f, ter: %.3f, #example: %d" %
                       (cv_cost, cv_ters[idx], ncv))
-                    
+
             # let's write scp and ark files for our data
             root_path = config["train_path"]
             if config["use_kaldi_io"]:
@@ -183,7 +191,7 @@ def eval(data, config, model_path):
                 #with open(os.path.join(root_path, "log_soft_prob"+z+".ark"), 'wb') as f:
                 #    for key,mat in zip(U,log_soft_prob):
                 #          kaldi_io.write_mat(f, mat, key=key)
-            else:    
+            else:
                 writeScp(os.path.join(root_path, "soft_prob"+z+".scp"), U,
                          writeArk(os.path.join(root_path, "soft_prob"+z+".ark"), soft_prob, U))
                 writeScp(os.path.join(root_path, "log_soft_prob"+z+".scp"), U,
@@ -199,7 +207,7 @@ def train(data, config):
     tf.set_random_seed(config["random_seed"])
     random.seed(config["random_seed"])
     model = DeepBidirRNN(config)
-    cv_xinfo, tr_xinfo, cv_y, tr_y, valid_dataset, train_dataset = data
+    cv_xinfo, tr_xinfo, cv_y, tr_y, valid_dataset, train_dataset, cv_id, tr_id = data
 
     for var in tf.trainable_variables():
         print(var)
@@ -215,20 +223,37 @@ def train(data, config):
     nclass = config["nclass"]
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
-    saver = tf.train.Saver(max_to_keep=nepoch)
 
     with tf.Session() as sess:
         writer = tf.summary.FileWriter(config["train_path"], sess.graph)
         tf.global_variables_initializer().run()
-
         alpha = 0
+
         # restore a training
-        if "continue_ckpt" in config:
+        if "continue_ckpt" in config or config["adapt_stage"] == "fine_tune":
+
             alpha = int(re.match(".*epoch([-+]?\d+).ckpt", config["continue_ckpt"]).groups()[0])
             print ("continue_ckpt", alpha, model_dir, config["continue_ckpt"])
-            saver.restore(sess, config["continue_ckpt"])
-            if alpha > half_after:
-                half_after = alpha
+
+            saver = tf.train.Saver(max_to_keep=nepoch)
+            if(config["adapt_stage"] == "fine_tune"):
+                saver.restore(sess, config["adapt_org_path"])
+            else:
+                saver.restore(sess, config["continue_ckpt"])
+                if alpha > half_after:
+                    half_after = alpha
+
+        elif config["adapt_org_path"] != "" and config["adapt_stage"] == "train_adapt":
+
+            train_vars_all = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+            train_vars=[]
+            for var in train_vars_all:
+                if not "sat" in var.name:
+                    train_vars.append(var)
+
+            saver = tf.train.Saver(max_to_keep=nepoch, var_list=train_vars)
+            saver.restore(sess, config["adapt_org_path"])
+
         print(80 * "-")
         sys.stdout.flush()
 
@@ -261,25 +286,33 @@ def train(data, config):
             train_ter = [0] * len(nclass)
 
             if config["h5_mode"]:
+
                 ntrain_batch = len(train_dataset.batches)
                 ncv_batch = len(valid_dataset.batches)
                 p = Process(target = h5_run_reader, args = (data_queue, train_dataset, False if epoch == alpha else config["do_shuf"]))
             elif config["mix"]:
+
                 ntrain_batch = len(tr_xinfo[epoch])
                 ncv_batch = len(cv_xinfo)
-                p = Process(target = run_reader, args = (data_queue, tr_xinfo[epoch], tr_y[epoch], config["do_shuf"]))
+                p = Process(target = run_reader, args = (data_queue, tr_xinfo[epoch], tr_id, tr_y[epoch], config["do_shuf"], config["adapt_dim"], config["adapt_path"], config["adapt_reader_type"]))
             else:
+
                 ntrain_batch = len(tr_xinfo)
                 ncv_batch = len(cv_xinfo)
-                p = Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, config["do_shuf"]))
+                p = Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, tr_id, config["do_shuf"], config["adapt_dim"], config["adapt_path"], config["adapt_reader_type"]))
+
             p.start()
             while True:
                 data = data_queue.get()
                 if data is None:
                     break
 
-                xbatch, ybatch = data
+                if config["adapt_stage"] == 'unadapted':
+                    xbatch, ybatch = data
+                else:
+                    xbatch, ybatch, sat_batch = data
                 batch_size = len(xbatch)
+                print(batch_size)
                 ntrain += batch_size
 
                 for idx, y_element_batch in enumerate(ybatch):
@@ -290,9 +323,14 @@ def train(data, config):
                 feed[model.lr_rate] = lr_rate
                 feed[model.is_training] = True
 
+                if config["adapt_stage"] != 'unadapted':
+                    feed[model.sat] = sat_batch
+
+
                 batch_cost, batch_ters, _ = sess.run(
                     [model.cost, model.ters, model.opt], feed)
                 train_cost += batch_cost * batch_size
+
                 for idx, ters in enumerate(batch_ters):
                     train_ter[idx] += ters
 
@@ -324,9 +362,9 @@ def train(data, config):
             cv_ters = [0] * len(nclass)
 
             if config["h5_mode"]:
-                p=Process(target = h5_run_reader, args = (data_queue, valid_dataset, False))
+                p=Process(target = h5_run_reader, args = (data_queue, valid_dataset, False, cv_id))
             else:
-                p=Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, False))
+                p=Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, cv_id, False, config["adapt_dim"], config["adapt_path"], config["adapt_reader_type"]))
             p.start()
             while True:
                 data = data_queue.get()

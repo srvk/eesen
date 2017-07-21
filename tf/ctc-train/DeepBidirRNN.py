@@ -204,7 +204,8 @@ class DeepBidirRNN:
 
         losses=[]
         for idx, logit in enumerate(logits):
-            loss = tf.nn.ctc_loss(labels=self.labels[idx], inputs=logit, sequence_length=self.seq_len), ignore_longer_outputs_than_inputs=True)
+            loss = tf.nn.ctc_loss(labels=self.labels[idx], inputs=logit,
+                                  sequence_length=self.seq_len, ignore_longer_outputs_than_inputs=True)
             losses.append(loss)
 
         self.cost = tf.reduce_mean(losses) + l2 * regularized_loss

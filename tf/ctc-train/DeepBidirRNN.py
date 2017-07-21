@@ -8,7 +8,7 @@ class DeepBidirRNN:
             length = tf.cast(length, tf.int32)
         return length
 
-    def my_cudnn_lstm(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope, batch_norm ,is_training = True):
+    def my_cudnn_lstm(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope, batch_norm, is_training = True):
         """
         outputs: time, batch_size, feat_dim
         """
@@ -22,8 +22,8 @@ class DeepBidirRNN:
                         input_h = tf.zeros([2, batch_size, nhidden], dtype = tf.float32, name = "init_lstm_h")
                         input_c = tf.zeros([2, batch_size, nhidden], dtype = tf.float32, name = "init_lstm_c")
                         bound = tf.sqrt(6. / (nhidden + nhidden))
-                        cudnn_params = tf.Variable(tf.random_uniform([params_size_t], -bound, bound),
-                            validate_shape = False, name = "params")
+                        cudnn_params = tf.Variable(tf.random_uniform([params_size_t], -bound, bound), validate_shape = False, name = "params", trainable=self.is_trainable_sat)
+                        #TODO is_training=is_training should be changed!
                         outputs, _output_h, _output_c = cudnn_model(is_training=is_training,
                             input_data=outputs, input_h=input_h, input_c=input_c,
                             params=cudnn_params)
@@ -42,10 +42,10 @@ class DeepBidirRNN:
                 input_c = tf.zeros([nlayer * 2, batch_size, nhidden], dtype = tf.float32, name = "init_lstm_c")
                 bound = tf.sqrt(6. / (nhidden + nhidden))
                 cudnn_params = tf.Variable(tf.random_uniform([params_size_t], -bound, bound),
-                    validate_shape = False, name = "params")
-                outputs, _output_h, _output_c = cudnn_model(is_training=is_training,
-                    input_data=outputs, input_h=input_h, input_c=input_c,
-                    params=cudnn_params)
+                    validate_shape = False, name = "params", trainable=self.is_trainable_sat)
+
+                outputs, _output_h, _output_c = cudnn_model(is_training=is_training,input_data=outputs,
+                        input_h=input_h, input_c=input_c,params=cudnn_params)
 
                 if(batch_norm):
                     outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True,decay=0.9, is_training=self.is_training,  updates_collections=None)
@@ -103,6 +103,19 @@ class DeepBidirRNN:
                     # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs, self.seq_len, dtype = tf.float32)
         return outputs
 
+    def my_sat_layers(self, num_sat_layers, adapt_dim, nfeat, outputs, scope):
+
+        with tf.variable_scope(scope):
+            for i in range(num_sat_layers-1):
+                with tf.variable_scope("layer%d" % i):
+                    outputs = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = adapt_dim)
+
+            with tf.variable_scope("last_sat_layer"):
+                outputs = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = nfeat)
+
+        return outputs
+
+
     def __init__(self, config):
         nfeat = config["nfeat"]
         nhidden = config["nhidden"]
@@ -112,6 +125,25 @@ class DeepBidirRNN:
         clip = config["clip"]
         nproj = config["nproj"]
         batch_norm = config["batch_norm"]
+
+
+        adaptation_stage = config["adapt_stage"]
+
+        if adaptation_stage == 'train_adapt':
+
+            num_sat_layers = int(config["num_sat_layers"])
+            adapt_dim = int(config["adapt_dim"])
+            self.is_trainable_sat=False
+
+        elif adaptation_stage == 'fine_tune':
+
+            num_sat_layers = int(config["num_sat_layers"])
+            adapt_dim = config["adapt_dim"]
+            self.is_trainable_sat=True
+
+        elif adaptation_stage == 'unadapted':
+            self.is_trainable_sat=True
+
         try:
             featproj = config["feat_proj"]
         except:
@@ -124,21 +156,25 @@ class DeepBidirRNN:
         self.feats = tf.placeholder(tf.float32, [None, None, nfeat], name = "feats")
         self.temperature = tf.placeholder(tf.float32, name = "temperature")
         self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
-        #try:
-        #    # this is because of Python2 vs 3
-        #    self.labels = [tf.sparse_placeholder(tf.int32)
-        #                   for _ in xrange(len(nclasses))]
-        #except:
+
         self.labels = [tf.sparse_placeholder(tf.int32)
                        for _ in range(len(nclasses))]
         self.prior = tf.placeholder(tf.float32, [nclasses[0]], name = "prior")
         # self.prior =[tf.placeholder(tf.float32, nclass)
-          # for count, nclass in enumerate(nclasses)]
+        #                for count, nclass in enumerate(nclasses)]
         self.seq_len = self.length(self.feats)
 
         output_size = 2 * nhidden if nproj == 0 else nproj
         batch_size = tf.shape(self.feats)[0]
         outputs = tf.transpose(self.feats, (1, 0, 2), name = "feat_transpose")
+
+        if adaptation_stage != 'unadapted':
+            #SAT
+            with tf.variable_scope("sat"):
+                self.sat = tf.placeholder(tf.float32, [None, 1, adapt_dim], name = "sat")
+                sat_t=tf.transpose(self.sat, (1, 0, 2), name = "sat_transpose")
+                learned_sat = self.my_sat_layers(num_sat_layers, adapt_dim,  nfeat, sat_t, "sat_layers")
+                outputs=tf.add(outputs, learned_sat, name="shift")
 
         if batch_norm:
             outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training, updates_collections=None)
@@ -157,7 +193,10 @@ class DeepBidirRNN:
 
         logits=[]
         for count_label, _ in enumerate(nclasses):
-            logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = nclasses[count_label], scope = "output_fc_"+str(count_label), biases_initializer = tf.contrib.layers.xavier_initializer())
+            scope = "output_fc"
+            if len(nclasses) > 1:
+                scope = "output_fc_"+str(count_label)
+            logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = nclasses[count_label], scope = scope, biases_initializer = tf.contrib.layers.xavier_initializer())
             if batch_norm:
                 logit = tf.contrib.layers.batch_norm(logit, center=True, scale=True, decay=0.9, is_training=self.is_training,  updates_collections=None)
             logits.append(logit)
@@ -201,11 +240,7 @@ class DeepBidirRNN:
                 log_softmax_prob = tf.log(softmax_prob)
                 self.log_softmax_probs.append(log_softmax_prob)
 
-                log_likelihood = log_softmax_prob - tf.log(self.prior)
-                self.log_likelihoods.append(log_likelihood)
-
-                # aren't we doing this twice here?
-                log_likelihood = log_softmax_prob - tf.log(self.prior)
+                log_likelihood = log_softmax_prob - tf.log(self.priors[idx])
                 self.log_likelihoods.append(log_likelihood)
 
         with tf.variable_scope("optimizer"):
@@ -217,7 +252,17 @@ class DeepBidirRNN:
                 optimizer = tf.train.AdamOptimizer(self.lr_rate)
             elif grad_opt == "momentum":
                 optimizer = tf.train.MomentumOptimizer(self.lr_rate, 0.9)
-            gvs = optimizer.compute_gradients(self.cost)
+
+            train_vars=[]
+            if(not self.is_trainable_sat):
+                train_vars_all = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+                for var in train_vars_all:
+                    if "sat" in var.name:
+                        train_vars.append(var)
+            else:
+                train_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+            gvs = optimizer.compute_gradients(self.cost, var_list=train_vars)
+
             capped_gvs = [(tf.clip_by_value(grad, -clip, clip), var) for grad, var in gvs]
             self.opt = optimizer.apply_gradients(capped_gvs)
 

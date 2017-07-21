@@ -28,7 +28,7 @@ except:
 #   Function definitions
 # -----------------------------------------------------------------
 
-def load_labels(dir, files=['labels.tr', 'labels.cv']):
+def load_labels(dir, files=['labels.tr', 'labels.cv'], nclass=0):
     """
     Load a set of labels in (local) Eesen format
     """
@@ -48,6 +48,10 @@ def load_labels(dir, files=['labels.tr', 'labels.cv']):
                 except:
                     pass
 
+    # sanity check - did we provide a value, and the actual is different?
+    if nclass > 0 and m+2 != nclass:
+        print("Warning: provided nclass=", nclass, " while observed nclass=", m+2)
+        m = nclass-2
     return m+2, labels
 
 def get_batch_info(feat_info, label_dicts, start, height):
@@ -56,7 +60,7 @@ def get_batch_info(feat_info, label_dicts, start, height):
     """
     max_label_len = []
 
-    xinfo, yidx, yval = [], [], []
+    xinfo, yidx, yval, uttid = [], [], [], []
 
     for count_label in range(len(label_dicts)):
         yidx.append([])
@@ -65,8 +69,12 @@ def get_batch_info(feat_info, label_dicts, start, height):
 
     for i in range(height):
         uttid, arkfile, offset, feat_len, feat_dim, a_info = feat_info[start + i]
+        # uttid_aux, arkfile, offset, feat_len, feat_dim, a_info = feat_info[start + i]
+        # xinfo.append((arkfile, offset, feat_len, feat_dim, a_info))
+        # uttid.append(uttid_aux)
+
         for count_label, label_dict in enumerate(label_dicts):
-            label = label_dict[uttid]
+            label = label_dict[uttid_aux]
             max_label_len[count_label] = max(max_label_len[count_label], len(label))
             for j in range(len(label)):
                 yidx[count_label].append([i, j])
@@ -82,19 +90,25 @@ def get_batch_info(feat_info, label_dicts, start, height):
         yidx_r.append(np.asarray(yidx[count_label], dtype = np.int32))
         yval_r.append(np.asarray(yval[count_label], dtype = np.int32))
 
-    return xinfo, yidx_r, yval_r, yshape_r
+    return xinfo, yidx_r, yval_r, yshape_r, uttid
 
 def make_batches_info(feat_info, label_dicts, batch_size):
-    batch_x, batch_y = [], []
+    batch_x, batch_y, uttids = [], [], []
     L = len(feat_info)
-    uttids = [x[0] for x in feat_info]
+
     for idx in range(0, L, batch_size):
         height = min(batch_size, L - idx)
-        xinfo, yidx, yval, yshape = get_batch_info(feat_info, label_dicts, idx, height)
-        batch_y=[]
+        xinfo, yidx, yval, yshape, uttid = get_batch_info(feat_info, label_dicts, idx, height)
+        batch_x.append(xinfo)
+        uttids.append(uttid)
+
+        batch_y_element=[]
         for idx, _ in enumerate(label_dicts):
             element=((yidx[idx], yval[idx], yshape[dx]))
-            batch_y.append(element)
+            batch_y_element.append(element)
+
+        batch_y.append(batch_y_element)
+
     return batch_x, batch_y, uttids
 
 def make_even_batches_info(feat_info, label_dicts, batch_size):
@@ -102,7 +116,7 @@ def make_even_batches_info(feat_info, label_dicts, batch_size):
     CudnnLSTM requires batches of even sizes
     feat_info: uttid, arkfile, offset, feat_len, feat_dim
     """
-    batch_x, batch_y = [], []
+    batch_x, batch_y, uttids = [], [], []
     L = len(feat_info)
     uttids = [x[0] for x in feat_info]
     idx, c = 0, 0
@@ -113,8 +127,9 @@ def make_even_batches_info(feat_info, label_dicts, batch_size):
         target_len = feat_info[idx][3]
         while j < min(idx + batch_size, L) and feat_info[j][3] == target_len:
             j += 1
-        xinfo, yidx, yval, yshape = get_batch_info(feat_info, label_dicts, idx, j - idx)
+        xinfo, yidx, yval, yshape, uttid = get_batch_info(feat_info, label_dicts, idx, j - idx)
         batch_x.append(xinfo)
+        uttids.append(uttid)
         batch_y_element=[]
 
         for idx, _ in enumerate(label_dicts):
@@ -137,13 +152,13 @@ def make_even_batches_info(feat_info, label_dicts, batch_size):
         c+=1
     return batch_x, batch_y, uttids
 
-def load_feat_info(args, part):
+def load_feat_info(args, part, nclass=0):
     nclass_all=[]
     label_dicts=[]
 
     data_dir = args.data_dir
     batch_size = args.batch_size
-    nclass, label_dict = load_labels(data_dir)
+    nclass, label_dict = load_labels(data_dir, nclass=nclass)
 
     nclass_all.append(nclass)
     label_dicts.append(label_dict)
@@ -181,18 +196,26 @@ def load_feat_info(args, part):
 
     return nclass_all, nfeat, (x, y, uttids)
 
-def load_prior(prior_path):
-    prior = None
-    with open(prior_path, "r") as f:
-        #for line in f:
-        #    parts = map(int, line.split(" ")[1:-1])
-        for line in f.readlines():
-            parts = [int(x) for x in line.strip().split(" ")[1:-1]]
-            counts = parts[1:]
-            counts.append(parts[0])
-            cnt_sum = reduce(lambda x, y: x + y, counts)
-            prior = [float(x) / cnt_sum for x in counts]
-    return prior
+def load_prior(prior_paths, nclass):
+    priors = []
+
+    if(len(prior_paths.split(":")) != len(nclass)):
+        print("Error: Wrong number or prior paths given. Only "+str(len(prior_paths.split(":")))+" paths were given and "+str(len(nclass))+" needed")
+        sys.exit()
+
+    for idx, prior_path in enumerate(prior_paths.split(":")):
+        with open(prior_path, "r") as f:
+            for line in f.readlines():
+                parts = [int(x) for x in line.strip().split(" ")[1:-1]]
+                counts = parts[1:]
+                counts.append(parts[0])
+                cnt_sum = reduce(lambda x, y: x + y, counts)
+                prior = [float(x) / cnt_sum for x in counts]
+            if(len(prior) != nclass[idx]):
+                print("Error: Wrong number of elements given in prior file number "+str(idx)+" it has "+str(len(prior))+" and it should have "+str(nclass[idx]))
+
+        priors.append(prior)
+    return priors
 
 def get_output_folder(parent_dir):
     exp_name = "dbr"
@@ -232,6 +255,7 @@ def mainParser():
     parser.add_argument('--eval_model', default = "", help = "model to load for evaluation")
     parser.add_argument('--batch_size', default = 32, type=int, help='batch size')
     parser.add_argument('--data_dir', default = "./tmp", help = "data dir")
+    parser.add_argument('--use_kaldi_io', default=False, action='store_true', help='Do not use Kaldi IO library')
 
     parser.add_argument('--h5_mode', default=False, action='store_true', help='Enable reading HDF5 files')
     parser.add_argument('--h5_train', help='h5 train data', type=str, default=None)
@@ -247,6 +271,7 @@ def mainParser():
     parser.add_argument('--h5_augment_feat', default=None, type=str, help='Name of feature for augmentation')
     parser.add_argument('--h5_augment_size', default=None, type=int, help='Size of feature for augmentation')
 
+    #TODO include that in the normal labels with :
     parser.add_argument('--extra_labels', help = "extra labels (e.g. phn set when your main target are char) IMPORTANT: the feature files are the master")
 
     parser.add_argument('--counts_file', default = "label.counts", help = "data dir")
@@ -267,14 +292,22 @@ def mainParser():
     parser.add_argument('--train_dir', default = "log", help='log and model (output) dir')
     parser.add_argument('--continue_ckpt', default = "", help='continue this experiment')
 
+    #SAT arguments
+    parser.add_argument('--adapt_path', default = "", help='root path where all the adpatation vectors are')
+    parser.add_argument('--adapt_reader_type', default = 'csv_matrix_folder_first', help='fromat of the speaker. Thee possibilities: kaldi_file, csv_folder, csv_matrix_folder_first, csv_matrix_folder_last')
+    parser.add_argument('--adapt_stage', default = 'unadapted', help='Stage of adatpation process. Three possibilities: train_adapt, fine_tune and unadapted. Default: unadapted')
+    parser.add_argument('--adapt_dim', default = 1024, type=int,  help='continue this experiment')
+    parser.add_argument('--num_sat_layers', default = 2, type=int, help='continue this experiment')
+    parser.add_argument('--adapt_org_path', default ="", help='path to the model that we will use as starter')
+
     return parser
 
 def readConfig(args):
     config_path = os.path.dirname(args.eval_model) + "/config.pkl"
+
     config = pickle.load(open(config_path, "rb"))
     config["temperature"] = args.temperature
-    config["prior"] = load_prior(args.counts_file)
-    config["lstm_type"] = "cudnn"
+    config["use_kaldi_io"] = args.use_kaldi_io
     config["augment"] = args.augment
     config["mix"] = args.mix
     config["batch_norm"] = args.batch_norm
@@ -286,6 +319,24 @@ def readConfig(args):
     return config
 
 def createConfig(args, nfeat, nclass, train_path):
+
+    if(args.adapt_stage == "train_adapt" or args.adapt_stage == "fine_tune"):
+        if (args.adapt_reader_type == 'kaldi_file' or args.adapt_reader_type == 'csv_folder' or args.adapt_reader_type == 'csv_matrix_folder_first'):
+            print("Reader type of adapation file has a wrong option: "+args.adapt_reader_type)
+            print("Valid options: kaldi_file, csv_folder, csv_matrix_folder_first, csv_matrix_folder_last")
+            sys.exit()
+
+        if not (args.adapt_stage == 'train_adapt' or args.adapt_stage == 'fine_tune'):
+            print("Adaptation satge has a wrong option: "+args.adapt_stage)
+            sys.exit()
+
+    else:
+        args.adapt_path=''
+        args.adapt_stage='unadapted'
+        args.adapt_dim=0
+        args.num_sat_layers=0
+        args.adapt_org_path=""
+
     config = {
         "nfeat": nfeat,
         "nclass": nclass,
@@ -310,9 +361,18 @@ def createConfig(args, nfeat, nclass, train_path):
         "random_seed": 15213,
         "temperature": args.temperature,
         "h5_mode": args.h5_mode,
+        "use_kaldi_io": args.use_kaldi_io,
         "mix": args.mix,
-        "augment": args.augment
+        "augment": args.augment,
+
+        "adapt_path": args.adapt_path,
+        "adapt_reader_type": args.adapt_reader_type,
+        "adapt_stage": args.adapt_stage,
+        "adapt_dim": args.adapt_dim,
+        "num_sat_layers": args.num_sat_layers,
+        "adapt_org_path": args.adapt_org_path
     }
+
 
     if len(args.continue_ckpt):
         config["continue_ckpt"] = args.continue_ckpt
@@ -325,7 +385,6 @@ def createConfig(args, nfeat, nclass, train_path):
     pickle.dump(config, open(config["train_path"] + "/model/config.pkl", "wb"))
 
     return config
-
 
 # -----------------------------------------------------------------
 #   Main part
@@ -342,16 +401,19 @@ def main():
         nclass, nfeat, cv_data = valid_dataset.load_feat_info()
     else:
         valid_dataset = None
+        # can specify the value of nclass here (373,688)
         nclass, nfeat, cv_data = load_feat_info(args, 'cv')
-    #print("NCLASS=", nclass)
     train_path = get_output_folder(args.train_dir)
 
     if args.eval:
         config = readConfig(args)
+        if(len(nclass) != len(config["nclass"])):
+            print("Error. Number of labels provided not correct. "+str(len(nclass))+" provided "+str(len(config["nclass"]))+" needed")
+            sys.exit()
         config["temperature"] = args.temperature
-        config["prior"] = load_prior(args.counts_file)
+        config["prior"] = load_prior(args.counts_file, config["nclass"])
         config["train_path"] = args.data_dir
-        config["nclass"] = nclass
+        config["adapt_stage"] = 'unadapted'
         tf.eval(cv_data, config, args.eval_model)
 
     else:
@@ -377,13 +439,15 @@ def main():
 
         else:
             _, _, tr_data = load_feat_info(args, 'train')
-            tr_xinfo, tr_y, _ = tr_data
+            tr_xinfo, tr_y, tr_id = tr_data
+            print(tr_id[0])
+            print(len(tr_id))
 
         # this needs to be cleaned up for H5 support
-        cv_xinfo, cv_y, _ = cv_data
+        cv_xinfo, cv_y, cv_id = cv_data
         #import pdb; pdb.set_trace()
 
-        data = (cv_xinfo, tr_xinfo, cv_y, tr_y, valid_dataset, train_dataset)
+        data = (cv_xinfo, tr_xinfo, cv_y, tr_y, valid_dataset, train_dataset, cv_id, tr_id)
 
         tf.train(data, config)
 

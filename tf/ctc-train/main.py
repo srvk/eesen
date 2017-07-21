@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+#
+# to debug:
+#   import pdb; pdb.set_trace()
+#
+
 # -----------------------------------------------------------------
 #   Main script
 # -----------------------------------------------------------------
@@ -12,6 +17,7 @@ from fileutils.kaldi import readScpInfo
 from multiprocessing import Pool
 from functools import partial, reduce
 import tf
+#, tensorflow
 try:
     from h5_Reader import H5Dataset
 except:
@@ -59,14 +65,13 @@ def get_batch_info(feat_info, label_dicts, start, height):
 
     for i in range(height):
         uttid, arkfile, offset, feat_len, feat_dim, a_info = feat_info[start + i]
-        xinfo.append((arkfile, offset, feat_len, feat_dim, a_info))
-
         for count_label, label_dict in enumerate(label_dicts):
             label = label_dict[uttid]
             max_label_len[count_label] = max(max_label_len[count_label], len(label))
             for j in range(len(label)):
                 yidx[count_label].append([i, j])
                 yval[count_label].append(label[j])
+        xinfo.append((arkfile, offset, feat_len, feat_dim, a_info))
 
     yshape_r=[]
     yidx_r=[]
@@ -100,7 +105,8 @@ def make_even_batches_info(feat_info, label_dicts, batch_size):
     batch_x, batch_y = [], []
     L = len(feat_info)
     uttids = [x[0] for x in feat_info]
-    idx = 0
+    idx, c = 0, 0
+
     while idx < L:
         # find batch with even size, and with maximum size of batch_size
         j = idx + 1
@@ -112,11 +118,23 @@ def make_even_batches_info(feat_info, label_dicts, batch_size):
         batch_y_element=[]
 
         for idx, _ in enumerate(label_dicts):
-            element=((yidx[idx], yval[idx], yshape[idx]))
+            element = ((yidx[idx], yval[idx], yshape[idx]))
+            #elementensor = tensorflow.SparseTensor(tensorflow.cast(yidx[idx], tensorflow.int64), tensorflow.cast(yval[idx], tensorflow.int32), tensorflow.cast(yshape[idx], tensorflow.int64))
+            #b = tensorflow.sparse_to_dense(elementensor.indices,elementensor.dense_shape,elementensor.values,validate_indices=True)
+            #d = tensorflow.sparse_transpose(elementensor,[1,0,2])
             batch_y_element.append(element)
+
+        #print("begin validate")
+        #y = batch_y_element[0]
+        #a = tensorflow.SparseTensor(y[0],y[1],y[2])
+        #b = tensorflow.sparse_to_dense(a.indices,a.dense_shape,a.values,validate_indices=True)
 
         batch_y.append(batch_y_element)
         idx = j
+        #print("BATCH-INFO",c)
+        #print("X",xinfo)
+        #print("Y",batch_y_element)
+        c+=1
     return batch_x, batch_y, uttids
 
 def load_feat_info(args, part):

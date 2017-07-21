@@ -124,13 +124,13 @@ class DeepBidirRNN:
         self.feats = tf.placeholder(tf.float32, [None, None, nfeat], name = "feats")
         self.temperature = tf.placeholder(tf.float32, name = "temperature")
         self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
-        try:
-            # this is because of Python2 vs 3
-            self.labels = [tf.sparse_placeholder(tf.int32)
-                           for _ in xrange(len(nclasses))]
-        except:
-            self.labels = [tf.sparse_placeholder(tf.int32)
-                           for _ in range(len(nclasses))]                        
+        #try:
+        #    # this is because of Python2 vs 3
+        #    self.labels = [tf.sparse_placeholder(tf.int32)
+        #                   for _ in xrange(len(nclasses))]
+        #except:
+        self.labels = [tf.sparse_placeholder(tf.int32)
+                       for _ in range(len(nclasses))]
         self.prior = tf.placeholder(tf.float32, [nclasses[0]], name = "prior")
         # self.prior =[tf.placeholder(tf.float32, nclass)
           # for count, nclass in enumerate(nclasses)]
@@ -167,6 +167,19 @@ class DeepBidirRNN:
 
         losses=[]
         for idx, logit in enumerate(logits):
+            # a=tf.SparseTensor([[0,0],[0,1],[1,0],[1,1],[1,2]],[10,20,30,40,50],[2,3])
+            #l = tf.SparseTensor(tf.cast(self.labels[idx].indices, tf.int64), tf.cast(self.labels[idx].dense_shape, tf.int64), tf.cast(self.labels[idx].values, tf.int32))
+            #l = tf.cast(tf.SparseTensor(self.labels[idx].indices, self.labels[idx].dense_shape, self.labels[idx].values), tf.int32)
+            #b=tf.sparse_to_dense(self.labels[idx].indices, self.labels[idx].dense_shape, self.labels[idx].values, validate_indices=True)
+            #print("Calling",idx,self.seq_len,self.labels[idx].values.shape,self.labels[idx].indices.shape,self.labels[idx].dense_shape)
+
+
+            #transposed_st = tf.sparse_transpose(self.labels[idx], [1, 0, 2])
+            #print("Calling",idx,self.seq_len,transposed_st.values.shape,transposed_st.indices.shape,transposed_st.dense_shape)
+
+
+            #loss = tf.nn.ctc_loss(labels=transposed_st, inputs=logit, sequence_length=self.seq_len, time_major=False)
+            #loss = tf.nn.ctc_loss(labels=l, inputs=logit, sequence_length=self.seq_len)
             loss = tf.nn.ctc_loss(labels=self.labels[idx], inputs=logit, sequence_length=self.seq_len)
             losses.append(loss)
 

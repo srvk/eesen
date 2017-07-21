@@ -45,47 +45,18 @@ def train(data,config):
         # writer = tf.summary.FileWriter(config["train_path"], sess.graph)
         tf.global_variables_initializer().run()
 
-        # if "continue_ckpt" in config:
-        #     alpha = int(re.match(".*epoch([-+]?\d+).ckpt", config["continue_ckpt"]).groups()[0])
-        #     print ("continue_ckpt", alpha, model_dir)
-        #     saver.restore(sess, "%s/epoch%02d.ckpt" % (model_dir, alpha))
+        if config['cont'] > 0:
+             print ("continue_ckpt", config['cont'])
+             saver.restore(sess, model_dir + 'model' + str(config['cont'])+'.ckpt')
         train_losses = []
         print('startup time: %r' % (time.time() - start_))
         i = all_time = dev_time = all_tagged = train_words = 0
         start_train = time.time()
         for ITER in range(nepoch):
+            it = ITER+config['cont']+1
             random.shuffle(train_order)
             start_ = time.time()
             for i, sid in enumerate(train_order, start=1):
-                if i % int(1600 / batch_size) == 0:
-                    print('Updates so far: %d Loss: %f wps: %f' % (
-                        i - 1, sum(train_losses) / train_words, train_words / (time.time() - start_)))
-                    all_tagged += train_words
-                    train_losses = []
-                    train_words = 0
-                    all_time = time.time() - start_train
-                    start_ = time.time()
-                if i % int(32000 / batch_size) == 0 :
-                    dev_start = time.time()
-                    test_losses = []
-                    test_words = 0
-                    all_time += time.time() - start_train
-                    print('Validating ', end="")
-                    sys.stdout.flush()
-                    for tid in test_order:
-                        t_examples = test[tid:tid + batch_size]
-                        x_lens_in = [len(example) for example in t_examples]
-                        x_in = [pad(example, S, max(x_lens_in)) for example in t_examples]
-                        test_loss = sess.run(model.loss, feed_dict={model.x_input: x_in, model.x_lens: x_lens_in, model.state:np.zeros((len(x_lens_in), 2*num_layers*hidden_size))})
-                        tot_words = sum(x_lens_in) - len(x_lens_in)
-                        test_losses.append(test_loss * tot_words)
-                        test_words += tot_words
-                    nll = sum(test_losses) / test_words
-                    dev_time += time.time() - dev_start
-                    train_time = time.time() - start_train - dev_time
-                    print('nll=%.4f, ppl=%.4f, time=%.4f, words_per_sec=%.4f' % (
-                        nll, math.exp(nll), train_time, all_tagged / train_time), file=sys.stderr)
-                    start_ = start_ + (time.time() - dev_start)
 
                 # train on sent
                 examples = train[sid: sid + batch_size]
@@ -94,9 +65,32 @@ def train(data,config):
                     x_in =[pad(example, S, max(x_lens_in)) for example in examples]
                 else:
                     x_in = examples
-                train_loss, _ = sess.run([model.loss, model.optimizer], feed_dict={model.x_input: x_in, model.x_lens: x_lens_in, model.state:np.zeros((len(x_lens_in), 2*num_layers*hidden_size))})
+                train_loss, _ = sess.run([model.loss, model.optimizer], feed_dict={model.x_input: x_in, model.x_lens: x_lens_in, model.state:np.zeros((len(x_lens_in), 2*num_layers*hidden_size)), model.keep_prob : config['drop_emb']})
                 tot_words = sum(x_lens_in) - len(x_lens_in)
                 train_losses.append(train_loss * tot_words)
                 train_words += tot_words
-            save_path = saver.save(sess, model_dir + 'model' + str(ITER) + '.ckpt')
-            print('Model SAVED ' , ITER)
+
+            print('ITER %d, Train Loss: %.4f wps: %.4f' % ( it, sum(train_losses) / train_words, train_words / (time.time() - start_)))
+            all_tagged += train_words
+            train_losses = []
+            train_words = 0
+            all_time = time.time() - start_train
+
+            dev_start = time.time()
+            test_losses = []
+            test_words = 0
+            print('Testing on dev set...')
+            for tid in test_order:
+                t_examples = test[tid:tid + batch_size]
+                x_lens_in = [len(example) for example in t_examples]
+                x_in = [pad(example, S, max(x_lens_in)) for example in t_examples]
+                test_loss = sess.run(model.loss, feed_dict={model.x_input: x_in, model.x_lens: x_lens_in, model.state:np.zeros((len(x_lens_in), 2*num_layers*hidden_size)), model.keep_prob : 1.0})
+                tot_words = sum(x_lens_in) - len(x_lens_in)
+                test_losses.append(test_loss * tot_words)
+                test_words += tot_words
+            nll = sum(test_losses) / test_words
+
+            print('ITER %d, Dev Loss: %.4f, ppl=%.4f wps: %.4f' % (it,nll, math.exp(nll), test_words/(time.time() - dev_start)))
+
+            save_path = saver.save(sess, model_dir + 'model' + str(it) + '.ckpt')
+            print('Model SAVED for ITER - ' , ITER)

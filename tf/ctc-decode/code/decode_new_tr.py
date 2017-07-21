@@ -144,7 +144,9 @@ if __name__ == "__main__":
 
     trie = Trie()
     for i in lex_dict:
-        word = ''.join([id_to_ch[int(cc)-8] for cc in lex_dict[i]])
+        # [int(cc)-8]
+        print(i)
+        word = ''.join([id_to_ch[int(cc)] for cc in lex_dict[i]])
         trie.insert(word)
     # pdb.set_trace()
 

@@ -9,7 +9,7 @@ def readString(f):
         c = f.read(1).decode('utf-8')
         if c == "": raise ValueError("EOF encountered while reading a string.")
         if c == " ": return s
-        s += c 
+        s += c
 
 def readInteger(f):
     n = ord(f.read(1))
@@ -126,7 +126,7 @@ def readScp(filename, limit = numpy.inf):
             if len(features) == limit: break
     return features, uttids
 
-def readScpInfo(filename, limit = numpy.inf):
+def read_scp_info(filename, limit = numpy.inf):
     res = []
     with smart_open(filename, "r") as f:
         for line in f:
@@ -138,7 +138,21 @@ def readScpInfo(filename, limit = numpy.inf):
                 feat_len, feat_dim = readMatrixShape(g)
             res.append((uttid, arkfile, offset, feat_len, feat_dim))
             if len(res) == limit: break
-    return res 
+    return res
+
+def read_scp_info_dic(filename, limit = numpy.inf):
+    res = {}
+    with smart_open(filename, "r") as f:
+        for line in f:
+            uttid, pointer = line.strip().split()
+            p = pointer.rfind(":")
+            arkfile, offset = pointer[:p], int(pointer[p+1:])
+            with smart_open(arkfile, "rb") as g:
+                g.seek(offset)
+                feat_len, feat_dim = readMatrixShape(g)
+            res[uttid]=((uttid, arkfile, offset, feat_len, feat_dim))
+            if len(res) == limit: break
+    return res
 
 def writeArk(filename, features, uttids):
     """

@@ -1,6 +1,8 @@
 import tensorflow as tf
+import sys
 
 class DeepBidirRNN:
+
     def length(self, sequence):
         with tf.variable_scope("seq_len"):
             used = tf.sign(tf.reduce_max(tf.abs(sequence), axis=2))
@@ -119,7 +121,7 @@ class DeepBidirRNN:
     def __init__(self, config):
         nfeat = config["nfeat"]
         nhidden = config["nhidden"]
-        nclasses = config["nclass"]
+        target_scheme = config["target_scheme"]
         l2 = config["l2"]
         nlayer = config["nlayer"]
         clip = config["clip"]
@@ -157,21 +159,41 @@ class DeepBidirRNN:
         self.temperature = tf.placeholder(tf.float32, name = "temperature")
         self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
 
-        try:
+        # try:
+            #TODO can not do xrange directly?
             # this is because of Python2 vs 3
-            self.labels = [tf.sparse_placeholder(tf.int32)
-                           for _ in xrange(len(nclasses))]
-        except:
-            self.labels = [tf.sparse_placeholder(tf.int32)
-                           for _ in range(len(nclasses))]
+            # self.labels = [tf.sparse_placeholder(tf.int32)
+                           # for _ in xrange(len(target_scheme.values()))]
+
+
+
+        self.labels = {key : tf.sparse_placeholder(tf.int32)
+                       for (key, value) in target_scheme.iteritems()}
+
+        for key, value in self.labels.iteritems():
+            print(key)
+            print(value)
+        print("holaaa")
+        print("holaaa")
+        sys.exit()
+
+        # except:
+            # self.labels = [tf.sparse_placeholder(tf.int32)
+                           # for _ in range(len(target_scheme.values()))]
 
         try:
+            #TODO deal with priors
             # this is because of Python2 vs 3
-            self.priors = [tf.placeholder(tf.float32)
-                           for _ in xrange(len(nclasses))]
+
+            # self.priors = [tf.placeholder(tf.float32)
+                           # for _ in xrange(len(target_scheme.values()))]
+
+            self.priors = {(key, placeholder(tf.float32))
+                           for (key, value) in target_scheme.iteritems()}
+
         except:
             self.priors = [tf.placeholder(tf.float32)
-                           for _ in range(len(nclasses))]
+                           for _ in range(len(target_scheme.values()))]
 
         self.seq_len = self.length(self.feats)
 
@@ -202,44 +224,46 @@ class DeepBidirRNN:
         else:
             outputs = self.my_native_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "native_lstm")
 
-        logits=[]
-        for count_label, _ in enumerate(nclasses):
+        logits={}
+        #TODO p2/p3 incompatibilities
+        #TODO here when multilingual we ill have another for with language_key
+        for target_key, number_of_targets in target_scheme.iteritems():
             scope = "output_fc"
-            if len(nclasses) > 1:
-                scope = "output_fc_"+str(count_label)
-            logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = nclasses[count_label], scope = scope, biases_initializer = tf.contrib.layers.xavier_initializer())
+            if len(target_scheme.values()) > 1:
+                scope = "output_fc_"+target_key
+            logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = number_of_targets, scope = scope, biases_initializer = tf.contrib.layers.xavier_initializer())
             if batch_norm:
                 logit = tf.contrib.layers.batch_norm(logit, center=True, scale=True, decay=0.9, is_training=self.is_training,  updates_collections=None)
-            logits.append(logit)
+            logits[target_key] = logit
 
         with tf.variable_scope("loss"):
             regularized_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()])
 
-        losses=[]
-        for idx, logit in enumerate(logits):
-            loss = tf.nn.ctc_loss(labels=self.labels[idx], inputs=logit, sequence_length=self.seq_len)
-            losses.append(loss)
+        losses={}
+        for taget_key, logits in logits.iteritems():
+            loss = tf.nn.ctc_loss(labels=self.labels[target_key], inputs=logits, sequence_length=self.seq_len)
+            losses[taget_key]=loss
 
         self.cost = tf.reduce_mean(losses) + l2 * regularized_loss
 
-        self.softmax_probs=[]
-        self.log_softmax_probs=[]
-        self.log_likelihoods=[]
-        self.logits=[]
+        self.softmax_probs={}
+        self.log_softmax_probs={}
+        self.log_likelihoods={}
+        self.logits={}
 
         with tf.variable_scope("eval_output"):
-            for idx, logit in enumerate(logits):
+            for target_key, logit in logits.iteritems():
                 tran_logit = tf.transpose(logit, (1, 0, 2)) * self.temperature
-                self.logits.append(tran_logit)
+                self.logits[target_key]=tran_logit
 
                 softmax_prob = tf.nn.softmax(tran_logit, dim=-1, name=None)
-                self.softmax_probs.append(softmax_prob)
+                self.softmax_probs[target_key]=softmax_prob
 
                 log_softmax_prob = tf.log(softmax_prob)
-                self.log_softmax_probs.append(log_softmax_prob)
+                self.log_softmax_probs[target_key]=log_softmax_prob
 
                 log_likelihood = log_softmax_prob - tf.log(self.priors[idx])
-                self.log_likelihoods.append(log_likelihood)
+                self.log_likelihoods[target_key]=log_likelihood
 
         with tf.variable_scope("optimizer"):
             optimizer = None
@@ -264,15 +288,15 @@ class DeepBidirRNN:
             capped_gvs = [(tf.clip_by_value(grad, -clip, clip), var) for grad, var in gvs]
             self.opt = optimizer.apply_gradients(capped_gvs)
 
-        self.decodes=[]
-        self.log_probs=[]
-        self.ters=[]
+        self.decodes={}
+        self.log_probs={}
+        self.cers={}
 
-        for idx, _ in enumerate(nclasses):
-            decoded, log_prob = tf.nn.ctc_greedy_decoder(logits[idx], self.seq_len)
-            ter = tf.reduce_sum(
-                tf.edit_distance(tf.cast(decoded[0], tf.int32), self.labels[idx] , normalize = False), name = "ter")
+        for target_key, logit in logits.iteritems():
+            decoded, log_prob = tf.nn.ctc_greedy_decoder(logit, self.seq_len)
+            cer = tf.reduce_sum(tf.edit_distance(tf.cast(decoded[0], tf.int32), self.labels[idx] , normalize = False), name = "ter")
 
-            self.decodes.append(decoded)
-            self.log_probs.append(log_prob)
-            self.ters.append(ter)
+            #store all results that will be returned
+            self.decodes[target_key]=decoded
+            self.log_probs[target_key]=log_prob
+            self.cers[target_key]=cer

@@ -1,11 +1,12 @@
 import tensorflow as tf
-from DeepBidirRNN import *
+from deep_birnn import *
 import numpy as np
 from multiprocessing import Process, Queue
 import sys, os, re, time, random, functools
-from fileutils.kaldi import writeArk, writeScp, readMatrixByOffset
+from fileutils.kaldi import writeArk, writeScp
 from itertools import islice
-from Reader import run_reader
+from reader.reader_queue import run_reader_queue
+
 try:
     from h5_Reader import h5_run_reader
     import kaldi_io
@@ -95,6 +96,7 @@ def eval(data, config, model_path):
         ncv_labels = [0] * len(nclass)
 
         data_queue = Queue(config["batch_size"])
+
         p = Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, False))
         p.start()
 
@@ -197,23 +199,25 @@ def eval(data, config, model_path):
 def train(data, config):
     """ Train the model
     """
+    #set random seed so that models can be reproduced
     tf.set_random_seed(config["random_seed"])
     random.seed(config["random_seed"])
-    model = DeepBidirRNN(config)
-    cv_xinfo, tr_xinfo, cv_y, tr_y, valid_dataset, train_dataset, cv_id, tr_id = data
 
-    for var in tf.trainable_variables():
-        print(var)
+    #construct the model acoring to config
+    model = DeepBidirRNN(config)
+
+    cv_x, tr_x, sat, cv_y, tr_y = data
 
     debug=False
     log_freq = 100
     nepoch = config["nepoch"]
     init_lr_rate = config["lr_rate"]
+    target_scheme = config["target_scheme"]
     half_period = config["half_period"]
     half_rate = config["half_rate"]
     half_after = config["half_after"]
-    model_dir = config["train_path"] + "/model"
-    nclass = config["nclass"]
+    model_dir = os.path.join(config["train_path"],"model")
+
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
 
@@ -226,13 +230,13 @@ def train(data, config):
         if "continue_ckpt" in config or config["adapt_stage"] == "fine_tune":
 
             alpha = int(re.match(".*epoch([-+]?\d+).ckpt", config["continue_ckpt"]).groups()[0])
-            print ("continue_ckpt", alpha, model_dir, config["continue_ckpt"])
             saver = tf.train.Saver(max_to_keep=nepoch)
             if(config["adapt_stage"] == "fine_tune"):
                 saver.restore(sess, config["adapt_org_path"])
             else:
                 saver.restore(sess, config["continue_ckpt"])
 
+        #restoring all variables that should be loaded during adaptation stage (all of them except adaptation layer)
         elif config["adapt_org_path"] != "" and config["adapt_stage"] == "train_adapt":
 
             train_vars_all = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
@@ -249,6 +253,7 @@ def train(data, config):
         sys.stdout.flush()
 
         data_queue = Queue(config["batch_size"])
+
         for epoch in range(alpha,nepoch):
             if epoch > half_after:
                 lr_rate = init_lr_rate * (half_rate ** ((epoch - half_after) // half_period))
@@ -256,46 +261,59 @@ def train(data, config):
                 lr_rate = init_lr_rate
             tic = time.time()
 
+            #initializing samples, steps and cost counters
             ntrain, train_step = 0, 0
             train_cost = 0.0
-            ntr_label = [0] * len(nclass)
-            train_ter = [0] * len(nclass)
-            #import pdb; pdb.set_trace()
 
-            if config["h5_mode"]:
+            #getting number of train batch and cv batches respectively
+            ntrain_batch = tr_x.get_num_batches()
+            ncv_batch = cv_x.get_num_batches()
 
-                ntrain_batch = len(train_dataset.batches)
-                ncv_batch = len(valid_dataset.batches)
-                p = Process(target = h5_run_reader, args = (data_queue, train_dataset, False if epoch == alpha else config["do_shuf"]))
-            elif config["mix"]:
-
-                ntrain_batch = len(tr_xinfo[epoch])
-                ncv_batch = len(cv_xinfo)
-                p = Process(target = run_reader, args = (data_queue, tr_xinfo[epoch], tr_id, tr_y[epoch], config["do_shuf"], config["adapt_dim"], config["adapt_path"], config["adapt_reader_type"]))
+            #preparing queues and getting the first batches according to our type of training (unadapted vs adaptes)
+            if config["adapt_stage"] == "unadapted":
+                p = Process(target = run_reader_queue, args = (data_queue, tr_x, tr_y))
             else:
+                p = Process(target = run_reader_queue, args = (data_queue, tr_x , tr_y, sat))
 
-                ntrain_batch = len(tr_xinfo)
-                ncv_batch = len(cv_xinfo)
-                p = Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, tr_id, config["do_shuf"], config["adapt_dim"], config["adapt_path"], config["adapt_reader_type"]))
+
+            ntr_labels={}
+            train_cers={}
+
+            #TODO change all iteritems for iter for python 3.0
+            #TODO try to do an utils for this kind of functions
+            for target_id, _ in target_scheme.iteritems():
+                ntr_labels[target_id] = 0
+                train_cers[target_id] = 0
 
             p.start()
+            print("about to start")
             while True:
+
                 data = data_queue.get()
+
                 if data is None:
                     break
 
+                #TODO try from sat -> sat_tr, sat_cv
                 if config["adapt_stage"] == 'unadapted':
                     xbatch, ybatch = data
                 else:
-                    xbatch, ybatch, sat_batch = data
+                    xbatch, ybatch, sat = data
+
                 batch_size = len(xbatch)
-                print(batch_size)
                 ntrain += batch_size
 
-                for idx, y_element_batch in enumerate(ybatch):
-                    ntr_label[idx] += get_label_len(y_element_batch)
+                for target_id, y_element_batch in ybatch.iteritems():
+                    ntr_labels[target_id] += get_label_len(y_element_batch)
 
-                feed = {i: y for i, y in zip(model.labels, ybatch)}
+                #TODO check if values works
+                #TODO check how is the architecture done (nclass)
+                feed = {i: y for i, y in zip(model.labels, ybatch.values())}
+
+
+                print(feed)
+                sys.exit()
+
                 feed[model.feats] = xbatch
                 feed[model.lr_rate] = lr_rate
                 feed[model.is_training] = True
@@ -303,23 +321,26 @@ def train(data, config):
                 if config["adapt_stage"] != 'unadapted':
                     feed[model.sat] = sat_batch
 
+                batch_cost, batch_cers, _ = sess.run(
+                    [model.cost, model.cers, model.opt], feed)
 
-                batch_cost, batch_ters, _ = sess.run(
-                    [model.cost, model.ters, model.opt], feed)
                 train_cost += batch_cost * batch_size
 
-                for idx, ters in enumerate(batch_ters):
-                    train_ter[idx] += ters
+                for target_key, cer in batch_cers.iteritems():
+                    train_cers[target_key] += cer
 
                 if train_step % log_freq == 0:
                     global_step = train_step + ntrain_batch * epoch
                     save_scalar(global_step, "train/batch_cost", batch_cost, writer)
-                    save_scalar(global_step, "train/batch_ter", batch_ters[0], writer)
+                    for target_key, cer in batch_cers.iteritems():
+                        save_scalar(global_step, "train/batch_cer_tr_"+target_key, cer, writer)
+
                 if debug:
                     print("epoch={} batch={}/{} size={} batch_cost={} batch_wer={}".format(epoch,
                         train_step, ntrain_batch, batch_size, batch_cost, batch_ters[0]/get_label_len(y_element_batch)))
                     print("batch",train_step,"of",ntrain_batch,"size",batch_size,
                         "queue",data_queue.empty(),data_queue.full(),data_queue.qsize())
+
                 train_step += 1
 
             p.join()
@@ -328,41 +349,53 @@ def train(data, config):
             # save the training progress
             train_cost /= ntrain
             save_scalar(epoch, "train/epoch_cost", train_cost, writer)
-            for idx, ind_ter in enumerate(train_ter):
-                train_ter[idx] = train_ter[idx]/float(ntr_label[idx])
+            for target_id, train_cer in train_cers.iteritems():
+                train_cers[target_id] = train_cer/float(ntr_labels[target_id])
                 save_scalar(epoch, "train/epoch_ter{}".format(idx), train_ter[idx], writer)
 
-            # now for validation
-            ncv, cv_step = 0, 0
-            ncv_label = [0] * len(nclass)
-            cv_cost = 0.0
-            cv_ter = [0] * len(nclass)
 
-            if config["h5_mode"]:
-                p=Process(target = h5_run_reader, args = (data_queue, valid_dataset, False, cv_id))
+            # create counters for validation
+            ncv, cv_step = 0, 0
+            ntr_labels={}
+            cv_cers={}
+            for target_id, _ in target_scheme.iteritems():
+                ncv_labels[target_id] = 0
+                cv_cers[target_id]= 0
+
+            cv_cost = 0.0
+
+            if config["adapt_stage"] == "unadapted":
+                p = Process(target = run_reader_queue, args = (data_queue, cv_x, cv_y))
             else:
-                p=Process(target = run_reader, args = (data_queue, cv_xinfo, cv_y, cv_id, False, config["adapt_dim"], config["adapt_path"], config["adapt_reader_type"]))
+                p = Process(target = run_reader_queue, args = (data_queue, cv_x , cv_y, sat))
+
             p.start()
             while True:
+
                 data = data_queue.get()
                 if data is None:
                     break
 
-                xbatch, ybatch = data
+                if config["adapt_stage"] == 'unadapted':
+                    xbatch, ybatch = data
+                else:
+                    xbatch, ybatch, sat = data
+
                 batch_size = len(xbatch)
                 ncv += batch_size
-                for idx, y_element_batch in enumerate(ybatch):
-                    ncv_label[idx] += get_label_len(y_element_batch)
+                for target_id, y_element_batch in ybatch.iteritems():
+                    ncv_label[target_id] += get_label_len(y_element_batch)
 
-                feed = {i: y for i, y in zip(model.labels, ybatch)}
+                feed = {i: y for i, y in zip(model.labels, ybatch.values())}
                 feed[model.feats] = xbatch
                 feed[model.lr_rate] = lr_rate
                 feed[model.is_training] = False
 
-                batch_cost, batch_ters = sess.run([model.cost, model.ters], feed)
+                batch_cost, batch_cers = sess.run([model.cost, model.cers], feed)
 
-                for idx, ter in enumerate(batch_ters):
-                    cv_ter[idx] += ter
+                for target_key, cer in batch_cers.iteritems():
+                    cv_cers[target_key] += cer
+
                 cv_cost += batch_cost * batch_size
 
                 if cv_step % log_freq == 0:
@@ -378,29 +411,42 @@ def train(data, config):
             # logging
             cv_cost /= ncv
             save_scalar(epoch, "test/epoch_cost", cv_cost, writer)
-            for idx, _ in enumerate(cv_ter):
-                cv_ter[idx] = cv_ter[idx]/float(ncv_label[idx])
-                save_scalar(epoch, "test/epoch_ter", cv_ter[idx], writer)
+            for target_key, cer in cv_cers.iteritems():
+                cv_cers[target_key] = cer/float(ncv_label[target_key])
+                save_scalar(epoch, "test/epoch_ter", cv_cers[target_key], writer)
 
             if config["store_model"]:
                 saver.save(sess, "%s/epoch%02d.ckpt" % (model_dir, epoch + 1))
                 with open("%s/epoch%02d.log" % (model_dir, epoch + 1), 'w') as fp:
                     fp.write("Time: %.0f minutes, lrate: %.4g\n" % ((time.time() - tic)/60.0, lr_rate))
-                    if (len(nclass) > 1):
-                        for idx, _ in enumerate(nclass):
-                            fp.write("Train    cost: %.1f, ter: %.1f%%, #example: %d (language %s)\n" % (train_cost, 100.0*train_ter[idx], ntrain, str(idx)))
-                            fp.write("Validate cost: %.1f, ter: %.1f%%, #example: %d (language %s)\n" % (cv_cost, 100.0*cv_ter[idx], ncv, str(idx)))
-                    else:
-                        fp.write("Train    cost: %.1f, ter: %.1f%%, #example: %d\n" % (train_cost, 100.0*train_ter[0], ntrain))
-                        fp.write("Validate cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost, 100.0*cv_ter[0], ncv))
+
+                    for target_key, cv_cer in cv_cers.iteritems():
+                        fp.write("Targets %s" % (target_key))
+                        fp.write("Train    cost: %.1f, ter: %.1f%%, #example: %d\n" % (train_cost, 100.0*train_cers[target_key], ntrain))
+                        fp.write("Validate cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost, 100.0*cv_cer, ncv))
+
+                    # if (len(nclass) > 1):
+                        # for idx, _ in enumerate(nclass):
+                            # fp.write("Train    cost: %.1f, ter: %.1f%%, #example: %d (language %s)\n" % (train_cost, 100.0*train_ter[idx], ntrain, str(idx)))
+                            # fp.write("Validate cost: %.1f, ter: %.1f%%, #example: %d (language %s)\n" % (cv_cost, 100.0*cv_ter[idx], ncv, str(idx)))
+                    # else:
+                        # fp.write("Train    cost: %.1f, ter: %.1f%%, #example: %d\n" % (train_cost, 100.0*train_ter[0], ntrain))
+                        # fp.write("Validate cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost, 100.0*cv_ter[0], ncv))
 
             info("Epoch %d finished in %.0f minutes, learning rate: %.4g" % (epoch + 1, (time.time() - tic)/60.0, lr_rate))
-            if (len(nclass) > 1):
-                for idx, _ in enumerate(nclass):
-                    print("Train    cost: %.1f, ter: %.1f%%, #example: %d (language %s)" % (train_cost, 100.0*train_ter[idx], ntrain, str(idx)))
-                    print("Validate cost: %.1f, ter: %.1f%%, #example: %d (language %s)" % (cv_cost, 100.0*cv_ter[idx], ncv, str(idx)))
-            else:
-                print("Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost, 100.0*train_ter[0], ntrain))
-                print("Validate cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost, 100.0*cv_ter[0], ncv))
+
+            for target_key, cv_cer in cv_cers.iteritems():
+                print("Targets %s" % (target_key))
+                print("Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost, 100.0*train_cers[target_key], ntrain))
+                print("Validate cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost, 100.0*cv_cer, ncv))
+
+
+            # if (len(nclass) > 1):
+                # for idx, _ in enumerate(nclass):
+                    # print("Train    cost: %.1f, ter: %.1f%%, #example: %d (language %s)" % (train_cost, 100.0*train_ter[idx], ntrain, str(idx)))
+                    # print("Validate cost: %.1f, ter: %.1f%%, #example: %d (language %s)" % (cv_cost, 100.0*cv_ter[idx], ncv, str(idx)))
+            # else:
+                # print("Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost, 100.0*train_ter[0], ntrain))
+                # print("Validate cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost, 100.0*cv_ter[0], ncv))
             print(80 * "-")
             sys.stdout.flush()

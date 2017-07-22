@@ -300,7 +300,7 @@ def train(data, config):
 
                 ntrain_batch = len(tr_xinfo)
                 ncv_batch = len(cv_xinfo)
-                p = Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, tr_id, config["do_shuf"], config["adapt_dim"], config["adapt_path"], config["adapt_reader_type"]))
+                p = Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, tr_id, config["do_shuf"], config["adapt_dim"], config["adapt_path"], config["adapt_reader_type"], config["roll"]))
 
             p.start()
             while True:

@@ -304,6 +304,7 @@ def mainParser():
     parser.add_argument('--train_dir', default = "log", help='log and model (output) dir')
     parser.add_argument('--continue_ckpt', default = "", help='continue this experiment')
     parser.add_argument('--nclass', default = 0, type=int, help='dimensionality, if not auto-detecable from labels')
+    parser.add_argument('--roll', default = False, dest='roll', action='store_true', help='roll features for randomness during training')
 
     #SAT arguments
     parser.add_argument('--adapt_path', default = "", help='root path where all the adpatation vectors are')
@@ -376,6 +377,7 @@ def createConfig(args, nfeat, nclass, train_path):
         "h5_mode": args.h5_mode,
         "use_kaldi_io": args.use_kaldi_io,
         "mix": args.mix,
+        "roll": args.roll,
         "augment": args.augment,
 
         "adapt_path": args.adapt_path,

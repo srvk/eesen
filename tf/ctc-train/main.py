@@ -72,10 +72,8 @@ def get_batch_info(feat_info, label_dicts, start, height):
         max_label_len.append(0)
 
     for i in range(height):
-        uttid, arkfile, offset, feat_len, feat_dim, a_info = feat_info[start + i]
-        # uttid_aux, arkfile, offset, feat_len, feat_dim, a_info = feat_info[start + i]
-        # xinfo.append((arkfile, offset, feat_len, feat_dim, a_info))
-        # uttid.append(uttid_aux)
+        uttid_aux, arkfile, offset, feat_len, feat_dim, a_info = feat_info[start + i]
+        uttid.append(uttid_aux)
 
         for count_label, label_dict in enumerate(label_dicts):
             label = label_dict[uttid_aux]
@@ -455,8 +453,8 @@ def main():
         else:
             _, _, tr_data = load_feat_info(args, 'train')
             tr_xinfo, tr_y, tr_id = tr_data
-            print(tr_id[0])
-            print(len(tr_id))
+            #print(tr_id[0])
+            #print(len(tr_id))
 
         # this needs to be cleaned up for H5 support
         cv_xinfo, cv_y, cv_id = cv_data

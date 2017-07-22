@@ -158,7 +158,7 @@ class DeepBidirRNN:
         self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
         self.labels = [tf.sparse_placeholder(tf.int32)
                        for _ in range(len(nclasses))]                        
-        self.prior = [tf.placeholder(tf.float32, nclass, name = "prior"+str(count))
+        self.priors = [tf.placeholder(tf.float32, nclass, name = "prior"+str(count))
                       for count, nclass in enumerate(nclasses)]
         self.seq_len = self.length(self.feats)
 
@@ -205,7 +205,8 @@ class DeepBidirRNN:
         losses=[]
         for idx, logit in enumerate(logits):
             loss = tf.nn.ctc_loss(labels=self.labels[idx], inputs=logit,
-                                  sequence_length=self.seq_len, ignore_longer_outputs_than_inputs=True)
+                                  sequence_length=self.seq_len)
+            # , ignore_longer_outputs_than_inputs=True)
             losses.append(loss)
 
         self.cost = tf.reduce_mean(losses) + l2 * regularized_loss

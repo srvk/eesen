@@ -2,7 +2,7 @@ import random, sys, os
 import numpy as np
 from fileutils.kaldi import writeArk, readMatrixByOffset
 
-def read_batch(xinfo):
+def read_batch(xinfo, roll = False):
     """
     xinfo: arkfile, offset, feat_len, feat_dim, augment
     """
@@ -40,6 +40,8 @@ def read_batch(xinfo):
             exit()
         if tmpx is None:
             tmpx = np.zeros((height, max_feat_len, feat_dim), np.float32)
+        if roll:
+            feat = np.roll(feat, random.randrange(-2,2,1), axis = 0)
         tmpx[i, :feat_len, :] = feat
         i += 1
     return tmpx
@@ -90,13 +92,13 @@ def read_adapt_csv_folder(uttids, visual_vector_path, ndims_sat):
         count=count+1
     return batch_vector
 
-def run_reader(q, xinfo, ys, uttids, do_shuf, ndims_sat=0, visual_vector_path="", reader_type=""):
+def run_reader(q, xinfo, ys, uttids, do_shuf, ndims_sat=0, visual_vector_path="", reader_type="", roll=False):
 
     idx_shuf = list(range(len(xinfo)))
     if do_shuf:
         random.shuffle(idx_shuf)
     for i in idx_shuf:
-        x = read_batch(xinfo[i])
+        x = read_batch(xinfo[i], roll)
         y = ys[i]
         if(visual_vector_path == ""):
             q.put((x, y))

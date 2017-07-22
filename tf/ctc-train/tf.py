@@ -223,6 +223,7 @@ def train(data, config):
     nclass = config["nclass"]
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
+    saver = tf.train.Saver(max_to_keep=nepoch)
 
     with tf.Session() as sess:
         writer = tf.summary.FileWriter(config["train_path"], sess.graph)
@@ -299,7 +300,7 @@ def train(data, config):
 
                 ntrain_batch = len(tr_xinfo)
                 ncv_batch = len(cv_xinfo)
-                p = Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, tr_id, config["do_shuf"], config["adapt_dim"], config["adapt_path"], config["adapt_reader_type"]))
+                p = Process(target = run_reader, args = (data_queue, tr_xinfo, tr_y, tr_id, config["do_shuf"], config["adapt_dim"], config["adapt_path"], config["adapt_reader_type"], config["roll"]))
 
             p.start()
             while True:
@@ -312,7 +313,6 @@ def train(data, config):
                 else:
                     xbatch, ybatch, sat_batch = data
                 batch_size = len(xbatch)
-                print(batch_size)
                 ntrain += batch_size
 
                 for idx, y_element_batch in enumerate(ybatch):

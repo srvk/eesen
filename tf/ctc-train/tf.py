@@ -272,7 +272,7 @@ def train(data, config):
                         # if we reduce the learning rate, we want to do it from the 
                         # previously best configuration (on language 0, for now)
                         # only works if we store the models
-                        print ("load_ckpt", best_idx, 100.0*best_ter, epoch, 100.0*cv_ters[0], new_lr_rate)
+                        print ("load_ckpt", best_idx+1, 100.0*best_ter, epoch+1, 100.0*cv_ters[0], new_lr_rate)
                         saver.restore(sess, "%s/epoch%02d.ckpt" % (model_dir, best_idx+1))
                     
                 lr_rate = new_lr_rate

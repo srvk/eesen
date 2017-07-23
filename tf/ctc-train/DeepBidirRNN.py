@@ -65,8 +65,10 @@ class DeepBidirRNN:
                     with tf.variable_scope("bw_lstm"):
                         bw_lstm = tf.contrib.rnn.TimeReversedFusedRNN(tf.contrib.rnn.LSTMBlockFusedCell(nhidden, cell_clip = 0))
                         bw_out, _ = bw_lstm(outputs, dtype=tf.float32, sequence_length = self.seq_len)
-                    outputs = tf.concat(values = [fw_out, bw_out], axis = 2, name = "output")
-                    # outputs = tf.concat([fw_out, bw_out], 2, name = "output")
+                    try:
+                        outputs = tf.concat(values = [fw_out, bw_out], axis = 2, name = "output")
+                    except:
+                        outputs = tf.concat_v2([fw_out, bw_out], 2, name = "output")
                     if nproj > 0:
                         outputs = tf.contrib.layers.fully_connected(
                             activation_fn = None, inputs = outputs,
@@ -89,18 +91,10 @@ class DeepBidirRNN:
                     outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs,
                         self.seq_len, time_major = True, dtype = tf.float32)
                     # also some API change
-                    outputs = tf.concat(values = outputs, axis = 2, name = "output")
-                    # outputs = tf.concat(values = outputs, axis = 2, name = "output")
-            # for i in range(nlayer):
-                # with tf.variable_scope("layer%d" % i):
-                    # cell = tf.contrib.rnn.LSTMBlockCell(nhidden)
-                    # if nproj > 0:
-                        # cell = tf.contrib.rnn.OutputProjectionWrapper(cell, nproj)
-                    # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell,
-                        # outputs, self.seq_len, swap_memory=True, dtype = tf.float32, time_major = True)
-                    # # outputs = tf.concat_v2(outputs, 2, name = "output")
-                    # outputs = tf.concat(outputs, 2, name = "output")
-                    # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs, self.seq_len, dtype = tf.float32)
+                    try:
+                        outputs = tf.concat(values = outputs, axis = 2, name = "output")
+                    except:
+                        outputs = tf.concat_v2(outputs, axis = 2, name = "output")
         return outputs
 
     def my_sat_layers(self, num_sat_layers, adapt_dim, nfeat, outputs, scope):
@@ -205,7 +199,9 @@ class DeepBidirRNN:
         losses=[]
         for idx, logit in enumerate(logits):
             loss = tf.nn.ctc_loss(labels=self.labels[idx], inputs=logit,
-                                  sequence_length=self.seq_len, ignore_longer_outputs_than_inputs=True)
+                                  sequence_length=self.seq_len)
+            #, ignore_longer_outputs_than_inputs=True)
+            # ignoring long inputs may help process noisy data, but is unsupported on older tf versions
             losses.append(loss)
 
         self.cost = tf.reduce_mean(losses) + l2 * regularized_loss
@@ -238,6 +234,9 @@ class DeepBidirRNN:
                 optimizer = tf.train.AdamOptimizer(self.lr_rate)
             elif grad_opt == "momentum":
                 optimizer = tf.train.MomentumOptimizer(self.lr_rate, 0.9)
+            else:
+                print("No optimizer specified")
+                exit()
 
             train_vars=[]
             if(not self.is_trainable_sat):

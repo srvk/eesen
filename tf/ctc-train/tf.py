@@ -290,12 +290,12 @@ def train(data, config):
 
                 ntrain_batch = len(train_dataset.batches)
                 ncv_batch = len(valid_dataset.batches)
-                p = Process(target = h5_run_reader, args = (data_queue, train_dataset, False if epoch == alpha else config["do_shuf"]))
+                p = Process(target = h5_run_reader, args = (data_queue, train_dataset, False if epoch == alpha else config["do_shuf"], tr_id))
             elif config["mix"]:
 
                 ntrain_batch = len(tr_xinfo[epoch])
                 ncv_batch = len(cv_xinfo)
-                p = Process(target = run_reader, args = (data_queue, tr_xinfo[epoch], tr_id, tr_y[epoch], config["do_shuf"], config["adapt_dim"], config["adapt_path"], config["adapt_reader_type"]))
+                p = Process(target = run_reader, args = (data_queue, tr_xinfo[epoch], tr_y[epoch], tr_id[epoch], config["do_shuf"], config["adapt_dim"], config["adapt_path"], config["adapt_reader_type"]))
             else:
 
                 ntrain_batch = len(tr_xinfo)

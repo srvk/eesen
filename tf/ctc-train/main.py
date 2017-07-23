@@ -17,12 +17,7 @@ from fileutils.kaldi import readScpInfo
 from multiprocessing import Pool
 from functools import partial, reduce
 import tf
-#, tensorflow
-try:
-    from h5_Reader import H5Dataset
-except:
-    pass
-
+from h5_Reader import H5Dataset
 #import pdb; pdb.set_trace()
 
 
@@ -107,7 +102,7 @@ def make_batches_info(feat_info, label_dicts, batch_size):
         batch_y_element=[]
         for idx, _ in enumerate(label_dicts):
             element=((yidx[idx], yval[idx], yshape[idx]))
-            batch_y.append(element)
+            batch_y_element.append(element)
 
         batch_y.append(batch_y_element)
 
@@ -132,19 +127,11 @@ def make_even_batches_info(feat_info, label_dicts, batch_size):
         xinfo, yidx, yval, yshape, uttid = get_batch_info(feat_info, label_dicts, idx, j - idx)
         batch_x.append(xinfo)
         uttids.append(uttid)
-        batch_y_element=[]
 
+        batch_y_element=[]
         for idx, _ in enumerate(label_dicts):
             element = ((yidx[idx], yval[idx], yshape[idx]))
-            #elementensor = tensorflow.SparseTensor(tensorflow.cast(yidx[idx], tensorflow.int64), tensorflow.cast(yval[idx], tensorflow.int32), tensorflow.cast(yshape[idx], tensorflow.int64))
-            #b = tensorflow.sparse_to_dense(elementensor.indices,elementensor.dense_shape,elementensor.values,validate_indices=True)
-            #d = tensorflow.sparse_transpose(elementensor,[1,0,2])
             batch_y_element.append(element)
-
-        #print("begin validate")
-        #y = batch_y_element[0]
-        #a = tensorflow.SparseTensor(y[0],y[1],y[2])
-        #b = tensorflow.sparse_to_dense(a.indices,a.dense_shape,a.values,validate_indices=True)
 
         batch_y.append(batch_y_element)
         idx = j
@@ -152,6 +139,7 @@ def make_even_batches_info(feat_info, label_dicts, batch_size):
         #print("X",xinfo)
         #print("Y",batch_y_element)
         c+=1
+
     return batch_x, batch_y, uttids
 
 def load_feat_info(args, part, nclass=0):
@@ -282,6 +270,8 @@ def mainParser():
     parser.add_argument('--h5_mapping', default=None, type=str, help='Token mapping file(s)')
     parser.add_argument('--h5_augment_feat', default=None, type=str, help='Name of feature for augmentation')
     parser.add_argument('--h5_augment_size', default=None, type=int, help='Size of feature for augmentation')
+    parser.add_argument('--h5_lexicon', help='JSON dump of lexicon', type=str, default=None)
+    parser.add_argument('--h5_ignore_symbols', default=None, type=str, help='Ignore symbols in annotations')
 
     #TODO include that in the normal labels with :
     parser.add_argument('--extra_labels', help = "extra labels (e.g. phn set when your main target are char) IMPORTANT: the feature files are the master")
@@ -440,16 +430,16 @@ def main():
             train_dataset.readData()
             train_dataset.make_even_batches(args.batch_size)
             _, _, tr_data = train_dataset.load_feat_info()
-            tr_xinfo, tr_y, _ = tr_data
+            tr_xinfo, tr_y, tr_id = tr_data
 
         elif config["mix"]:
             print('Fixing data dir for mixing')
-            tr_xinfo = {}; tr_y = {}
+            tr_xinfo = {}; tr_y = {}; tr_id = {}
             p = args.data_dir
             for epoch in range(0,args.nepoch):
                 args.data_dir = p+"/X"+str(epoch)
                 _, _, tr_data = load_feat_info(args, 'train')
-                tr_xinfo[epoch], tr_y[epoch], _ = tr_data
+                tr_xinfo[epoch], tr_y[epoch], tr_id[epoch] = tr_data
             args.data_dir = p
 
         else:

@@ -202,7 +202,7 @@ if [ -n "$mix_dirs" ]; then
        	utils/filter_scp.pl $tmpdir/X$i/utt2spk $tmpdir/X0/labels.tr > $tmpdir/X$i/labels.tr
 	ln -s $tmpdir/A0/*cv* $tmpdir/labels.cv $tmpdir/X$i
     done
-    } >& $dir/log/augment.log
+    } >& $dir/log/mix.log
 else
     echo preparing $dir to $tmpdir
     prepare_features 0 $tmpdir $data_tr

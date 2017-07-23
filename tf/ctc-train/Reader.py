@@ -38,10 +38,10 @@ def read_batch(xinfo, roll = False):
         if feat_len != feat.shape[0] or feat_dim != feat.shape[1]:
             print("invalid shape",feat_len,feat.shape[0],feat_dim,feat.shape[1], augment)
             exit()
-        if tmpx is None:
-            tmpx = np.zeros((height, max_feat_len, feat_dim), np.float32)
         if roll:
             feat = np.roll(feat, random.randrange(-2,2,1), axis = 0)
+        if tmpx is None:
+            tmpx = np.zeros((height, max_feat_len, feat_dim), np.float32)
         tmpx[i, :feat_len, :] = feat
         i += 1
     return tmpx

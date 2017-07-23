@@ -1,7 +1,11 @@
-import h5py
+try:
+    import h5py
+except:
+    pass
 import json
 import numpy as np
 import random
+import pickle
 
 class H5Dataset():
 
@@ -45,7 +49,16 @@ class H5Dataset():
 
 
     def getLengthTranscription(self, element):
-        return len(self.h5[element][self.target].value[0].split())
+        if self.ignore_symbols is None:
+            return len(self.h5[element][self.target].value[0].split())
+        elif self.target == 'mapping':
+            return len(np.array(self.h5[element][self.target], dtype=np.int32))
+        else:
+            items = self.h5[element][self.target].value[0].split()
+            item_count = len(items)
+            for symbol in self.ignore_symbols:
+                item_count -= items.count(symbol)
+            return item_count
 
 
     def isInSpkList(self, element):
@@ -81,11 +94,11 @@ class H5Dataset():
             else:
                 return False
 
-    # def isInSpkList(self, element):
-    #     return True
-
 
     def readData(self):
+        """ Reads utterances from h5 file, initializes self.ids and filters
+            utts based on length of transcription, audio or allowed speakers
+        """
 
         print("Loading h5 data {} ...".format(self.h5.filename))
         # Get all utts
@@ -93,6 +106,8 @@ class H5Dataset():
         self.totalLength = 0
         for speaker in self.h5.keys() if self.spkList is None else self.spkList:
             for key in self.h5[speaker].keys():
+                if not self.target in self.h5[speaker][key].keys():
+                    continue
                 full_path = "{}/{}".format(speaker, key)
                 aLength = self.getLengthAudio(full_path)
                 tLength = self.getLengthTranscription(full_path)
@@ -133,39 +148,59 @@ class H5Dataset():
 
     def getTranscript(self, element):
 
-        data = self.h5[element][self.target].value[0]
+        if self.target == 'mapping':
+            transcript = np.array(self.h5[element][self.target], dtype=np.int32)
+        else:
+            data = self.h5[element][self.target].value[0]
 
-        temp_transcript = []
-        for item in data.split():
-            if not self.singleMap:
-                for key in self.mapping.keys():
-                    if element.find(key) > -1:
-                        item = self.mapping[key][item]
-                        break
-            else:
-                item = self.mapping[item]
-            temp_transcript.append(item)
+            if self.lexicon is None:
+                temp_transcript = []
+                for item in data.split():
+                    if not self.ignore_symbols is None and item in self.ignore_symbols:
+                        continue
+                    if not self.singleMap:
+                        for key in self.mapping.keys():
+                            if element.find(key) > -1:
+                                item = self.mapping[key][item]
+                                break
+                    else:
+                        item = self.mapping[item]
+                    temp_transcript.append(item)
 
-        transcript = temp_transcript
+                transcript = temp_transcript
 
-        try:
-            transcript = [self.labels_map[x] for x in transcript]
-        except:
-            print("Error in transcript '{}' split={}".format(data, temp_transcript))
-            for x in transcript:
                 try:
-                    _ = "Mapping {} to {}".format(x, self.labels_map[x])
+                    transcript = [self.labels_map[x] for x in transcript]
                 except:
-                    print("Error mapping '{}'".format(x))
-                    raise
+                    print("Error in transcript '{}' split={}".format(data, temp_transcript))
+                    for x in transcript:
+                        try:
+                            _ = "Mapping {} to {}".format(x, self.labels_map[x])
+                        except:
+                            print("Error mapping '{}'".format(x))
+                            raise
+            else:
+                transcript = []
+                words = data.split()
+                for word in words:
+                    try:
+                        match = self.lexicon[word.encode('utf8')]
+                    except:
+                        try:
+                            match = self.lexicon[word.decode('utf8')]
+                        except:
+                            match = self.lexicon[word]
+
+                    items = match.split()
+                    items = map(int, items)
+                    transcript.extend(items)
+
+                def addOne(item):
+                    return item + 1
+
+                transcript = map(addOne, transcript)
 
         return transcript
-
-        res = []
-        for item in transcript:
-            res.append([item])
-
-        return res
 
 
     def apply_context(self, feat, left, right):
@@ -244,6 +279,49 @@ class H5Dataset():
         return self.batches
 
 
+    def read_batch_audio(self, batch, ids):
+
+        batch_len = len(batch)
+        max_aLen = 0
+        for idx in batch:
+            max_aLen = max(max_aLen, ids[idx][1])
+
+        ares = np.zeros((batch_len, max_aLen, self.input_dim * (self.rctx + self.lctx + 1)), np.float32)
+
+        for i in range(batch_len):
+            idx = batch[i]
+            element, feat_len, t_len = ids[idx]
+            ares[i, :feat_len, :] = self.getAudio(element)
+
+        return ares
+
+
+    def read_batch_transcript(self, batch, ids):
+
+        batch_len = len(batch)
+        max_tLen = 0
+        for idx in batch:
+            max_tLen = max(max_tLen, ids[idx][2])
+
+        yidx = []
+        yval = []
+        yshape = np.array([batch_len, max_tLen], dtype = np.int32)
+
+        for i in range(batch_len):
+            idx = batch[i]
+            element, feat_len, t_len = self.ids[idx]
+
+            trans = self.getTranscript(element)
+            for j in range(t_len):
+                yidx.append([i, j])
+                yval.append(trans[j])
+
+        yidx = np.asarray(yidx, dtype = np.int32)
+        yval = np.asarray(yval, dtype = np.int32)
+
+        return ((yidx, yval, yshape))
+
+
     def read_batch(self, batchIdx):
 
         feats = []
@@ -275,12 +353,10 @@ class H5Dataset():
         yidx = np.asarray(yidx, dtype = np.int32)
         yval = np.asarray(yval, dtype = np.int32)
 
-        # not sure why this is needed
-        res = [yidx, yval, yshape]
-        return ares, [res]
+        return ares, ((yidx, yval, yshape))
 
 
-    def __init__(self, args, input_file=None, h5_pointer=None, labels=None, feature=None, input_dim=None, target=None, access_mode='r', context=1, rctx=None, lctx=None, mapping=None, augment_feat=None, augment_size=None, filter_string=None, spkList=None, uttSkip=None):
+    def __init__(self, args, input_file=None, h5_pointer=None, labels=None, feature=None, input_dim=None, target=None, access_mode='r', context=1, rctx=None, lctx=None, mapping=None, augment_feat=None, augment_size=None, filter_string=None, spkList=None, uttSkip=None, ignore_symbols=None):
 
         self.args = args
 
@@ -296,16 +372,28 @@ class H5Dataset():
         self.input_dim = args.h5_input_dim if input_dim is None else input_dim
         self.feats = args.h5_input_feat.split(',') if feature is None else feature.split(',')
         self.target = args.h5_target if target is None else target
+        self.ignore_symbols = self.parseArg(ignore_symbols, args.h5_ignore_symbols)
 
-        with open(args.h5_labels if labels is None else labels) as label_file:
+        with open(args.h5_labels if labels is None else labels, 'r') as label_file:
             self.labels = json.load(label_file)
         self.labels_map = dict([(self.labels[i], i) for i in range(len(self.labels))])
+        if args.h5_lexicon is None:
+            self.lexicon = args.h5_lexicon
+        else:
+            with open(args.h5_lexicon, 'r') as lexicon_file:
+                self.lexicon = json.load(lexicon_file)
 
         if uttSkip is None:
             if args.h5_uttSkip is None:
                 self.uttSkip = None
             else:
-                self.uttSkip = args.h5_uttSkip.split(',')
+                if args.h5_uttSkip.find('txt') > -1:
+                    self.uttSkip = []
+                    with open(args.h5_uttSkip, 'r') as f:
+                        for line in f:
+                            self.uttSkip.append(line.strip())
+                else:
+                    self.uttSkip = args.h5_uttSkip.split(',')
         else:
             self.uttSkip = uttSkip.split(',')
 
@@ -338,15 +426,17 @@ class H5Dataset():
 
 
     def load_feat_info(self):
-        # this only supports the single softmax case for now
-        # why are we adding 1?
-        nclass = [len(self.labels) + 1]
+
+        if self.lexicon is None:
+            nclass = len(self.labels) + 1
+        else:
+            nclass = len(self.lexicon.keys()) + 1
+
         nfeat = self.input_dim * (self.rctx + self.lctx + 1)
 
-        return nclass, nfeat, (None, None, None)
+        return [nclass], nfeat, (None, None, None)
 
-
-def h5_run_reader(q, dataset, do_shuf):
+def h5_run_reader(q, dataset, do_shuf, cv_id):
     batch_shuf = list(range(len(dataset.batches)))
 
     if do_shuf:
@@ -354,6 +444,6 @@ def h5_run_reader(q, dataset, do_shuf):
 
     for i in batch_shuf:
         feats, targets = dataset.read_batch(i)
-        q.put((feats, targets))
+        q.put((feats, [targets]))
 
     q.put(None)

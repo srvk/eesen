@@ -161,39 +161,40 @@ class DeepBidirRNN:
 
         # try:
             #TODO can not do xrange directly?
+            #TODO iterterm vs iter python 3 vs 2
+
             # this is because of Python2 vs 3
             # self.labels = [tf.sparse_placeholder(tf.int32)
                            # for _ in xrange(len(target_scheme.values()))]
 
+        #TODO try to come out with a nicer solution
+        #TODO for now only taking into consideration the labels
+        self.labels=[]
+        for target_id, _ in target_scheme.iteritems():
+            self.labels.append(tf.sparse_placeholder(tf.int32))
 
-
-        self.labels = {key : tf.sparse_placeholder(tf.int32)
-                       for (key, value) in target_scheme.iteritems()}
-
-        for key, value in self.labels.iteritems():
-            print(key)
-            print(value)
-        print("holaaa")
-        print("holaaa")
-        sys.exit()
 
         # except:
             # self.labels = [tf.sparse_placeholder(tf.int32)
                            # for _ in range(len(target_scheme.values()))]
 
-        try:
+        # try:
             #TODO deal with priors
             # this is because of Python2 vs 3
 
             # self.priors = [tf.placeholder(tf.float32)
                            # for _ in xrange(len(target_scheme.values()))]
 
-            self.priors = {(key, placeholder(tf.float32))
-                           for (key, value) in target_scheme.iteritems()}
+        # self.priors = {key : tf.placeholder(tf.float32)
+                       # for (key, value) in target_scheme.iteritems()}
 
-        except:
-            self.priors = [tf.placeholder(tf.float32)
-                           for _ in range(len(target_scheme.values()))]
+        #TODO for now only taking into consideration the labels. Languages will be needed
+        self.priors=[]
+        for target_id, _ in target_scheme.iteritems():
+            self.priors.append(tf.placeholder(tf.float32))
+        # except:
+            # self.priors = [tf.placeholder(tf.float32)
+                           # for _ in range(len(target_scheme.values()))]
 
         self.seq_len = self.length(self.feats)
 
@@ -239,10 +240,10 @@ class DeepBidirRNN:
         with tf.variable_scope("loss"):
             regularized_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()])
 
-        losses={}
-        for taget_key, logits in logits.iteritems():
-            loss = tf.nn.ctc_loss(labels=self.labels[target_key], inputs=logits, sequence_length=self.seq_len)
-            losses[taget_key]=loss
+        losses=[]
+        for idx, (taget_key, logit) in enumerate(logits.iteritems()):
+            loss = tf.nn.ctc_loss(labels=self.labels[idx], inputs=logit, sequence_length=self.seq_len)
+            losses.append(loss)
 
         self.cost = tf.reduce_mean(losses) + l2 * regularized_loss
 
@@ -252,7 +253,8 @@ class DeepBidirRNN:
         self.logits={}
 
         with tf.variable_scope("eval_output"):
-            for target_key, logit in logits.iteritems():
+            for idx, (target_key, logit) in enumerate(logits.iteritems()):
+
                 tran_logit = tf.transpose(logit, (1, 0, 2)) * self.temperature
                 self.logits[target_key]=tran_logit
 
@@ -292,7 +294,7 @@ class DeepBidirRNN:
         self.log_probs={}
         self.cers={}
 
-        for target_key, logit in logits.iteritems():
+        for idx, (target_key, logit) in enumerate(logits.iteritems()):
             decoded, log_prob = tf.nn.ctc_greedy_decoder(logit, self.seq_len)
             cer = tf.reduce_sum(tf.edit_distance(tf.cast(decoded[0], tf.int32), self.labels[idx] , normalize = False), name = "ter")
 

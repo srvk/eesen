@@ -4,9 +4,12 @@ import numpy as np
 import random
 from reader import Reader
 
-class ReaderHDF5(Reader):
+class FeatsReaderHDF5(Reader):
 
     def __init__(self, filename, args, uttids=None):
+
+
+
 
         #getting filename will al kaldi pointers to ark
         filename = os.path.join(data_dir, "%s_local.hdf5" % (filename))

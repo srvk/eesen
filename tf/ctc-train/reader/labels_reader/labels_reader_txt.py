@@ -1,13 +1,12 @@
 import sys, os
 import pdb
 import numpy as np
-from reader import Reader
 
-class ReaderLabels(Reader):
-    def __init__(self, info_set, args, batches_id=None):
+class LabelsReaderTxt():
+    def __init__(self, info_set, args, batches_id):
 
         #permanent list to store the number of classes of each language
-        self.all_nclass={}
+        self.target_scheme={}
 
         #temporary dctionary from tag to targets
         all_label_dicts={}
@@ -30,8 +29,8 @@ class ReaderLabels(Reader):
 
         #loading all labels in a dictionary and number of classes
         for target_id, path_to_target in all_labels_file.iteritems():
-            nclass, label_dict = self.__load_labels(path_to_target)
-            self.all_nclass[target_id] = nclass
+            ntarget, label_dict = self.__load_labels(path_to_target)
+            self.target_scheme[target_id] = ntarget
             all_label_dicts[target_id] = label_dict
 
         if(not batches_id):
@@ -41,12 +40,8 @@ class ReaderLabels(Reader):
             self.batches_y = self.__order_labels(all_label_dicts, batches_id)
 
     #getter
-    def get_num_dim(self):
-        return self.all_nclass
-
-    #get number of batches
-    def get_num_batches(self):
-        return len(self.batches_y)
+    def get_target_scheme(self):
+        return self.target_scheme
 
     #read batch idx. Input: batch index. Output: batch with the number of languages available
     #TODO this has been done in case some day we need a online reader online (e.g. ReaderLabelKaldi, ReaderLabelHDF5)

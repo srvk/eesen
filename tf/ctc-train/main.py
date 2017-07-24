@@ -17,7 +17,8 @@ import pickle, re
 import argparse
 import numpy as np
 from multiprocessing import Pool
-from reader import reader_factory
+from reader.feats_reader import feats_reader_factory
+from reader.labels_reader import labels_reader_factory
 from functools import partial, reduce
 import tf
 
@@ -213,10 +214,12 @@ def main():
 
     #TODO this will be arranged in two scripts (train and test)
     #load validation reader (cv can be used as test set when eval)
-    cv_x = reader_factory.create_reader('cv','feats','kaldi', args)
+    cv_x = feats_reader_factory.create_reader('cv','kaldi', args)
 
     #create reader for labels
-    cv_y = reader_factory.create_reader('cv', 'labels','txt', args, cv_x.get_batches_id())
+    cv_y = labels_reader_factory.create_reader('cv','txt', args, cv_x.get_batches_id())
+
+    sys.exit()
 
     if args.eval:
         config = create_config_eval(args)
@@ -231,11 +234,14 @@ def main():
 
     else:
 
+        #TODO check
         #load training feats
-        tr_x = reader_factory.create_reader('train', 'feats', 'kaldi', args)
+        tr_x = feats_reader_factory.create_reader('train', 'feats', 'kaldi', args)
 
         #load training targets
-        tr_y = reader_factory.create_reader('train', 'labels','txt', args, tr_x.get_batches_id())
+        tr_y = labels_reader_factory.create_reader('train', 'labels','txt', args, tr_x.get_batches_id())
+
+        sys.exit()
 
         #TODO when two scripts created. we should take a look to create_config_train
         #TODO this tr_y.get_num_dim() will have to have a dic of dic with all the output structure TO KNOW which language are we training

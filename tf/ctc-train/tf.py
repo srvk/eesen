@@ -1,5 +1,5 @@
 import tensorflow as tf
-from deep_birnn import *
+from deep_bilstm import *
 import numpy as np
 from multiprocessing import Process, Queue
 import sys, os, re, time, random, functools
@@ -271,9 +271,9 @@ def train(data, config):
 
             #preparing queues and getting the first batches according to our type of training (unadapted vs adaptes)
             if config["adapt_stage"] == "unadapted":
-                p = Process(target = run_reader_queue, args = (data_queue, tr_x, tr_y))
+                p = Process(target = run_reader_queue, args = (data_queue, tr_x, tr_y, config["do_shuf"]))
             else:
-                p = Process(target = run_reader_queue, args = (data_queue, tr_x , tr_y, sat))
+                p = Process(target = run_reader_queue, args = (data_queue, tr_x , tr_y, config["do_shuf"], sat))
 
 
             ntr_labels={}
@@ -286,7 +286,7 @@ def train(data, config):
                 train_cers[target_id] = 0
 
             p.start()
-            print("about to start")
+
             while True:
 
                 data = data_queue.get()
@@ -300,6 +300,7 @@ def train(data, config):
                 else:
                     xbatch, ybatch, sat = data
 
+                print("batch extracted")
                 batch_size = len(xbatch)
                 ntrain += batch_size
 
@@ -308,11 +309,14 @@ def train(data, config):
 
                 #TODO check if values works
                 #TODO check how is the architecture done (nclass)
-                feed = {i: y for i, y in zip(model.labels, ybatch.values())}
+                #TODO would be interesting to have a more elegant solution
 
 
-                print(feed)
-                sys.exit()
+                y_batch_list=[]
+                for _, value in ybatch.iteritems():
+                    y_batch_list.append(value)
+
+                feed = {i: y for i, y in zip(model.labels, y_batch_list)}
 
                 feed[model.feats] = xbatch
                 feed[model.lr_rate] = lr_rate
@@ -390,7 +394,7 @@ def train(data, config):
                 feed[model.feats] = xbatch
                 feed[model.lr_rate] = lr_rate
                 feed[model.is_training] = False
-
+                
                 batch_cost, batch_cers = sess.run([model.cost, model.cers], feed)
 
                 for target_key, cer in batch_cers.iteritems():

@@ -2,9 +2,9 @@ import h5py
 import json
 import numpy as np
 import random
-from reader import Reader
+from feats_reader import FeatsReader
 
-class FeatsReaderHDF5(Reader):
+class FeatsReaderHDF5(FeatsReader):
 
     def __init__(self, filename, args, uttids=None):
 

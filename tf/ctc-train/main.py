@@ -214,12 +214,15 @@ def main():
 
     #TODO this will be arranged in two scripts (train and test)
     #load validation reader (cv can be used as test set when eval)
-    cv_x = feats_reader_factory.create_reader('cv','kaldi', args)
+    online_augment_config={}
+    online_augment_config["win"]=3
+    online_augment_config["factor"]=3
+    online_augment_config["roll"]=None
+
+    cv_x = feats_reader_factory.create_reader('cv','kaldi', args.data_dir, args.lstm_type,online_augment_config, args.batch_size)
 
     #create reader for labels
     cv_y = labels_reader_factory.create_reader('cv','txt', args, cv_x.get_batches_id())
-
-    sys.exit()
 
     if args.eval:
         config = create_config_eval(args)
@@ -228,7 +231,7 @@ def main():
             sys.exit()
         config["temperature"] = args.temperature
         config["prior"] = LoadPrior(args.counts_file, config["nclass"])
-        config["train_path"] = args.data_dir.split(":")
+        config["train_path"] = args.data_dir
         config["adapt_stage"] = 'unadapted'
         tf.eval(cv_data, config, args.eval_model)
 
@@ -236,16 +239,14 @@ def main():
 
         #TODO check
         #load training feats
-        tr_x = feats_reader_factory.create_reader('train', 'feats', 'kaldi', args)
+        tr_x = feats_reader_factory.create_reader('train','kaldi', args.data_dir, args.lstm_type,online_augment_config, args.batch_size)
 
         #load training targets
-        tr_y = labels_reader_factory.create_reader('train', 'labels','txt', args, tr_x.get_batches_id())
-
-        sys.exit()
+        tr_y = labels_reader_factory.create_reader('train','txt', args, tr_x.get_batches_id())
 
         #TODO when two scripts created. we should take a look to create_config_train
         #TODO this tr_y.get_num_dim() will have to have a dic of dic with all the output structure TO KNOW which language are we training
-        config = create_config_train(args, tr_x.get_num_dim(), tr_y.get_num_dim(), args.data_dir)
+        config = create_config_train(args, tr_x.get_num_dim(), tr_y.get_target_scheme(), args.data_dir)
 
         #if we need adaptation
         if config["adapt_stage"] != 'unadapted':

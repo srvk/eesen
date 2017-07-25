@@ -7,17 +7,19 @@ from feats_reader import FeatsReader
 
 class FeatsReaderKaldi(FeatsReader):
     #constructor of Reader_Kaldi. info_set: (train, cv, sat), batches_id: order of the batches
-    def __init__ (self, info_set, args):
+    def __init__ (self, info_set, data_dir, lstm_type, online_augment_config, batch_size):
 
         #constructing parent class and creating self.list_files and stroing self.info_set
-        super(FeatsReaderKaldi, self).__init__(*args, **kwargs)
+        super(FeatsReaderKaldi, self).__init__(info_set, data_dir, online_augment_config, "scp")
 
         print("ordering "+info_set+" batches...")
 
-        #getting feat in list format no need to search anything
-        feat_dict_info = read_scp_info(filename[0])
+        print(self.list_files)
 
-        self.batches_x, self.batches_id = self.__create_ordered_batches(feat_dict_info, args)
+        #getting feat in list format no need to search anything
+        feat_dict_info = read_scp_info(self.list_files[0])
+
+        self.batches_x, self.batches_id = self.__create_ordered_batches(feat_dict_info, lstm_type, batch_size)
 
 
     #TODO this is just an scheme of how to deal with a mix env
@@ -69,7 +71,7 @@ class FeatsReaderKaldi(FeatsReader):
 
             feat = readMatrixByOffset(arkfile, offset)
 
-            feat = self.augmentor.augment(feat, augment)
+            feat = self.augmenter.augment(feat, augment)
 
             #sanity check that the augmentation is ok
             if feat_len != feat.shape[0] or feat_dim != feat.shape[1]:
@@ -86,19 +88,19 @@ class FeatsReaderKaldi(FeatsReader):
         return tmpx
 
     #it creates batches and returns a template of batch_ids that will be used externally to createate other readers (or maybe something else)
-    def __create_ordered_batches(self, feat_info):
+    def __create_ordered_batches(self, feat_info, lstm_type, batch_size):
 
         #augmenting data
-        feat_info=self.augmentor.preprocess(feat_info)
+        feat_info=self.augmenter.preprocess(feat_info)
 
         #sort the list by length
         feat_info = sorted(feat_info, key = lambda x: x[3])
 
         #CudnnLSTM requires batches of even sizes
-        if args.lstm_type == "cudnn":
-            batches_x, batches_id = self.__make_even_batches_info(feat_info, args.batch_size)
+        if lstm_type == "cudnn":
+            batches_x, batches_id = self.__make_even_batches_info(feat_info, batch_size)
         else:
-            batches_x, batches_id = self.__make_batches_info(feat_info, args.batch_size)
+            batches_x, batches_id = self.__make_batches_info(feat_info, batch_size)
 
         return batches_x, batches_id
 

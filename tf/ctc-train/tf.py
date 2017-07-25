@@ -300,8 +300,9 @@ def train(data, config):
                 else:
                     xbatch, ybatch, sat = data
 
-                print("batch extracted")
                 batch_size = len(xbatch)
+                print("batch extracted")
+                print(len(xbatch))
                 ntrain += batch_size
 
                 for target_id, y_element_batch in ybatch.iteritems():
@@ -394,7 +395,7 @@ def train(data, config):
                 feed[model.feats] = xbatch
                 feed[model.lr_rate] = lr_rate
                 feed[model.is_training] = False
-                
+
                 batch_cost, batch_cers = sess.run([model.cost, model.cers], feed)
 
                 for target_key, cer in batch_cers.iteritems():

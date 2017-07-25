@@ -1,21 +1,23 @@
-class Augmentor(object):
+import numpy as np
+
+class Augmenter(object):
     def __init__(self, config):
         self.config=config
 
-    def preprocess(feat_info):
+    def preprocess(self, feat_info):
 
         #TODO @florian here you can have more room to play with augmentation option
-        if(self.config["win"] and self.config["factor"])
+        if(self.config["win"] and self.config["factor"]):
 
-            print("Augmenting data x", factor," and win ", win)
+            print("Augmenting data x", self.config["factor"]," and win ", self.config["win"])
 
-            feat_info = [(tup[0], tup[1], tup[2], (tup[3]+factor-1-shift) // factor, win*tup[4], (shift, factor, win)) for shift in range(self.config["factor"]) for tup in feat_info]
+            feat_info = [(tup[0], tup[1], tup[2], (tup[3]+self.config["factor"]-1-shift) // self.config["factor"], self.config["win"]*tup[4], (shift, self.config["factor"], self.config["win"])) for shift in range(self.config["factor"]) for tup in feat_info]
 
         else:
-            
+
             feat_info = [tup+(None,) for tup in feat_info]
 
-        return new_info
+        return feat_info
 
     def augment(self, feat, augment):
 
@@ -41,7 +43,7 @@ class Augmentor(object):
             sys.exit()
 
         #applying roll to augmented feats
-        if self.conf["roll"]:
+        if self.config["roll"]:
             augmented_feats = np.roll(augmented_feats, random.randrange(-2,2,1), axis = 0)
 
         return augmented_feats

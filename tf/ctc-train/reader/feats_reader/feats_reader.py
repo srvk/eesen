@@ -1,56 +1,65 @@
 import os
-from reader.augment.augmentor import Augmentor
+import sys
+from reader.augmenter.augmenter import Augmenter
 
 class FeatsReader(object):
 
-    def __init__(self, data_dir, info_set, online_augment_config):
+    def __init__(self, info_set, data_dir, online_augment_config, extension):
 
         #list of all folders
         self.list_files=[]
         self.info_set=info_set
-        self.augmentor=Augmentor(online_augment_config)
+        self.augmenter=Augmenter(online_augment_config)
 
         count_augmented_folder=0
         count_scp_files=0
 
-        if (info_set == 'tr'):
+        if (info_set == 'train'):
 
             for augmented_folder in os.listdir(data_dir):
-                if os.path.isdir(filename) and filename.startswith("augment"):
+                path_augmented=os.path.join(data_dir,augmented_folder)
+                if os.path.isdir(path_augmented) and augmented_folder.startswith("augment"):
                     augmnet_folder += 1
+                if not os.path.isdir(path_augmented) and augmented_folder.endswith(".scp"):
+                    count_scp_files += 1
 
             #there is sample augmentation
-            if(augment_folder > 0):
-                list_folders=read_augmentated_folders(data_dir, info_set)
+            if(count_augmented_folder > 0):
+                list_files=read_augmented_folder(data_dir, info_set, extension)
+                self.list_files=list_files
 
             #there is not sample augmentation
             else:
-                list_folders=read_scp_folder(data_dir, info_set)
+                print("not augmented data found ...")
+                self.list_files.append(self.read_folder(data_dir, info_set, extension))
+
         elif (info_set == 'cv'):
 
-            self.list_folders.append(read_scp_folder(data_dir, info_set))
+            self.list_files.append(self.read_folder(data_dir, info_set, extension))
 
         else:
-            print("info_set is not valid("+info_set+")")
+            print("info_set is not valid ("+info_set+")")
             print("exiting...")
             sys.exit()
 
+    def read_augmented_folder(self, data_dir, info_set, extension):
 
-
-    def read_augmentated_folder(data_dir, info_set):
-
+        list_files=[]
         for augmented_dirname in os.listdir(data_dir):
 
             augmented_path = os.path.join(data_dir,augmented_dirname)
 
             #it is an augmented folder
             if os.path.isdir(augmented_path) and augmented_dirname.startswith("augment"):
-                self.list_files.append(read_scp_folder(augmented_path, info_set))
+                list_files.append(self.read_folder(augmented_path, info_set, extension))
+
+        return list_files
 
 
-    def read_scp_folder(data_dir, info_set):
+    def read_folder(self, data_dir, info_set, extension):
 
-        return os.path.join(args.data_dir, "%s_local.scp" % (info_set))
+
+        return os.path.join(data_dir, "%s_local.%s" % (info_set, extension))
 
 
 

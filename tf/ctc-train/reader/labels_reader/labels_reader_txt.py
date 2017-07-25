@@ -15,7 +15,6 @@ class LabelsReaderTxt():
         if(info_set=='train'):
             info_set='tr'
 
-
         #getting all labels files in a dictonary (key: target_name, value: filename)
         all_labels_file={}
         for filename in os.listdir(args.data_dir):
@@ -54,7 +53,8 @@ class LabelsReaderTxt():
         Load a set of labels in (local) Eesen format
         """
 
-        mapLabel = lambda x: x - 1
+        # mapLabel = lambda x: x - 1
+        mapLabel = lambda x: x - 0
         labels = {}
         m = 0
 

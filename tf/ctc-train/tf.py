@@ -226,11 +226,12 @@ def train(data, config):
         tf.global_variables_initializer().run()
         alpha = 0
 
+        saver = tf.train.Saver(max_to_keep=nepoch)
+
         # restore a training
         if "continue_ckpt" in config or config["adapt_stage"] == "fine_tune":
 
             alpha = int(re.match(".*epoch([-+]?\d+).ckpt", config["continue_ckpt"]).groups()[0])
-            saver = tf.train.Saver(max_to_keep=nepoch)
             if(config["adapt_stage"] == "fine_tune"):
                 saver.restore(sess, config["adapt_org_path"])
             else:
@@ -301,8 +302,6 @@ def train(data, config):
                     xbatch, ybatch, sat = data
 
                 batch_size = len(xbatch)
-                print("batch extracted")
-                print(len(xbatch))
                 ntrain += batch_size
 
                 for target_id, y_element_batch in ybatch.iteritems():
@@ -356,23 +355,25 @@ def train(data, config):
             save_scalar(epoch, "train/epoch_cost", train_cost, writer)
             for target_id, train_cer in train_cers.iteritems():
                 train_cers[target_id] = train_cer/float(ntr_labels[target_id])
-                save_scalar(epoch, "train/epoch_ter{}".format(idx), train_ter[idx], writer)
+                # save_scalar(epoch, "train/epoch_ter{}".format(idx), train_ter[target_id], writer)
 
 
             # create counters for validation
             ncv, cv_step = 0, 0
             ntr_labels={}
             cv_cers={}
+            ncv_labels={}
+            ncv_label={}
             for target_id, _ in target_scheme.iteritems():
                 ncv_labels[target_id] = 0
                 cv_cers[target_id]= 0
-
+                ncv_label[target_id]=0
             cv_cost = 0.0
 
             if config["adapt_stage"] == "unadapted":
-                p = Process(target = run_reader_queue, args = (data_queue, cv_x, cv_y))
+                p = Process(target = run_reader_queue, args = (data_queue, cv_x, cv_y, False))
             else:
-                p = Process(target = run_reader_queue, args = (data_queue, cv_x , cv_y, sat))
+                p = Process(target = run_reader_queue, args = (data_queue, cv_x , cv_y, False, sat))
 
             p.start()
             while True:
@@ -388,10 +389,17 @@ def train(data, config):
 
                 batch_size = len(xbatch)
                 ncv += batch_size
+
                 for target_id, y_element_batch in ybatch.iteritems():
                     ncv_label[target_id] += get_label_len(y_element_batch)
 
-                feed = {i: y for i, y in zip(model.labels, ybatch.values())}
+                #TODO this can be done in a more elegant way...
+                y_batch_list=[]
+                for _, value in ybatch.iteritems():
+                    y_batch_list.append(value)
+
+                feed = {i: y for i, y in zip(model.labels, y_batch_list)}
+
                 feed[model.feats] = xbatch
                 feed[model.lr_rate] = lr_rate
                 feed[model.is_training] = False
@@ -406,8 +414,7 @@ def train(data, config):
                 if cv_step % log_freq == 0:
                     global_step = cv_step + ncv_batch * epoch
                     save_scalar(global_step, "test/batch_cost", batch_cost, writer)
-                    for idx, _ in enumerate(nclass):
-                        save_scalar(global_step, "test/batch_ter{}".format(idx), batch_ters[idx], writer)
+
                 cv_step += 1
 
             p.join()
@@ -441,9 +448,11 @@ def train(data, config):
             info("Epoch %d finished in %.0f minutes, learning rate: %.4g" % (epoch + 1, (time.time() - tic)/60.0, lr_rate))
 
             for target_key, cv_cer in cv_cers.iteritems():
-                print("Targets %s" % (target_key))
-                print("Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost, 100.0*train_cers[target_key], ntrain))
-                print("Validate cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost, 100.0*cv_cer, ncv))
+                if(len(cv_cers.values()) > 1):
+                    print("T: %s" % (target_key))
+
+                print("\t Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost, 100.0*train_cers[target_key], ntrain))
+                print("\t Validate cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost, 100.0*cv_cer, ncv))
 
 
             # if (len(nclass) > 1):

@@ -18,9 +18,9 @@ class LabelsReaderTxt():
         #getting all labels files in a dictonary (key: target_name, value: filename)
         all_labels_file={}
         for filename in os.listdir(args.data_dir):
-            if (filename.startswith('labels_') and filename.endswith('.'+info_set)):
+            if (filename.startswith('labels') and filename.endswith('.'+info_set)):
                 #filename will: 'labels.tr' or 'labels.cv'
-                target_id=filename.replace("labels_","").replace('.'+info_set,"")
+                target_id=filename.replace("labels_","").replace("labels","").replace('.'+info_set,"")
                 if(target_id==""):
                     target_id="no_name_target"
 

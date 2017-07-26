@@ -14,8 +14,6 @@ class FeatsReaderKaldi(FeatsReader):
 
         print("ordering "+info_set+" batches...")
 
-        print(self.list_files)
-
         #getting feat in list format no need to search anything
         feat_dict_info = read_scp_info(self.list_files[0])
 

@@ -25,7 +25,7 @@ class FeatsReader(object):
 
             #there is sample augmentation
             if(count_augmented_folder > 0):
-                self.list_files=self.read_augmented_folder(data_dir, info_set, extension)
+                self.list_files=self.__read_augmented_folder__(data_dir, info_set, extension)
 
             #there is not sample augmentation
             else:
@@ -33,7 +33,7 @@ class FeatsReader(object):
                 self.list_files.append(self.read_folder(data_dir, info_set, extension))
 
         elif (info_set == 'cv'):
-            path_feats=self.read_folder(data_dir, info_set, extension)
+            path_feats=self.__read_folder__(data_dir, info_set, extension)
 
             if(path_feats):
                 self.list_files.append(path_feats)
@@ -47,7 +47,7 @@ class FeatsReader(object):
             print("exiting...")
             sys.exit()
 
-    def read_augmented_folder(self, data_dir, info_set, extension):
+    def __read_augmented_folder__(self, data_dir, info_set, extension):
 
         list_files=[]
         for augmented_dirname in os.listdir(data_dir):
@@ -68,7 +68,7 @@ class FeatsReader(object):
         return list_files
 
 
-    def read_folder(self, data_dir, info_set, extension):
+    def __read_folder__(self, data_dir, info_set, extension):
 
         path_to_local=os.path.join(data_dir, "%s_local.%s" % (info_set, extension))
         if(os.path.isfile(path_to_local)):

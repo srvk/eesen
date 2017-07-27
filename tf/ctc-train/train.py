@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-
 """
 this project has been wrtien following this naming convention:
 
@@ -12,41 +11,14 @@ https://google.github.io/styleguide/pyguide.html#naming
 #   Main script
 # -----------------------------------------------------------------
 
-import sys, os, os.path
-import pickle, re
 import argparse
-import numpy as np
-from multiprocessing import Pool
+import os
+import os.path
+import pickle
+import sys
+
 from reader.feats_reader import feats_reader_factory
 from reader.labels_reader import labels_reader_factory
-from functools import partial, reduce
-import tf
-
-# -----------------------------------------------------------------
-#   Function definitions
-# -----------------------------------------------------------------
-
-#TODO add this as a reader
-def load_prior(prior_paths, nclass):
-    priors = []
-
-    if(len(prior_paths.split(":")) != len(nclass)):
-        print("Error: Wrong number or prior paths given. Only "+str(len(prior_paths.split(":")))+" paths were given and "+str(len(nclass))+" needed")
-        sys.exit()
-
-    for idx, prior_path in enumerate(prior_paths.split(":")):
-        with open(prior_path, "r") as f:
-            for line in f.readlines():
-                parts = [int(x) for x in line.strip().split(" ")[1:-1]]
-                counts = parts[1:]
-                counts.append(parts[0])
-                cnt_sum = reduce(lambda x, y: x + y, counts)
-                prior = [float(x) / cnt_sum for x in counts]
-            if(len(prior) != nclass[idx]):
-                print("Error: Wrong number of elements given in prior file number "+str(idx)+" it has "+str(len(prior))+" and it should have "+str(nclass[idx]))
-
-        priors.append(prior)
-    return priors
 
 
 # -----------------------------------------------------------------
@@ -71,24 +43,8 @@ def main_parser():
 
     parser.add_argument('--use_kaldi_io', default=False, action='store_true', help='Do not use Kaldi IO library')
 
+    #TODO this is infered with the name of the files included
     parser.add_argument('--mode', default='kaldi', action='store_true', help='IO data format. options [kaldi, hdf5]')
-
-    parser.add_argument('--h5_mode', default=False, action='store_true', help='Enable reading HDF5 files')
-    parser.add_argument('--h5_train', help='h5 train data', type=str, default=None)
-    parser.add_argument('--h5_valid', help='h5 valid data', type=str, default=None)
-    parser.add_argument('--h5_input_dim', default=None, type=int, help='Size of input features')
-    parser.add_argument('--h5_input_feat', default=None, type=str, help='Name of input feature(s)')
-    parser.add_argument('--h5_target', default=None, type=str, help='Name of target feature')
-    parser.add_argument('--h5_labels', default=None, help='JSON-file containing all characters for prediction')
-    parser.add_argument('--h5_uttSkip', default=None, type=str, help='Skip these utts')
-    parser.add_argument('--h5_filter', default=None, type=str, help='evaluate only speakers containing this string')
-    parser.add_argument('--h5_spkList', default=None, type=str, help='File(s) containing list of speakers')
-    parser.add_argument('--h5_mapping', default=None, type=str, help='Token mapping file(s)')
-    parser.add_argument('--h5_augment_feat', default=None, type=str, help='Name of feature for augmentation')
-    parser.add_argument('--h5_augment_size', default=None, type=int, help='Size of feature for augmentation')
-
-    #TODO include that in the normal labels with :
-    parser.add_argument('--extra_labels', help = "extra labels (e.g. phn set when your main target are char) IMPORTANT: the feature files are the master")
 
     parser.add_argument('--counts_file', default = "label.counts", help = "data dir")
     parser.add_argument('--nepoch', default = 30, type=int, help='#epoch')
@@ -117,22 +73,6 @@ def main_parser():
     parser.add_argument('--adapt_org_path', default ="", help='path to the model that we will use as starter')
 
     return parser
-
-def create_config_eval(args):
-    config_path = os.path.dirname(args.eval_model) + "/config.pkl"
-
-    config = pickle.load(open(config_path, "rb"))
-    config["temperature"] = args.temperature
-    config["use_kaldi_io"] = args.use_kaldi_io
-    config["augment"] = args.augment
-    config["mix"] = args.mix
-    config["batch_norm"] = args.batch_norm
-    if len(args.continue_ckpt):
-        config["continue_ckpt"] = args.continue_ckpt
-    for k, v in config.items():
-        print(k, v)
-    sys.stdout.flush()
-    return config
 
 def create_config_train(args, nfeat, target_scheme, train_path):
 
@@ -224,46 +164,28 @@ def main():
     #create reader for labels
     cv_y = labels_reader_factory.create_reader('cv','txt', args, cv_x.get_batches_id())
 
-    if args.eval:
-        config = create_config_eval(args)
-        if(len(nclass) != len(config["nclass"])):
-            print("Error. Number of labels provided not correct. "+str(len(nclass))+" provided "+str(len(config["nclass"]))+" needed")
-            sys.exit()
-        config["temperature"] = args.temperature
-        config["prior"] = LoadPrior(args.counts_file, config["nclass"])
-        config["train_path"] = args.data_dir
-        config["adapt_stage"] = 'unadapted'
-        tf.eval(cv_data, config, args.eval_model)
 
+    #TODO check
+    #load training feats
+    tr_x = feats_reader_factory.create_reader('train','kaldi', args.data_dir, args.lstm_type,online_augment_config, args.batch_size)
+
+    #load training targets
+    tr_y = labels_reader_factory.create_reader('train','txt', args, tr_x.get_batches_id())
+
+    #TODO when two scripts created. we should take a look to create_config_train
+    #TODO this tr_y.get_num_dim() will have to have a dic of dic with all the output structure TO KNOW which language are we training
+    config = create_config_train(args, tr_x.get_num_dim(), tr_y.get_target_scheme(), args.data_dir)
+
+    #if we need adaptation
+    if config["adapt_stage"] != 'unadapted':
+        tr_x = reader_factory.create_reader('sat', 'feats', 'kaldi', args)
+        sat= feats_reader_factory.create_reader(args, 'sat', 'kaldi')
+        data = (cv_x, tr_x, sat, cv_y, tr_y)
     else:
+        data = (cv_x, tr_x, None, cv_y, tr_y)
 
-        #TODO check
-        #load training feats
-        tr_x = feats_reader_factory.create_reader('train','kaldi', args.data_dir, args.lstm_type,online_augment_config, args.batch_size)
-
-        #load training targets
-        tr_y = labels_reader_factory.create_reader('train','txt', args, tr_x.get_batches_id())
-
-        #TODO when two scripts created. we should take a look to create_config_train
-        #TODO this tr_y.get_num_dim() will have to have a dic of dic with all the output structure TO KNOW which language are we training
-        config = create_config_train(args, tr_x.get_num_dim(), tr_y.get_target_scheme(), args.data_dir)
-
-        #if we need adaptation
-        if config["adapt_stage"] != 'unadapted':
-            tr_x = reader_factory.create_reader('sat', 'feats', 'kaldi', args)
-            sat=create_reader(args, 'sat', 'kaldi')
-            data = (cv_x, tr_x, sat, cv_y, tr_y)
-        else:
-            data = (cv_x, tr_x, None, cv_y, tr_y)
-
-        tf.train(data, config)
-
+    eesen_20170714.train(data, config)
 
 if __name__ == "__main__":
     main()
 
-    #python3 /pylon2/ir3l68p/metze/eesen-tf/tf/tf1/main.py --store_model --nhidden 240 --nproj 0 --train_dir log --data_dir ../v1-30ms-arlberg/tmp.LHhAHROFia/T22 --nlayer 5
-    # python /data/ASR5/fmetze/eesen-tf/tf/tf1/main.py --store_model --nhidden 240 --train_dir log --data_dir tmp.pgJ1QN1au3/T24/ --nlayer 5
-
-    # I got this to work with build #485, http://ci.tensorflow.org/view/Nightly/job/nightly-matrix-linux-gpu/
-    # pip install http://ci.tensorflow.org/view/Nightly/job/nightly-matrix-linux-gpu/TF_BUILD_IS_OPT=OPT,TF_BUILD_IS_PIP=PIP,TF_BUILD_PYTHON_VERSION=PYTHON2,label=gpu-linux/lastBuild/artifact/pip_test/whl/tensorflow_gpu-1.head-cp27-cp27mu-manylinux1_x86_64.whl

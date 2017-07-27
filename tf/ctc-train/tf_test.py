@@ -196,6 +196,9 @@ def eval(data, config, model_path):
                 writeScp(os.path.join(root_path, "logit"+z+".scp"), U,
                          writeArk(os.path.join(root_path, "logit"+z+".ark"), logit, U))
 
+
+
+
 def train(data, config):
     """ Train the model
     """
@@ -207,6 +210,12 @@ def train(data, config):
     model = DeepBidirRNN(config)
 
     cv_x, tr_x, sat, cv_y, tr_y = data
+
+    number_augmented_folder=tr_x.get_num_augmented_folders
+
+    print(number_augmented_folder)
+
+    sys.exit()
 
     debug=False
     log_freq = 100
@@ -222,6 +231,7 @@ def train(data, config):
         os.makedirs(model_dir)
 
     with tf.Session() as sess:
+
         writer = tf.summary.FileWriter(config["train_path"], sess.graph)
         tf.global_variables_initializer().run()
         alpha = 0
@@ -295,11 +305,6 @@ def train(data, config):
                 if data is None:
                     break
 
-                #TODO try from sat -> sat_tr, sat_cv
-                if config["adapt_stage"] == 'unadapted':
-                    xbatch, ybatch = data
-                else:
-                    xbatch, ybatch, sat = data
 
                 batch_size = len(xbatch)
                 ntrain += batch_size

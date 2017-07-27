@@ -30,7 +30,7 @@ class FeatsReaderKaldi(FeatsReader):
             sys.exit()
 
         #sanity check
-        if(len(self.filenames) < source_positon-1):
+        if(len(self.filenames) < source_positon -1):
             print(str(source_positon)+" does not exists for this current source")
             print("get_num_augmented_folders() will provide this information for you")
             print("exiting...")
@@ -42,7 +42,7 @@ class FeatsReaderKaldi(FeatsReader):
         self.batches_x = self.__order_feat_info(feat_dict_info, self.batches_id)
 
     #TODO here we will need to indicate which language are we looking for
-    def get_num_augmented_folders():
+    def get_num_augmented_folders(self):
         return len(self.list_files)
 
     #getter number of feature dimension. Just taking the size of the first
@@ -144,7 +144,7 @@ class FeatsReaderKaldi(FeatsReader):
         return xinfo, uttid
 
     #recieve a dictionary and a batch strucute and it orders everything up
-    def __order_feat_info (self, feat_dict_info, batches_id):
+    def __order_feat_info__ (self, feat_dict_info, batches_id):
         batches_xinfo=[]
         for batch_id in batches_id:
             batch_xinfo=[]

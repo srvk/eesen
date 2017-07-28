@@ -119,7 +119,8 @@ class DeepBidirRNN:
 
 
     def __init__(self, config):
-        nfeat = config["nfeat"]
+
+        nfeat = config["input_feat_dim"]
         nhidden = config["nhidden"]
         target_scheme = config["target_scheme"]
         l2 = config["l2"]
@@ -134,13 +135,13 @@ class DeepBidirRNN:
         if adaptation_stage == 'train_adapt':
 
             num_sat_layers = int(config["num_sat_layers"])
-            adapt_dim = int(config["adapt_dim"])
+            adapt_dim = int(config["sat_feat_dim"])
             self.is_trainable_sat=False
 
         elif adaptation_stage == 'fine_tune':
 
             num_sat_layers = int(config["num_sat_layers"])
-            adapt_dim = config["adapt_dim"]
+            adapt_dim = config["sat_feat_dim"]
             self.is_trainable_sat=True
 
         elif adaptation_stage == 'unadapted':

@@ -16,6 +16,7 @@ import os
 import os.path
 import pickle
 import sys
+from eesen import Eesen
 
 from reader.feats_reader import feats_reader_factory
 from reader.labels_reader import labels_reader_factory
@@ -65,126 +66,139 @@ def main_parser():
     parser.add_argument('--continue_ckpt', default = "", help='continue this experiment')
 
     #SAT arguments
-    parser.add_argument('--adapt_path', default = "", help='root path where all the adpatation vectors are')
-    parser.add_argument('--adapt_reader_type', default = 'csv_matrix_folder_first', help='fromat of the speaker. Thee possibilities: kaldi_file, csv_folder, csv_matrix_folder_first, csv_matrix_folder_last')
-    parser.add_argument('--adapt_stage', default = 'unadapted', help='Stage of adatpation process. Three possibilities: train_adapt, fine_tune and unadapted. Default: unadapted')
-    parser.add_argument('--adapt_dim', default = 1024, type=int,  help='continue this experiment')
     parser.add_argument('--num_sat_layers', default = 2, type=int, help='continue this experiment')
+    parser.add_argument('--adapt_stage', default = 'unadapted', help='Stage of adatpation process. Three possibilities: train_adapt, fine_tune and unadapted. Default: unadapted')
     parser.add_argument('--adapt_org_path', default ="", help='path to the model that we will use as starter')
 
     return parser
 
-def create_config_train(args, nfeat, target_scheme, train_path):
+def create_sat_config(args):
 
-    if(args.adapt_stage == "train_adapt" or args.adapt_stage == "fine_tune"):
-        if (args.adapt_reader_type == 'kaldi_file' or args.adapt_reader_type == 'csv_folder' or args.adapt_reader_type == 'csv_matrix_folder_first'):
-            print("Reader type of adapation file has a wrong option: "+args.adapt_reader_type)
-            print("Valid options: kaldi_file, csv_folder, csv_matrix_folder_first, csv_matrix_folder_last")
-            sys.exit()
+    sat={}
 
-        if not (args.adapt_stage == 'train_adapt' or args.adapt_stage == 'fine_tune'):
-            print("Adaptation satge has a wrong option: "+args.adapt_stage)
-            sys.exit()
+    sat["num_sata_layers"]=args.num_sat_layers
+    sat["adapt_stage"]=args.adapt_stage
+    sat["adapt_org_path"]=args.adapt_org_path
 
-    else:
-        args.adapt_path=''
-        args.adapt_stage='unadapted'
-        args.adapt_dim=0
-        args.num_sat_layers=0
-        args.adapt_org_path=""
+    return sat
+
+def create_online_argu_config(args):
+
+    #TODO enter the values using a conf file or something
+    online_augment_config={}
+    online_augment_config["win"]=3
+    online_augment_config["factor"]=3
+    online_augment_config["roll"]=False
+
+    return online_augment_config
+
+def create_global_config(args):
 
     config = {
-        "nfeat": nfeat,
-        "target_scheme": target_scheme,
+        #training conf
         "nepoch": args.nepoch,
-        "lr_rate": args.lr_rate,
-        "l2": args.l2,
         "clip": args.clip,
+        "half_period": args.half_period,
+        "half_rate": args.half_rate,
+        "half_after": args.half_after,
+        "lr_rate": args.lr_rate,
+        "do_shuf": args.do_shuf,
+        "grad_opt": args.grad_opt,
+        "batch_size": args.batch_size,
+        "random_seed": 15213,
+        "debug": False,
+
+        #architecture config
+        "l2": args.l2,
         "nlayer": args.nlayer,
         "nhidden": args.nhidden,
         "nproj": args.nproj,
         "feat_proj": args.feat_proj,
         "batch_norm": args.batch_norm,
-        "do_shuf": args.do_shuf,
         "lstm_type": args.lstm_type,
-        "half_period": args.half_period,
-        "half_rate": args.half_rate,
-        "half_after": args.half_after,
-        "grad_opt": args.grad_opt,
-        "batch_size": args.batch_size,
-        "train_path": train_path,
+
+        #directories
+        "train_dir": args.train_dir,
         "store_model": args.store_model,
-        "random_seed": 15213,
-        "temperature": args.temperature,
-        "h5_mode": args.h5_mode,
-        "use_kaldi_io": args.use_kaldi_io,
-        "mix": args.mix,
+        "data_dir": args.data_dir,
+
+        #augmentation
         "augment": args.augment,
 
-        "adapt_path": args.adapt_path,
-        "adapt_reader_type": args.adapt_reader_type,
+        #adptation
         "adapt_stage": args.adapt_stage,
-        "adapt_dim": args.adapt_dim,
         "num_sat_layers": args.num_sat_layers,
         "adapt_org_path": args.adapt_org_path
     }
 
+    config["sat"] = create_sat_config(args)
+    config["online_augment"] = create_online_argu_config(args)
 
     if len(args.continue_ckpt):
         config["continue_ckpt"] = args.continue_ckpt
-    for k, v in config.items():
-        print(k, v)
-    sys.stdout.flush()
-    model_dir = config["train_path"] + "/model"
-    if not os.path.exists(model_dir):
-        os.makedirs(model_dir)
-    pickle.dump(config, open(config["train_path"] + "/model/config.pkl", "wb"))
+
 
     return config
-
-
 
 # -----------------------------------------------------------------
 #   Main part
 # -----------------------------------------------------------------
 
 def main():
+
+    #TODO construct a factory/helper to load everything by just looking at data_dir
+
     parser = main_parser()
     args = parser.parse_args()
-
-    #TODO this will be arranged in two scripts (train and test)
-    #load validation reader (cv can be used as test set when eval)
-    online_augment_config={}
-    online_augment_config["win"]=3
-    online_augment_config["factor"]=3
-    online_augment_config["roll"]=None
-
-    cv_x = feats_reader_factory.create_reader('cv','kaldi', args.data_dir, args.lstm_type,online_augment_config, args.batch_size)
-
-    #create reader for labels
-    cv_y = labels_reader_factory.create_reader('cv','txt', args, cv_x.get_batches_id())
+    config = create_global_config(args)
 
 
-    #TODO check
     #load training feats
-    tr_x = feats_reader_factory.create_reader('train','kaldi', args.data_dir, args.lstm_type,online_augment_config, args.batch_size)
+    tr_x = feats_reader_factory.create_reader('train','kaldi', config)
+
 
     #load training targets
-    tr_y = labels_reader_factory.create_reader('train','txt', args, tr_x.get_batches_id())
+    tr_y = labels_reader_factory.create_reader('train','txt', config, tr_x.get_batches_id())
 
-    #TODO when two scripts created. we should take a look to create_config_train
-    #TODO this tr_y.get_num_dim() will have to have a dic of dic with all the output structure TO KNOW which language are we training
-    config = create_config_train(args, tr_x.get_num_dim(), tr_y.get_target_scheme(), args.data_dir)
+    #create reader for labels
+    cv_x = feats_reader_factory.create_reader('cv','kaldi', config)
 
-    #if we need adaptation
+    #create reader for labels
+    cv_y = labels_reader_factory.create_reader('cv','txt', config, cv_x.get_batches_id())
+
+    config["input_feat_dim"] = tr_x.get_num_dim()
+    config["target_scheme"] = tr_y.get_target_scheme()
+
     if config["adapt_stage"] != 'unadapted':
-        tr_x = reader_factory.create_reader('sat', 'feats', 'kaldi', args)
-        sat= feats_reader_factory.create_reader(args, 'sat', 'kaldi')
-        data = (cv_x, tr_x, sat, cv_y, tr_y)
-    else:
-        data = (cv_x, tr_x, None, cv_y, tr_y)
 
-    eesen_20170714.train(data, config)
+        cv_sat = feats_reader_factory.create_reader('sat', 'kaldi', config, cv_x.get_batches_id())
+        tr_sat = feats_reader_factory.create_reader('sat', 'kaldi', config, tr_x.get_batches_id())
+        data = (cv_x, tr_x, cv_y, tr_y, cv_sat, tr_sat)
+
+        config["sat_feat_dim"] = tr_sat.get_num_dim()
+
+    else:
+        data = (cv_x, tr_x, cv_y, tr_y)
+
+    config["model_dir"] = os.path.join(config["train_dir"],"model")
+
+    #create folder for storing experiment
+    if not os.path.exists(config["model_dir"]):
+        os.makedirs(config["model_dir"])
+    pickle.dump(config, open(os.path.join(config["train_dir"],"config.pkl"), "wb"))
+
+    #log of expriment configuration
+    sys.stdout.flush()
+    print(80 * "-")
+    print("experiment configuration:")
+    print(80 * "-")
+    for k, v in config.items():
+        print(k, v)
+
+    #start the acutal training
+
+    eesen=Eesen()
+    eesen.train(data, config)
 
 if __name__ == "__main__":
     main()

@@ -1,5 +1,6 @@
 import random, sys, os
 import numpy as np
+from fileutils import debug
 from fileutils.kaldi import read_scp_info_dic
 from fileutils.kaldi import read_scp_info
 from fileutils.kaldi import readMatrixByOffset
@@ -7,32 +8,35 @@ from feats_reader import FeatsReader
 
 class FeatsReaderKaldi(FeatsReader):
     #constructor of Reader_Kaldi. info_set: (train, cv, sat), batches_id: order of the batches
-    def __init__ (self, info_set, data_dir, lstm_type, online_augment_config, batch_size):
+    def __init__ (self, info_set, config, batches_id):
 
         #constructing parent class and creating self.list_files and stroing self.info_set
-        super(FeatsReaderKaldi, self).__init__(info_set, data_dir, online_augment_config, "scp")
+        super(FeatsReaderKaldi, self).__init__(info_set, config["data_dir"], config["online_augment"], "scp")
 
-        print("ordering "+info_set+" batches...")
 
         #getting feat in list format no need to search anything
         feat_dict_info = read_scp_info(self.list_files[0])
 
-        self.batches_x, self.batches_id = self.__create_ordered_batches(feat_dict_info, lstm_type, batch_size)
+        if(batches_id):
+            print("ordering (from batch_id) "+info_set+" batches...")
+            self.batches_x, self.batches_id = self.__get_batch_info(feat_dict_info, config["batch_size"])
+        else:
+            print("ordering (from scratch) "+info_set+" batches...")
+            self.batches_x, self.batches_id = self.__create_ordered_batches(feat_dict_info, config["lstm_type"], config["batch_size"])
 
-
-    #TODO this is just an scheme of how to deal with a mix env
-    #TODO arguments will be either the path or a number that can be the posisiton in the list
-    def change_source (source_position):
+    def change_source (self, source_position):
 
         if(self.info_set == 'cv'):
             print("this option is not available for this type of info_set (cv)")
+            print(debug.get_debug_info())
             print("exiting...")
             sys.exit()
 
         #sanity check
-        if(len(self.filenames) < source_positon -1):
-            print(str(source_positon)+" does not exists for this current source")
+        if(len(self.filenames) < source_position -1):
+            print(str(source_position)+" does not exists for this current source")
             print("get_num_augmented_folders() will provide this information for you")
+            print(debug.get_debug_info())
             print("exiting...")
             sys.exit()
 
@@ -144,7 +148,7 @@ class FeatsReaderKaldi(FeatsReader):
         return xinfo, uttid
 
     #recieve a dictionary and a batch strucute and it orders everything up
-    def __order_feat_info__ (self, feat_dict_info, batches_id):
+    def __order_feat_info (self, feat_dict_info, batches_id):
         batches_xinfo=[]
         for batch_id in batches_id:
             batch_xinfo=[]

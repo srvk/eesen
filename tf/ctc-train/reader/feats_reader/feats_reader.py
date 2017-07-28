@@ -1,6 +1,6 @@
-import os
-import sys
+import os, sys
 from reader.augmenter.augmenter import Augmenter
+from fileutils import debug
 
 class FeatsReader(object):
 
@@ -25,29 +25,26 @@ class FeatsReader(object):
 
             #there is sample augmentation
             if(count_augmented_folder > 0):
-                self.list_files=self.__read_augmented_folder__(data_dir, info_set, extension)
+                self.list_files=self.__read_augmented_folder(data_dir, info_set, extension)
 
             #there is not sample augmentation
             else:
                 print("not augmented data (mix) found ...")
-                self.list_files.append(self.read_folder(data_dir, info_set, extension))
+                self.list_files.append(self.__read_folder(data_dir, info_set, extension))
 
-        elif (info_set == 'cv'):
-            path_feats=self.__read_folder__(data_dir, info_set, extension)
+        elif (info_set == 'cv' or info_set == 'sat'):
+            path_feats=self.__read_folder(data_dir, info_set, extension)
 
             if(path_feats):
                 self.list_files.append(path_feats)
             else:
-                print("No feats.scp encountered in "+path_feats+" info_set: "+info_set)
+                print("path: "+os.path.join(data_dir, "%s_local.%s" % (info_set, extension))+" not found")
+                print(debug.get_debug_info())
                 print("exiting")
                 sys.exit()
 
-        else:
-            print("info_set is not valid ("+info_set+")")
-            print("exiting...")
-            sys.exit()
 
-    def __read_augmented_folder__(self, data_dir, info_set, extension):
+    def __read_augmented_folder(self, data_dir, info_set, extension):
 
         list_files=[]
         for augmented_dirname in os.listdir(data_dir):
@@ -56,7 +53,7 @@ class FeatsReader(object):
 
             #it is an augmented folder
             if os.path.isdir(augmented_path) and augmented_dirname.startswith("augment"):
-                feats_file = self.read_folder(augmented_path, info_set, extension)
+                feats_file = self.__read_folder(augmented_path, info_set, extension)
                 if(feats_file):
                     list_files.append(feats_file)
 
@@ -68,7 +65,7 @@ class FeatsReader(object):
         return list_files
 
 
-    def __read_folder__(self, data_dir, info_set, extension):
+    def __read_folder(self, data_dir, info_set, extension):
 
         path_to_local=os.path.join(data_dir, "%s_local.%s" % (info_set, extension))
         if(os.path.isfile(path_to_local)):

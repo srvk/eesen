@@ -3,7 +3,7 @@ import pdb
 import numpy as np
 
 class LabelsReaderTxt():
-    def __init__(self, info_set, args, batches_id):
+    def __init__(self, info_set, conf, batches_id):
 
         #permanent list to store the number of classes of each language
         self.target_scheme={}
@@ -17,14 +17,14 @@ class LabelsReaderTxt():
 
         #getting all labels files in a dictonary (key: target_name, value: filename)
         all_labels_file={}
-        for filename in os.listdir(args.data_dir):
+        for filename in os.listdir(conf["data_dir"]):
             if (filename.startswith('labels') and filename.endswith('.'+info_set)):
                 #filename will: 'labels.tr' or 'labels.cv'
                 target_id=filename.replace("labels_","").replace("labels","").replace('.'+info_set,"")
                 if(target_id==""):
                     target_id="no_name_target"
 
-                all_labels_file[target_id] = os.path.join(args.data_dir,filename)
+                all_labels_file[target_id] = os.path.join(conf["data_dir"],filename)
 
         #loading all labels in a dictionary and number of classes
         for target_id, path_to_target in all_labels_file.iteritems():

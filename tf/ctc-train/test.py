@@ -120,20 +120,6 @@ def main_parser():
     return parser
 
 def create_config_eval(args):
-    config_path = os.path.dirname(args.eval_model) + "/config.pkl"
-
-    config = pickle.load(open(config_path, "rb"))
-    config["temperature"] = args.temperature
-    config["use_kaldi_io"] = args.use_kaldi_io
-    config["augment"] = args.augment
-    config["mix"] = args.mix
-    config["batch_norm"] = args.batch_norm
-    if len(args.continue_ckpt):
-        config["continue_ckpt"] = args.continue_ckpt
-    for k, v in config.items():
-        print(k, v)
-    sys.stdout.flush()
-    return config
 
 def create_config_train(args, nfeat, target_scheme, train_path):
 
@@ -205,11 +191,20 @@ def create_config_train(args, nfeat, target_scheme, train_path):
 
 
 
-# -----------------------------------------------------------------
-#   Main part
-# -----------------------------------------------------------------
+
+def create_global_config(args):
+
+    config = {
+        #test_config
+        "eval_model": args.eval_model,
+        "config_path": os.path.join(args.eval_model,"config.pkl"),
+        "temperature": args.temperature,
+    }
+
+    return config
 
 def main():
+
     parser = main_parser()
     args = parser.parse_args()
 

@@ -18,15 +18,18 @@ class Train():
     def train_impl(self, data):
 
             #set random seed so that models can be reproduced
-            tf.set_random_seed(config["random_seed"])
-            random.seed(config["random_seed"])
+            tf.set_random_seed(self.config["random_seed"])
+            random.seed(self.config["random_seed"])
+
             #construct the model acoring to config
-            cv_x, tr_x, cv_y, tr_y, cv_sat, tr_sat = data
+            if(self.config['adapt_stage'] == 'unadapted'):
+                cv_x, tr_x, cv_y, tr_y = data
+                tr_sat=None
+                cv_sat=None
+            else:
+                cv_x, tr_x, cv_y, tr_y, cv_sat, tr_sat = data
 
-            #TODO take into consideration the number of mix augmentation
-            number_augmented_folder=tr_x.get_num_augmented_folders()
-
-            model_dir = os.path.join(self.config["train_path"],"model")
+            model_dir = os.path.join(self.config["train_dir"],"model")
             if not os.path.exists(model_dir):
                 os.makedirs(model_dir)
 
@@ -35,7 +38,11 @@ class Train():
                 tf.global_variables_initializer().run()
 
                 # restore a training
-                saver, alpha = self.__restore_weights()
+                saver, alpha = self.__restore_weights(sess)
+
+                #initialize counters
+                best_avg_cers = float("inf")
+                lr_rate = self.config["lr_rate"]
 
                 for epoch in range(alpha, self.config["nepoch"]):
 
@@ -48,41 +55,71 @@ class Train():
                     tic = time.time()
 
                     #training...
-                    train_cost, train_cers, ntrain = self.__train_epoch(sess, epoch, tr_x, tr_y, tr_sat)
+                    train_cost, train_cers, ntrain = self.__train_epoch(sess, epoch, lr_rate, tr_x, tr_y, tr_sat)
 
                     if self.config["store_model"]:
-                        self.__store_weights(sess, saver)
+                        saver.save(sess, "%s/epoch%02d.ckpt" % (self.config["model_dir"], epoch + 1))
 
                     #evaluate on validation...
                     cv_cost, cv_cers, ncv = self.__eval_epoch(cv_x, cv_y, cv_sat)
 
-                    self.info("Epoch %d finished in %.0f minutes, learning rate: %.4g" % (epoch + 1, (time.time() - tic)/60.0, lr_rate))
+                    #print results
+                    self. __generate_logs(cv_cers, cv_cost, ncv, train_cers, train_cost, ntrain, epoch, lr_rate, tic)
 
-                    for target_key, cv_cer in cv_cers.iteritems():
-                        if(len(cv_cers.values()) > 1):
-                            print("T: %s" % (target_key))
-                        print("\t Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost, 100.0*train_cers[target_key], ntrain))
-                        print("\t Validate cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost, 100.0*cv_cer, ncv))
-
-
+                    #change set if needed (mix augmentation)
                     if(tr_x.get_num_augmented_folders > 1):
                         tr_x, tr_y, tr_sat = self.__update_sets(tr_x)
 
+                    #update lr_rate if needed
+                    lr_rate, best_avg_cers, best_epoch = self.__update_lr_rate(epoch, cv_cers, best_avg_cers, best_epoch, saver, sess)
+
+    def __compute_avg_cers(self, cers):
+
+        avg_cers =0.0
+        for _, cer in cers.iteritems():
+            avg_cers += cer
+        avg_cers /= len(cers.values())
+
+        return avg_cers
+
+    def __update_lr_rate(self, epoch, cv_cers, best_avg_cers, best_epoch, saver, sess):
+
+        avg_cers = self.__compute_avg_cers(self, cv_cers)
+
+        if epoch > self.config["half_after"]:
+
+            new_lr_rate = self.config["lr_rate"] * (self.config["half_rate"] ** ((epoch - self.config["half_after"]) // self.config["half_period"]))
+
+
+            if new_lr_rate != self.config["lr_rate"] and avg_cers > best_avg_cer and self.config["store_model"]:
+
+                print ("load_ckpt", best_epoch+1, 100.0*best_avg_cers, epoch+1, 100.0*avg_cers, new_lr_rate)
+                saver.restore(sess, "%s/epoch%02d.ckpt" % (self.config["model_dir"], best_epoch+1))
+
+            lr_rate = new_lr_rate
+        else:
+            lr_rate = self.config["lr_rate"]
+
+        if(best_avg_cers > avg_cers):
+            best_avg_cers = avg_cers
+            best_epoch = epoch
+
+        return lr_rate, best_avg_cers, best_epoch
 
     def __update_sets(self, tr_x):
 
-        tr_x.change_source(randint(0,tr_x.get_batches_id()-1)
+        tr_x.change_source(randint(0,tr_x.get_batches_id()-1))
 
         if self.config["adapt_stage"] == "unadapted":
             tr_sat=None
         else:
-            tr_sat= feats_reader_factory.create_reader('sat', 'kaldi', tr_x.get_batches_id())
+            tr_sat= feats_reader_factory.create_reader('sat', 'kaldi', self.config, tr_x.get_batches_id())
 
         tr_y=labels_reader_factory.create_reader()
 
         return tr_x, tr_y, tr_sat
 
-    def __train_epoch(self, sess, epoch, tr_x, tr_y, tr_sat):
+    def __train_epoch(self, sess, epoch, lr_rate, tr_x, tr_y, tr_sat):
 
         #initializing samples, steps and cost counters
         batch_counter, ntrain, train_cost = 0, 0, 0
@@ -92,7 +129,7 @@ class Train():
 
         #TODO change all iteritems for iter for python 3.0
         #TODO try to do an utils for this kind of functions
-        for target_id, _ in self.config["half_period"].iteritems():
+        for target_id, _ in self.config["target_scheme"].iteritems():
             ntr_labels[target_id] = 0
             train_cers[target_id] = 0
 
@@ -109,12 +146,14 @@ class Train():
             #pop from queue
             data = self.data_queue.get()
 
+            print("holaa")
+
             #finish if there no more batches
             if data is None:
                 break
 
             #getting the feed
-            feed, batch_size = self.__prepare_feed(self, data)
+            feed, batch_size = self.__prepare_feed(data, lr_rate)
 
             #run over a batch
             batch_cost, batch_cers = sess.run([self.model.cost, self.model.cers], feed)
@@ -132,7 +171,6 @@ class Train():
 
             batch_counter += 1
             ntrain = batch_size
-
 
         p.join()
         p.terminate()
@@ -193,10 +231,9 @@ class Train():
 
     def __update_counters(self, acum_cers, acum_cost, acum_samples, acum_labels, batch_cers, batch_cost, batch_size, ybatch):
 
-
         for target_key, cer in batch_cers.iteritems():
             acum_cers[target_key] += cer
-            acum_labels[target_key] += ybatch[target_key]
+            acum_labels[target_key] += len(ybatch[target_key])
 
         acum_cost += batch_cost * batch_size
         acum_samples += batch_size
@@ -234,22 +271,28 @@ class Train():
 
         return saver, alpha
 
+    def __generate_logs(self, cv_cers, cv_cost, ncv, train_cers, train_cost, ntrain, epoch, lr_rate, tic):
 
+        self.__info("Epoch %d finished in %.0f minutes, learning rate: %.4g" % (epoch + 1, (time.time() - tic)/60.0, lr_rate))
 
-    def __store_weights(self, sess, saver):
-        saver.save(sess, "%s/epoch%02d.ckpt" % (model_dir, epoch + 1))
-        with open("%s/epoch%02d.log" % (model_dir, epoch + 1), 'w') as fp:
+        with open("%s/epoch%02d.log" % (self.config["model_dir"], epoch + 1), 'w') as fp:
             fp.write("Time: %.0f minutes, lrate: %.4g\n" % ((time.time() - tic)/60.0, lr_rate))
 
             for target_key, cv_cer in cv_cers.iteritems():
-                fp.write("Targets %s" % (target_key))
+                if(len(cv_cers) > 1):
+                    fp.write("Target: %s" % (target_key))
+                    print("Target: %s" % (target_key))
                 fp.write("Train    cost: %.1f, ter: %.1f%%, #example: %d\n" % (train_cost, 100.0*train_cers[target_key], ntrain))
                 fp.write("Validate cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost, 100.0*cv_cer, ncv))
 
+                print("\t Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost, 100.0*train_cers[target_key], ntrain))
+                print("\t Validate cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost, 100.0*cv_cer, ncv))
+
+
     def __print_counts_debug(self, epoch, batch_counter, total_number_batches, batch_cost, batch_size, batch_cers):
 
-        print("epoch={} batch={}/{} size={} batch_cost={}".format(epoch, train_step, total_number_batches, batch_size, batch_cost))
-        print("batch",train_step,"of",total_number_batches,"size",batch_size,
+        print("epoch={} batch={}/{} size={} batch_cost={}".format(epoch, batch_counter, total_number_batches, batch_size, batch_cost))
+        print("batch",batch_counter,"of",total_number_batches,"size",batch_size,
               "queue",self.data_queue.empty(),self.data_queue.full(),self.data_queue.qsize())
 
         print("cers:")
@@ -259,7 +302,7 @@ class Train():
     def __prepare_feed(self, data, lr_rate):
 
         if self.config["adapt_stage"] == 'unadapted':
-            x_batch, ybatch = data
+            x_batch, y_batch = data
         else:
             x_batch, y_batch, sat_batch = data
 

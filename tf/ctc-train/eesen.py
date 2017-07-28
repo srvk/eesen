@@ -1,6 +1,8 @@
 from tf.tf_train import Train
+import tensorflow as tf
+import os, sys
 
-class Eesen():
+class Eesen(object):
 
     def train(self, data, config):
 
@@ -14,13 +16,15 @@ class Eesen():
             print("tf.py: could not get version information for logging")
         print(80 * "-")
 
-        train_impl=Train(config)
-        train_impl.train(data)
+        train=Train(config)
+        train.train_impl(data)
 
 
     def test(self, data, config):
+        print("not implemented yet")
 
-        train_impl(data, config)
+
+
 
 
 

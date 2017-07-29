@@ -52,7 +52,6 @@ class LabelsReaderTxt():
         """
         Load a set of labels in (local) Eesen format
         """
-
         # mapLabel = lambda x: x - 1
         mapLabel = lambda x: x - 0
         labels = {}

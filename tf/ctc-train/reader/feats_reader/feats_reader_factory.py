@@ -34,7 +34,7 @@ def create_reader(info_set, info_format, config, batches_id = None):
     if info_format == "kaldi":  return FeatsReaderKaldi(info_set, config, batches_id)
 
     else:
-        print("Error: "+info_format+" is not defined as \"info_format\" in \"info_type\": "+info_type)
+        print("Error: "+info_format+" is not defined as \"info_format\" in \"info_set\": "+info_set)
         print(debug.get_debug_info())
         print("exiting...")
         sys.exit()

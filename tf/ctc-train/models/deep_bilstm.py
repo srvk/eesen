@@ -119,8 +119,8 @@ class DeepBidirRNN:
 
 
     def __init__(self, config):
-
-        nfeat = config["input_feat_dim"]
+        
+        nfeat = config["nfeat"]
         nhidden = config["nhidden"]
         target_scheme = config["target_scheme"]
         l2 = config["l2"]
@@ -135,13 +135,13 @@ class DeepBidirRNN:
         if adaptation_stage == 'train_adapt':
 
             num_sat_layers = int(config["num_sat_layers"])
-            adapt_dim = int(config["sat_feat_dim"])
+            adapt_dim = int(config["adapt_dim"])
             self.is_trainable_sat=False
 
         elif adaptation_stage == 'fine_tune':
 
             num_sat_layers = int(config["num_sat_layers"])
-            adapt_dim = config["sat_feat_dim"]
+            adapt_dim = config["adapt_dim"]
             self.is_trainable_sat=True
 
         elif adaptation_stage == 'unadapted':
@@ -168,7 +168,7 @@ class DeepBidirRNN:
             # self.labels = [tf.sparse_placeholder(tf.int32)
                            # for _ in xrange(len(target_scheme.values()))]
 
-        #TODO try to come out with a nicer solution
+        #TODO try to come out with a niter solution
         #TODO for now only taking into consideration the labels
         self.labels=[]
         for target_id, _ in target_scheme.iteritems():
@@ -293,13 +293,13 @@ class DeepBidirRNN:
 
         self.decodes={}
         self.log_probs={}
-        self.cers={}
+        self.ters={}
 
         for idx, (target_key, logit) in enumerate(logits.iteritems()):
             decoded, log_prob = tf.nn.ctc_greedy_decoder(logit, self.seq_len)
-            cer = tf.reduce_sum(tf.edit_distance(tf.cast(decoded[0], tf.int32), self.labels[idx] , normalize = False), name = "ter")
+            ter = tf.reduce_sum(tf.edit_distance(tf.cast(decoded[0], tf.int32), self.labels[idx] , normalize = False), name = "ter")
 
             #store all results that will be returned
             self.decodes[target_key]=decoded
             self.log_probs[target_key]=log_prob
-            self.cers[target_key]=cer
+            self.ters[target_key]=ter

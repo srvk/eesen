@@ -4,6 +4,7 @@
 this project has been wrtien following this naming convention:
 
 https://google.github.io/styleguide/pyguide.html#naming
+plus mutable vars in function (that are actually changes m_*)
 
 """
 

@@ -1,51 +1,51 @@
-import random, sys, os
+import sys
+import constants
 import numpy as np
-from fileutils import debug
-from fileutils.kaldi import read_scp_info_dic
-from fileutils.kaldi import read_scp_info
-from fileutils.kaldi import readMatrixByOffset
+from utils.fileutils import debug
 from feats_reader import FeatsReader
+from utils.fileutils.kaldi import readMatrixByOffset
+from utils.fileutils.kaldi import read_scp_info
+from utils.fileutils.kaldi import read_scp_info_dic
+
 
 class FeatsReaderKaldi(FeatsReader):
-    #constructor of Reader_Kaldi. info_set: (train, cv, sat), batches_id: order of the batches
+
     def __init__ (self, info_set, config, batches_id = None):
 
-        self.__info_set = info_set
         self.__config = config
 
-        #constructing parent class and creating self.list_files and stroing self.__info_set
-        super(FeatsReaderKaldi, self).__init__(info_set, self.__config["data_dir"], self.__config["online_augment"], "scp")
-
+        #constructing parent class and creating self.list_files and stroing self._info_set
+        super(FeatsReaderKaldi, self).__init__(info_set, self.__config[constants.DATA_DIR], self.__config[constants.ONLINE_AUGMENT_CONF], "scp")
 
         #getting feat in list format no need to search anything
-        feat_dict_info = read_scp_info(self.list_files[0])
+        feat_dict_info_languages = self.__read_dict_info_languages()
+
 
         if(batches_id):
-            print("ordering (from batch_id) "+info_set+" batches...")
-            self.__bathes_x = self.__order_feat_info(feat_dict_info, batches_id)
+            print("ordering (from batch_id) "+info_set+" batches... \n")
+            self._batches_x = self.__order_feat_info(feat_dict_info_languages, batches_id)
         else:
-            print("ordering (from scratch) "+info_set+" batches...")
-            self.__bathes_x, self.__bathes_id = self.__create_ordered_batches(feat_dict_info, self.__config["lstm_type"], self.__config["batch_size"])
+            print("ordering all languages (from scratch) "+info_set+" batches... \n")
+            self._batches_x, self._batches_id = self.__create_ordered_batches_all_languages(feat_dict_info_languages, config[constants.LSTM_TYPE], config[constants.BATCH_SIZE])
 
     def update_batches_id(self, batches_id):
 
-        if(self.__info_set == "train"):
+        if(self._info_set == "train"):
             print("this option (update_batches_id) is not available for this type of info_set (train)")
             print(debug.get_debug_info())
             print("exiting...")
             sys.exit()
 
-        print("reordering "+self.__info_set+" batches...")
+        print("reordering "+self._info_set+" batches...")
 
         #reordering stuff
         self.__batches_id=batches_id
         feat_dict_info = read_scp_info_dic(self.list_files[0])
-        self.__bathes_x = self.__order_feat_info(feat_dict_info, self.__bathes_id)
-
+        self._batches_x = self.__order_feat_info(feat_dict_info, self._batches_id)
 
     def change_source (self, source_position):
 
-        if(self.__info_set != 'train'):
+        if(self._info_set != 'train'):
             print("this option is not available for this type of info_set (cv)")
             print(debug.get_debug_info())
             print("exiting...")
@@ -61,41 +61,27 @@ class FeatsReaderKaldi(FeatsReader):
 
         #getting feat in dict format (faster to search)
         feat_dict_info = read_scp_info_dic(self.list_files[source_position])
-        self.__bathes_x, self.__bathes_id = self.__create_ordered_batches(feat_dict_info, self.__config["lstm_type"], self.__config["batch_size"])
-
-    #TODO here we will need to indicate which language are we looking for
-    def get_num_augmented_folders(self):
-        return len(self.list_files)
-
-    #getter number of feature dimension. Just taking the size of the first
-    def get_num_dim (self):
-        return self.__bathes_x[0][0][3]
-
-    #get number of batches
-    def get_num_batches (self):
-        return len(self.__bathes_x)
-
-    #get number of batches
-    def get_batches_id (self):
-        return self.__bathes_id
+        self._batches_x, self._batches_id = self.__create_ordered_batches(feat_dict_info, self.__config[constants.LSTM_TYPE], self.__config[constants.BATCH_SIZE])
 
     #read batch idx. Input: batch index. Output: batch read with feats
-    def read (self, idx, roll=False):
+    def read (self, idx):
         i=0
         tmpx=None
 
-        number_of_utt=len(self.__bathes_x[idx])
-        max_utt_len = max(x[2] for x in self.__bathes_x[idx])
+        number_of_utt=len(self._batches_x[idx])
+        max_utt_len = max(x[2] for x in self._batches_x[idx])
 
-        for arkfile, offset, feat_len, feat_dim, augment in self.__bathes_x[idx]:
+        for arkfile, offset, feat_len, feat_dim, augment in self._batches_x[idx]:
 
             feat = readMatrixByOffset(arkfile, offset)
 
-            feat = self.augmenter.augment(feat, augment)
+            feat = self._augmenter.augment(feat, augment)
 
-            #sanity check that the augmentation is ok
+            #sanity check that the augmentatbacion is ok
             if feat_len != feat.shape[0] or feat_dim != feat.shape[1]:
-                print("invalid shape",feat_len,feat.shape[0],feat_dim,feat.shape[1], augment)
+                print("invalid shape", feat_len, feat.shape[0], feat_dim,feat.shape[1], augment)
+                print(debug.get_debug_info())
+                print("exiting...")
                 sys.exit()
 
             if tmpx is None:
@@ -107,11 +93,44 @@ class FeatsReaderKaldi(FeatsReader):
 
         return tmpx
 
+    def __create_ordered_batches_all_languages(self, feat_dict_info_languages, lstm_type, batch_size):
+
+        all_ziped_batches = []
+        #https://stackoverflow.com/questions/7529376/pythonic-way-to-mix-two-lists
+
+        for language, feat_dict_info in feat_dict_info_languages.iteritems():
+
+            batch_x_language, batch_id_language = self.__create_ordered_batches(feat_dict_info, lstm_type, batch_size)
+
+            #coloring every batch with its language
+            batch_id_language_c=zip(batch_id_language, [language]*len(batch_id_language))
+
+            all_ziped_batches.append((batch_x_language, batch_id_language_c))
+
+        #unzip
+        batch_x, batch_id = zip(*(all_ziped_batches))
+
+        #TODO workaround we should perfrom the unzip in a proper maner (after priorities)
+        batch_x=batch_x[0]
+        batch_id=batch_id[0]
+
+        return batch_x, batch_id
+
+    def __read_dict_info_languages(self):
+
+        feat_dict_info_languages = {}
+
+        for language, scp_path in self._language_scheme.iteritems():
+            print("preparing dictionary for "+language+"...\n")
+            feat_dict_info_languages[language] = read_scp_info(scp_path[0])
+
+        return feat_dict_info_languages
+
     #it creates batches and returns a template of batch_ids that will be used externally to createate other readers (or maybe something else)
     def __create_ordered_batches(self, feat_info, lstm_type, batch_size):
 
         #augmenting data
-        feat_info=self.augmenter.preprocess(feat_info)
+        feat_info=self._augmenter.preprocess(feat_info)
 
         #sort the list by length
         feat_info = sorted(feat_info, key = lambda x: x[3])
@@ -169,6 +188,7 @@ class FeatsReaderKaldi(FeatsReader):
 
     #recieve a dictionary and a batch strucute and it orders everything up
     def __order_feat_info (self, feat_dict_info, batches_id):
+
         batches_xinfo=[]
         for batch_id in batches_id:
             batch_xinfo=[]

@@ -1,6 +1,12 @@
 import numpy as np
 import sys, random
-from fileutils.debug import get_debug_info
+from utils.fileutils.debug import get_debug_info
+import random
+import sys
+import numpy as np
+import constants
+
+from utils.fileutils.debug import get_debug_info
 
 class Augmenter(object):
     def __init__(self, online_augment_config):
@@ -9,12 +15,16 @@ class Augmenter(object):
     def preprocess(self, feat_info):
 
         #TODO @florian here you can have more room to play with augmentation option
-        if(self.online_augment_config["factor"] and self.online_augment_config["win"]):
+        if(self.online_augment_config[constants.AUGMENTATION.WINDOW] and self.online_augment_config[constants.AUGMENTATION.WINDOW]):
 
-            print("Augmenting data x", self.online_augment_config["factor"]," and win ", self.online_augment_config["win"])
+            print("Augmenting data x" + str(self.online_augment_config[constants.AUGMENTATION.FACTOR])+" and win "+str(self.online_augment_config[constants.AUGMENTATION.WINDOW])+"...\n")
 
-            feat_info = [(tup[0], tup[1], tup[2], (tup[3]+self.online_augment_config["factor"]-1-shift) // self.online_augment_config["factor"], self.online_augment_config["win"]*tup[4], (shift, self.online_augment_config["factor"], self.online_augment_config["win"])) for shift in range(self.online_augment_config["factor"]) for tup in feat_info]
+            factor=self.online_augment_config[constants.AUGMENTATION.FACTOR]
+            win=self.online_augment_config[constants.AUGMENTATION.WINDOW]
 
+            feat_info = [
+                (tup[0], tup[1], tup[2], (tup[3] + factor - 1 - shift) // factor, win * tup[4], (shift, factor, win))
+                for shift in range(factor) for tup in feat_info]
         else:
 
             feat_info = [tup+(None,) for tup in feat_info]

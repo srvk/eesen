@@ -16,7 +16,7 @@ class Eesen(object):
             print("tf.py: could not get version information for logging")
         print(80 * "-")
 
-        train=Train(config)
+        train = Train(config)
         train.train_impl(data)
 
 

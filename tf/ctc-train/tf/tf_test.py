@@ -1,11 +1,14 @@
+import os
+import sys
+import time
+from itertools import islice
+from multiprocessing import Process, Queue
+
+import numpy as np
 import tensorflow as tf
 from deep_bilstm import *
-import numpy as np
-from multiprocessing import Process, Queue
-import sys, os, re, time, random, functools
-from fileutils.kaldi import writeArk, writeScp
-from itertools import islice
-from reader.reader_queue import run_reader_queue
+
+from utils.fileutils.kaldi import writeArk, writeScp
 
 try:
     from h5_Reader import h5_run_reader

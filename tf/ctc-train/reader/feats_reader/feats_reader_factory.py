@@ -1,6 +1,7 @@
 import sys
-from fileutils import debug
+
 from feats_reader_kaldi import FeatsReaderKaldi
+from utils.fileutils import debug
 
 
 #it returns an object reader that internaly will manage all the data

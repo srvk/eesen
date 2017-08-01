@@ -14,10 +14,12 @@ plus mutable vars in function (that are actually changes m_*)
 
 import argparse
 import os
+import constants
 import os.path
 import pickle
 import sys
 from eesen import Eesen
+from utils.checkers import set_checker
 
 from reader.feats_reader import feats_reader_factory
 from reader.labels_reader import labels_reader_factory
@@ -32,9 +34,9 @@ def main_parser():
 
     parser.add_argument('--lstm_type', default="cudnn", help = "lstm type: cudnn, fuse, native")
     parser.add_argument('--store_model', default=False, dest='store_model', action='store_true', help='store model')
+    parser.add_argument('--augment', default=False, dest='augment', action='store_true', help='do internal data augmentation')
     parser.add_argument('--eval', default=False, dest='eval', action='store_true', help='enable evaluation mode')
     parser.add_argument('--debug', default=False, dest='debug', action='store_true', help='enable debug mode')
-    parser.add_argument('--augment', default=False, dest='augment', action='store_true', help='do internal data augmentation')
     parser.add_argument('--mix', default=False, dest='mix', action='store_true', help='do external data augmentation')
     parser.add_argument('--noshuffle', default=True, dest='do_shuf', action='store_false', help='do not shuffle training samples')
     parser.add_argument('--eval_model', default = "", help = "model to load for evaluation")
@@ -77,9 +79,9 @@ def create_sat_config(args):
 
     sat={}
 
-    sat["num_sata_layers"]=args.num_sat_layers
-    sat["adapt_stage"]=args.adapt_stage
-    sat["adapt_org_path"]=args.adapt_org_path
+    sat[constants.NUM_SAT_LAYERS]=args.num_sat_layers
+    sat[constants.ADAPT_STAGE]=args.adapt_stage
+    sat[constants.ADAPT_ORG_PATH]=args.adapt_org_path
 
     return sat
 
@@ -87,9 +89,9 @@ def create_online_argu_config(args):
 
     #TODO enter the values using a conf file or something
     online_augment_config={}
-    online_augment_config["win"]=3
-    online_augment_config["factor"]=3
-    online_augment_config["roll"]=False
+    online_augment_config[constants.AUGMENTATION.WINDOW]=3
+    online_augment_config[constants.AUGMENTATION.FACTOR]=3
+    online_augment_config[constants.AUGMENTATION.ROLL]=False
 
     return online_augment_config
 
@@ -97,46 +99,46 @@ def create_global_config(args):
 
     config = {
         #training conf
-        "nepoch": args.nepoch,
-        "clip": args.clip,
-        "half_period": args.half_period,
-        "half_rate": args.half_rate,
-        "half_after": args.half_after,
-        "lr_rate": args.lr_rate,
-        "do_shuf": args.do_shuf,
-        "grad_opt": args.grad_opt,
-        "batch_size": args.batch_size,
-        "random_seed": 15213,
-        "debug": False,
+        constants.NEPOCH: args.nepoch,
+        constants.CLIP: args.clip,
+        constants.HALF_PERIOD: args.half_period,
+        constants.HALF_RATE: args.half_rate,
+        constants.HALF_AFTER: args.half_after,
+        constants.LR_RATE: args.lr_rate,
+        constants.DO_SHUF: args.do_shuf,
+        constants.GRAD_OPT: args.grad_opt,
+        constants.BATCH_SIZE: args.batch_size,
+        constants.RANDOM_SEED: 15213,
+        constants.DEBUG: False,
 
         #architecture config
-        "l2": args.l2,
-        "nlayer": args.nlayer,
-        "nhidden": args.nhidden,
-        "nproj": args.nproj,
-        "feat_proj": args.feat_proj,
-        "batch_norm": args.batch_norm,
-        "lstm_type": args.lstm_type,
+        constants.L2: args.l2,
+        constants.NLAYERS: args.nlayer,
+        constants.NHIDDEN: args.nhidden,
+
+        #TODO this can be joined with one argument
+        constants.NPROJ: args.nproj,
+        constants.FEAT_PROJ: args.feat_proj,
+
+        constants.BATCH_NORM: args.batch_norm,
+        constants.LSTM_TYPE: args.lstm_type,
 
         #directories
-        "train_dir": args.train_dir,
-        "store_model": args.store_model,
-        "data_dir": args.data_dir,
-
-        #augmentation
-        "augment": args.augment,
+        constants.TRAIN_DIR: args.train_dir,
+        constants.STORE_MODEL: args.store_model,
+        constants.DATA_DIR: args.data_dir,
 
         #adptation
-        "adapt_stage": args.adapt_stage,
-        "num_sat_layers": args.num_sat_layers,
-        "adapt_org_path": args.adapt_org_path
+        constants.ADAPT_STAGE: args.adapt_stage,
+        constants.NUM_SAT_LAYERS: args.num_sat_layers,
+        constants.ADAPT_ORG_PATH: args.adapt_org_path
     }
 
-    config["sat"] = create_sat_config(args)
-    config["online_augment"] = create_online_argu_config(args)
+    config[constants.SAT] = create_sat_config(args)
+    config[constants.ONLINE_AUGMENT_CONF] = create_online_argu_config(args)
 
     if len(args.continue_ckpt):
-        config["continue_ckpt"] = args.continue_ckpt
+        config[constants.CONTINUE_CKPT] = args.continue_ckpt
 
 
     return config
@@ -155,38 +157,45 @@ def main():
 
 
     #load training feats
-    tr_x = feats_reader_factory.create_reader('train','kaldi', config)
-
+    print("processing tr_x")
+    tr_x = feats_reader_factory.create_reader('train', 'kaldi', config)
 
     #load training targets
-    tr_y = labels_reader_factory.create_reader('train','txt', config, tr_x.get_batches_id())
+    print("processing tr_y")
+    tr_y = labels_reader_factory.create_reader('train', 'txt', config, tr_x.get_batches_id())
 
     #create reader for labels
-    cv_x = feats_reader_factory.create_reader('cv','kaldi', config)
+    print("processing cv_x")
+    cv_x = feats_reader_factory.create_reader('cv', 'kaldi', config)
 
     #create reader for labels
-    cv_y = labels_reader_factory.create_reader('cv','txt', config, cv_x.get_batches_id())
+    print("processing cv_y")
+    cv_y = labels_reader_factory.create_reader('cv', 'txt', config, cv_x.get_batches_id())
 
-    config["input_feat_dim"] = tr_x.get_num_dim()
-    config["target_scheme"] = tr_y.get_target_scheme()
+    #set config (targets could change)
+    config[constants.INPUT_FEATS_DIM] = cv_x.get_num_dim()
+    config[constants.TARGET_SCHEME] = cv_y.get_target_scheme()
 
-    if config["adapt_stage"] != 'unadapted':
+    #checking that all sets are consitent
+    set_checker.check_sets(cv_x, cv_y, tr_x, tr_y)
+
+
+    if config[constants.ADAPT_STAGE] != constants.ADAPTATION_STAGES.UNADAPTED:
 
         cv_sat = feats_reader_factory.create_reader('sat', 'kaldi', config, cv_x.get_batches_id())
         tr_sat = feats_reader_factory.create_reader('sat', 'kaldi', config, tr_x.get_batches_id())
         data = (cv_x, tr_x, cv_y, tr_y, cv_sat, tr_sat)
-
-        config["sat_feat_dim"] = tr_sat.get_num_dim()
-
+        config[constants.SAT_FEAT_DIM] = tr_sat.get_num_dim()
     else:
+
         data = (cv_x, tr_x, cv_y, tr_y)
 
-    config["model_dir"] = os.path.join(config["train_dir"],"model")
+    config[constants.MODEL_DIR] = os.path.join(config[constants.TRAIN_DIR], "model")
 
     #create folder for storing experiment
-    if not os.path.exists(config["model_dir"]):
-        os.makedirs(config["model_dir"])
-    pickle.dump(config, open(os.path.join(config["train_dir"],"config.pkl"), "wb"))
+    if not os.path.exists(config[constants.MODEL_DIR]):
+        os.makedirs(config[constants.MODEL_DIR])
+    pickle.dump(config, open(os.path.join(config[constants.TRAIN_DIR], "config.pkl"), "wb"))
 
     #log of expriment configuration
     sys.stdout.flush()
@@ -199,6 +208,7 @@ def main():
     #start the acutal training
 
     eesen=Eesen()
+
     eesen.train(data, config)
 
 if __name__ == "__main__":

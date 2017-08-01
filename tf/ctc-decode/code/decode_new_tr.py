@@ -1,22 +1,18 @@
 #coding: utf-8
 from __future__ import print_function
-import argparse
-import math
-import kaldi_io
-from fileutils.kaldi import readScp
-import numpy as np
-from multiprocessing import Pool
-import pdb
-from searchAlgo import beam_search, greedy_search
-from lm_util import lm_util
-import sys
-from collections import Counter, defaultdict
-from itertools import count
-import io
-import json
-from prepare_data import *
-from build_tree import *
 
+import argparse
+import json
+import math
+import sys
+
+import numpy as np
+
+from build_tree import *
+from lm_util import lm_util
+from prepare_data import *
+from searchAlgo import beam_search, greedy_search
+from utils.fileutils.kaldi import readScp
 
 print("decode_new_tr.py - version information follows:")
 try:

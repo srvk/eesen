@@ -1,5 +1,6 @@
 import tensorflow as tf
 import sys
+import constants
 
 class DeepBidirRNN:
 
@@ -120,21 +121,23 @@ class DeepBidirRNN:
 
     def __init__(self, config):
         
-        nfeat = config["nfeat"]
-        nhidden = config["nhidden"]
-        target_scheme = config["target_scheme"]
-        l2 = config["l2"]
-        nlayer = config["nlayer"]
-        clip = config["clip"]
-        nproj = config["nproj"]
-        batch_norm = config["batch_norm"]
+        nfeat = config[constants.INPUT_FEATS_DIM]
+        nhidden = config[constants.NHIDDEN]
+        target_scheme = config[constants.TARGET_SCHEME]
+        l2 = config[constants.L2]
+        nlayer = config[constants.NLAYERS]
+        clip = config[constants.CLIP]
+        nproj = config[constants.NPROJ]
+        batch_norm = config[constants.BATCH_NORM]
+        lstm_type = config[constants.LSTM_TYPE]
+        grad_opt = config[constants.GRAD_OPT]
 
+        adaptation_stage = config[constants.ADAPT_STAGE]
 
-        adaptation_stage = config["adapt_stage"]
 
         if adaptation_stage == 'train_adapt':
 
-            num_sat_layers = int(config["num_sat_layers"])
+            num_sat_layers = int(config[constants.NUM_SAT_LAYERS])
             adapt_dim = int(config["adapt_dim"])
             self.is_trainable_sat=False
 
@@ -144,15 +147,14 @@ class DeepBidirRNN:
             adapt_dim = config["adapt_dim"]
             self.is_trainable_sat=True
 
-        elif adaptation_stage == 'unadapted':
+        elif adaptation_stage == constants.ADAPTATION_STAGES.UNADAPTED:
             self.is_trainable_sat=True
 
         try:
             featproj = config["feat_proj"]
         except:
             featproj = 0
-        lstm_type = config["lstm_type"]
-        grad_opt = config["grad_opt"]
+
 
         # build the graph
         self.lr_rate = tf.placeholder(tf.float32, name = "learning_rate")[0]
@@ -229,14 +231,21 @@ class DeepBidirRNN:
         logits={}
         #TODO p2/p3 incompatibilities
         #TODO here when multilingual we ill have another for with language_key
-        for target_key, number_of_targets in target_scheme.iteritems():
-            scope = "output_fc"
-            if len(target_scheme.values()) > 1:
-                scope = "output_fc_"+target_key
-            logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = number_of_targets, scope = scope, biases_initializer = tf.contrib.layers.xavier_initializer())
-            if batch_norm:
-                logit = tf.contrib.layers.batch_norm(logit, center=True, scale=True, decay=0.9, is_training=self.is_training,  updates_collections=None)
-            logits[target_key] = logit
+        for language_key, targets_dic in target_scheme.iteritems():
+            #here is where we have to start
+
+            if len(target_scheme) > 1:
+                scope = "output_fc_"+language_key
+
+            for target_key, number_of_targets in targets_dic.iteritems():
+
+                if len(target_scheme) > 1:
+                    scope = scope+"_"+target_key
+
+                logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = number_of_targets, scope = scope, biases_initializer = tf.contrib.layers.xavier_initializer())
+                if batch_norm:
+                    logit = tf.contrib.layers.batch_norm(logit, center=True, scale=True, decay=0.9, is_training=self.is_training,  updates_collections=None)
+                logits[scope] = logit
 
         with tf.variable_scope("loss"):
             regularized_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()])

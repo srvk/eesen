@@ -1,6 +1,7 @@
-import tensorflow as tf
 import sys
 import constants
+import tensorflow as tf
+from utils.fileutils import debug
 
 class DeepBidirRNN:
 
@@ -10,6 +11,7 @@ class DeepBidirRNN:
             length = tf.reduce_sum(used, axis=1)
             length = tf.cast(length, tf.int32)
         return length
+
 
     def my_cudnn_lstm(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope, batch_norm, is_training = True):
         """
@@ -118,12 +120,30 @@ class DeepBidirRNN:
 
         return outputs
 
+    #TODO check that non expected var names have output in the name
+    def __generate_all_gradients(self, language_scheme, optimizer, clip):
+
+        language_ref=[]
+        all_gradients=[]
+        for language_id in language_scheme:
+            language_ref.append(language_id)
+            vars=[]
+            for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES):
+                if("logits" not in var.name):
+                    vars.append(var)
+                elif(language_id in var.name):
+                    vars.append(var)
+            gvs=optimizer.compute_gradients(self.cost, var_list=vars)
+            crapped_gvs = [(tf.clip_by_value(grad, -clip, clip), var) for grad, var in gvs]
+            all_gradients.append(optimizer.apply_gradients(crapped_gvs))
+
+        return language_ref, all_gradients
 
     def __init__(self, config):
-        
+
         nfeat = config[constants.INPUT_FEATS_DIM]
         nhidden = config[constants.NHIDDEN]
-        target_scheme = config[constants.TARGET_SCHEME]
+        language_scheme = config[constants.LANGUAGE_SCHEME]
         l2 = config[constants.L2]
         nlayer = config[constants.NLAYERS]
         clip = config[constants.CLIP]
@@ -161,6 +181,7 @@ class DeepBidirRNN:
         self.feats = tf.placeholder(tf.float32, [None, None, nfeat], name = "feats")
         self.temperature = tf.placeholder(tf.float32, name = "temperature")
         self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
+        self.labels=[]
 
         # try:
             #TODO can not do xrange directly?
@@ -170,12 +191,16 @@ class DeepBidirRNN:
             # self.labels = [tf.sparse_placeholder(tf.int32)
                            # for _ in xrange(len(target_scheme.values()))]
 
+        #for now we will create the maximum sparse_placeholder needed
         #TODO try to come out with a niter solution
-        #TODO for now only taking into consideration the labels
-        self.labels=[]
-        for target_id, _ in target_scheme.iteritems():
-            self.labels.append(tf.sparse_placeholder(tf.int32))
+        max_targets_layers=0
+        for language_id, language_target_dict in language_scheme.iteritems():
+                if(max_targets_layers < len(language_target_dict)):
+                    max_targets_layers = len(language_target_dict)
 
+        for language_id, target_scheme in language_scheme.iteritems():
+            for target_id, _ in target_scheme.iteritems():
+                self.labels.append(tf.sparse_placeholder(tf.int32))
 
         # except:
             # self.labels = [tf.sparse_placeholder(tf.int32)
@@ -193,7 +218,7 @@ class DeepBidirRNN:
 
         #TODO for now only taking into consideration the labels. Languages will be needed
         self.priors=[]
-        for target_id, _ in target_scheme.iteritems():
+        for target_id, _ in language_scheme.iteritems():
             self.priors.append(tf.placeholder(tf.float32))
         # except:
             # self.priors = [tf.placeholder(tf.float32)
@@ -228,54 +253,6 @@ class DeepBidirRNN:
         else:
             outputs = self.my_native_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "native_lstm")
 
-        logits={}
-        #TODO p2/p3 incompatibilities
-        #TODO here when multilingual we ill have another for with language_key
-        for language_key, targets_dic in target_scheme.iteritems():
-            #here is where we have to start
-
-            if len(target_scheme) > 1:
-                scope = "output_fc_"+language_key
-
-            for target_key, number_of_targets in targets_dic.iteritems():
-
-                if len(target_scheme) > 1:
-                    scope = scope+"_"+target_key
-
-                logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = number_of_targets, scope = scope, biases_initializer = tf.contrib.layers.xavier_initializer())
-                if batch_norm:
-                    logit = tf.contrib.layers.batch_norm(logit, center=True, scale=True, decay=0.9, is_training=self.is_training,  updates_collections=None)
-                logits[scope] = logit
-
-        with tf.variable_scope("loss"):
-            regularized_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()])
-
-        losses=[]
-        for idx, (taget_key, logit) in enumerate(logits.iteritems()):
-            loss = tf.nn.ctc_loss(labels=self.labels[idx], inputs=logit, sequence_length=self.seq_len)
-            losses.append(loss)
-
-        self.cost = tf.reduce_mean(losses) + l2 * regularized_loss
-
-        self.softmax_probs={}
-        self.log_softmax_probs={}
-        self.log_likelihoods={}
-        self.logits={}
-
-        with tf.variable_scope("eval_output"):
-            for idx, (target_key, logit) in enumerate(logits.iteritems()):
-
-                tran_logit = tf.transpose(logit, (1, 0, 2)) * self.temperature
-                self.logits[target_key]=tran_logit
-
-                softmax_prob = tf.nn.softmax(tran_logit, dim=-1, name=None)
-                self.softmax_probs[target_key]=softmax_prob
-
-                log_softmax_prob = tf.log(softmax_prob)
-                self.log_softmax_probs[target_key]=log_softmax_prob
-
-                log_likelihood = log_softmax_prob - tf.log(self.priors[idx])
-                self.log_likelihoods[target_key]=log_likelihood
 
         with tf.variable_scope("optimizer"):
             optimizer = None
@@ -287,28 +264,57 @@ class DeepBidirRNN:
             elif grad_opt == "momentum":
                 optimizer = tf.train.MomentumOptimizer(self.lr_rate, 0.9)
 
-            train_vars=[]
-            if(not self.is_trainable_sat):
-                train_vars_all = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
-                for var in train_vars_all:
-                    if "sat" in var.name:
-                        train_vars.append(var)
-            else:
-                train_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
-            gvs = optimizer.compute_gradients(self.cost, var_list=train_vars)
 
+        self.opt = []
+        self.ters = []
+        self.cost = []
+
+        count=0
+        for language_id, language_target_dict in language_scheme.iteritems():
+            losses=[]
+            tmp_ter=[]
+
+            for target_id, num_targets in language_target_dict.iteritems():
+                scope="output_fc_"+language_id+"_"+target_id
+                logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs=num_targets, scope = scope, biases_initializer = tf.contrib.layers.xavier_initializer())
+                loss = tf.nn.ctc_loss(labels=self.labels[count], inputs=logit, sequence_length=self.seq_len)
+                losses.append(loss)
+
+                decoded, log_prob = tf.nn.ctc_greedy_decoder(logit, self.seq_len)
+                ter = tf.reduce_sum(tf.edit_distance(tf.cast(decoded[0], tf.int32), self.labels[count], normalize = False), name = "ter")
+                tmp_ter.append(ter)
+
+                count=count+1
+
+            self.ters.append(tmp_ter)
+
+
+            var_list_new = self.get_variables_by_lan(language_id)
+
+            with tf.variable_scope("loss"):
+                regularized_loss = tf.add_n([tf.nn.l2_loss(v) for v in var_list_new])
+
+            tmp_cost=tf.reduce_mean(losses) + l2 * regularized_loss
+            gvs = optimizer.compute_gradients(tmp_cost, var_list = var_list_new)
             capped_gvs = [(tf.clip_by_value(grad, -clip, clip), var) for grad, var in gvs]
-            self.opt = optimizer.apply_gradients(capped_gvs)
 
-        self.decodes={}
-        self.log_probs={}
-        self.ters={}
+            #at end  of the day we will just pick up:
+            #cost: averaged cost of all targets of a language
+            #opt: activate the optimitzation over all the var_list (new_var_list) of a language
+            #ter: list of target ters in each language. When we get a language we get all ter targets
+            self.cost.append(tmp_cost)
+            self.opt.append(optimizer.apply_gradients(capped_gvs))
 
-        for idx, (target_key, logit) in enumerate(logits.iteritems()):
-            decoded, log_prob = tf.nn.ctc_greedy_decoder(logit, self.seq_len)
-            ter = tf.reduce_sum(tf.edit_distance(tf.cast(decoded[0], tf.int32), self.labels[idx] , normalize = False), name = "ter")
 
-            #store all results that will be returned
-            self.decodes[target_key]=decoded
-            self.log_probs[target_key]=log_prob
-            self.ters[target_key]=ter
+
+    def get_variables_by_lan(self, current_name):
+
+        train_vars=[]
+        for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES):
+            if("output_fc" not in var.name):
+                train_vars.append(var)
+            elif(current_name in var.name):
+                train_vars.append(var)
+
+        return train_vars
+

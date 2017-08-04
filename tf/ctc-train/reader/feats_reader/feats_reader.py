@@ -88,7 +88,7 @@ class FeatsReader(object):
         if(count_augmented_folder == 0 and count_scp_files == 0):
 
             print("multilingual set up detected on train set ("+str(len(os.listdir(data_dir)))+" languages) \n")
-            self.__process_multilingual_folder(data_dir, True)
+            self.__process_multilingual_folder(data_dir, False)
 
         else:
             self.__process_language_folder(data_dir, constants.NO_LANGUAGE_NAME, False)

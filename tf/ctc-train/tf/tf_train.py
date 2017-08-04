@@ -1,12 +1,13 @@
 from models.deep_bilstm import *
 from multiprocessing import Process, Queue
 import sys, os, re, time, random
+import pdb
 import constants
 from reader.reader_queue import run_reader_queue
 from reader.feats_reader import feats_reader_factory
 from reader.labels_reader import labels_reader_factory
 from random import randint
-
+import numpy as np
 
 
 class Train():
@@ -15,6 +16,10 @@ class Train():
         self.__config = config
         self.__model = DeepBidirRNN(config)
         self.__sess = tf.Session()
+        self.max_targets_layers = 0
+        for language_id, target_scheme in self.__config[constants.LANGUAGE_SCHEME].iteritems():
+                if(self.max_targets_layers < len(target_scheme)):
+                    self.max_targets_layers = len(target_scheme)
 
     def train_impl(self, data):
 
@@ -49,14 +54,18 @@ class Train():
                 #start timer...
                 tic = time.time()
 
+                print("training!")
                 #training...
                 train_cost, train_ters, ntrain = self.__train_epoch(epoch, lr_rate, tr_x, tr_y, tr_sat)
+                print("epoch done!")
 
                 if self.__config[constants.STORE_MODEL]:
                     saver.save(self.__sess, "%s/epoch%02d.ckpr" % (self.__config[constants.MODEL_DIR], epoch + 1))
 
                 #evaluate on validation...
+                print("eval starting")
                 cv_cost, cv_ters, ncv = self.__eval_epoch(cv_x, cv_y, cv_sat)
+                print("eval ended")
 
                 #print results
                 self.__generate_logs(cv_ters, cv_cost, ncv, train_ters, train_cost, ntrain, epoch, lr_rate, tic)
@@ -87,6 +96,7 @@ class Train():
 
             if new_lr_rate != self.__config["lr_rate"] and avg_ters > best_avg_ters and self.__config["store_model"]:
 
+                print ("load_ckpt", best_epoch+1, 100.0*best_avg_ters, epoch+1, 100.0*avg_ters, new_lr_rate)
                 print ("load_ckpt", best_epoch+1, 100.0*best_avg_ters, epoch+1, 100.0*avg_ters, new_lr_rate)
                 saver.restore(self.__sess, "%s/epoch%02d.ckpt" % (self.__config["__model_dir"], best_epoch+1))
 
@@ -125,9 +135,12 @@ class Train():
 
         #TODO change all iteritems for iter for python 3.0
         #TODO try to do an utils for this kind of functions
-        for target_id, _ in self.__config["target_scheme"].iteritems():
-            ntr_labels[target_id] = 0
-            train_ters[target_id] = 0
+        for language_id, target_scheme in self.__config[constants.LANGUAGE_SCHEME].iteritems():
+            ntr_labels[language_id]={}
+            train_ters[language_id]={}
+            for target_id, _ in target_scheme.iteritems():
+                ntr_labels[language_id][target_id] = 0
+                train_ters[language_id][target_id] = 0
 
         if self.__config["adapt_stage"] == "unadapted":
             p = Process(target = run_reader_queue, args = (data_queue, tr_x, tr_y, self.__config["do_shuf"]))
@@ -137,7 +150,6 @@ class Train():
         #start queue ...
         p.start()
 
-        test_batch_cost=0
         #training starting...
         while True:
 
@@ -148,13 +160,12 @@ class Train():
             if data is None:
                 break
 
-            #getting the feed
-            feed, batch_size = self.__prepare_feed(data, lr_rate)
+            feed, batch_size, index_correct_lan = self.__prepare_feed(data, lr_rate)
 
-            #run over a batch
-            batch_cost, batch_ters, _ = self.__sess.run([self.__model.cost, self.__model.ters, self.__model.opt], feed)
+            batch_cost, batch_ters, _ = self.__sess.run([self.__model.cost[index_correct_lan], self.__model.ters[index_correct_lan], self.__model.opt[index_correct_lan]], feed)
 
-            test_batch_cost += batch_cost * batch_size
+            train_cost += batch_cost * batch_size
+
             #updating values...
             train_ters, train_cost, ntrain, ntr_labels = self.__update_counters(train_ters, train_cost, ntrain, ntr_labels, batch_ters, batch_cost, batch_size, data[1])
 
@@ -169,12 +180,9 @@ class Train():
         #averaging counters
         train_cost /= ntrain
 
-        test_batch_cost /= ntrain
-
         for target_id, train_ter in train_ters.iteritems():
+
             train_ters[target_id] = train_ter/float(ntr_labels[target_id])
-            print("here:")
-            print(test_batch_cost)
 
         return train_cost, train_ters, ntrain
 
@@ -185,12 +193,13 @@ class Train():
 
         #initializing counters and dicts
         ncv, cv_step, cv_cost = 0.0, 0.0, 0.0
-        ncv_labels, cv_ters, ncv_label = {}, {}, {}
+        ncv_labels, cv_ters = {}, {}, {}
 
-        for target_id, _ in self.__config["target_scheme"].iteritems():
-            ncv_labels[target_id] = 0
-            cv_ters[target_id]= 0
-            ncv_label[target_id]=0
+        for language_id, language_scheme in self.__config[constants.LANGUAGE_SCHEME].iteritems():
+            for target_id, _ in self.__config[constants.LANGUAGE_SCHEME].iteritems():
+                ncv_labels[target_id] = 0
+                cv_ters[target_id]= 0
+                ncv_labels[target_id]=0
 
         if self.__config["adapt_stage"] == "unadapted":
             p = Process(target = run_reader_queue, args = (data_queue, cv_x, cv_y, self.__config["do_shuf"]))
@@ -234,10 +243,15 @@ class Train():
 
     def __update_counters(self, acum_ters, acum_cost, acum_samples, acum_labels, batch_ters, batch_cost, batch_size, ybatch):
 
-        for target_key, ter in batch_ters.iteritems():
-            acum_ters[target_key] += ter
-            for utterance_labels in ybatch[target_key]:
-                acum_labels[target_key] += len(utterance_labels)
+        #https://stackoverflow.com/questions/835092/python-dictionary-are-keys-and-values-always-the-same-order
+        #TODO although this should be changed for now is a workaround
+
+        for language_id, target_scheme in self.__config[constants.LANGUAGE_SCHEME].iteritems():
+            if(ybatch == language_id):
+                for target_id, _ in target_scheme.iteritems():
+                    #note that ybatch[0] contains targets and ybathc[1] contains language_id
+                    acum_ters[language_id][target_id] += ter
+                    acum_labels[language_id][target_id] += self.__get_label_len(ybatch[0])
 
         acum_cost += batch_cost * batch_size
         acum_samples += batch_size
@@ -312,14 +326,33 @@ class Train():
         else:
             x_batch, y_batch, sat_batch = data
 
+        #TODO remove uttid asap(just sanitychek)
+        utt_id = x_batch[1]
+        x_batch = x_batch[0]
+
         batch_size = len(x_batch)
 
-        y_batch_list=[]
-        for _, value in y_batch.iteritems():
-            y_batch_list.append(value)
+        count=0
+        for language_id, language_scheme in self.__config[constants.LANGUAGE_SCHEME].iteritems():
+            if (language_id == y_batch[1]):
+                index_correct_lan=count
+            count+=1
 
+        y_batch_list = []
+        count = 0
+
+        for _, value in y_batch[0].iteritems():
+            for _, value in value.iteritems():
+                y_batch_list.append(value)
+
+        if(len(y_batch_list) < self.max_targets_layers):
+           for count in range(self.max_targets_layers- len(y_batch_list)):
+               y_batch_list.append(y_batch_list[0])
+
+        #eventhough self.__model.labels will be equal or grater we will use only until_batch_list
         feed = {i: y for i, y in zip(self.__model.labels, y_batch_list)}
 
+        #TODO remove this prelimenary approaches
         feed[self.__model.feats] = x_batch
 
         #it is training
@@ -332,12 +365,12 @@ class Train():
         if self.__config["adapt_stage"] != 'unadapted':
             feed[self.__model.sat] = sat_batch
 
-        return feed, batch_size
+        return feed, batch_size, index_correct_lan
 
     def __info(self, s):
         s = "[" + time.strftime("%Y-%m-%d %H:%M:%S") + "] " + s
         print(s)
 
-    def __get_label_len(label):
+    def __get_label_len(self, label):
         idx, _, _ = label
         return len(idx)

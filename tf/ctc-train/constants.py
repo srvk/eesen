@@ -7,7 +7,7 @@ NO_LANGUAGE_NAME = "no_name_language"
 NO_TARGET_NAME = "no_target_name"
 
 #configuartion tags
-TARGET_SCHEME = "target_scheme"
+LANGUAGE_SCHEME = "target_scheme"
 INPUT_FEATS_DIM = "input_feats_dim"
 BATCH_SIZE = "batch_size"
 LSTM_TYPE = "lstm_type"

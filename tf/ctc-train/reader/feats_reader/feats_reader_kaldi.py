@@ -20,7 +20,6 @@ class FeatsReaderKaldi(FeatsReader):
         #getting feat in list format no need to search anything
         feat_dict_info_languages = self.__read_dict_info_languages()
 
-
         if(batches_id):
             print("ordering (from batch_id) "+info_set+" batches... \n")
             self._batches_x = self.__order_feat_info(feat_dict_info_languages, batches_id)
@@ -71,7 +70,11 @@ class FeatsReaderKaldi(FeatsReader):
         number_of_utt=len(self._batches_x[idx])
         max_utt_len = max(x[2] for x in self._batches_x[idx])
 
-        for arkfile, offset, feat_len, feat_dim, augment in self._batches_x[idx]:
+        #TODO remove this asap (just sanity check)
+        uttid_check=[]
+
+        #TODO remove uttid asap(just sanitychek)
+        for arkfile, offset, feat_len, feat_dim, augment, uttid in self._batches_x[idx]:
 
             feat = readMatrixByOffset(arkfile, offset)
 
@@ -87,11 +90,11 @@ class FeatsReaderKaldi(FeatsReader):
             if tmpx is None:
                 tmpx = np.zeros((number_of_utt, max_utt_len, feat_dim), np.float32)
 
-
             tmpx[i, :feat_len, :] = feat
+            uttid_check.append(uttid)
             i += 1
 
-        return tmpx
+        return (tmpx, uttid_check)
 
     def __create_ordered_batches_all_languages(self, feat_dict_info_languages, lstm_type, batch_size):
 
@@ -102,17 +105,14 @@ class FeatsReaderKaldi(FeatsReader):
 
             batch_x_language, batch_id_language = self.__create_ordered_batches(feat_dict_info, lstm_type, batch_size)
 
+
             #coloring every batch with its language
             batch_id_language_c=zip(batch_id_language, [language]*len(batch_id_language))
 
-            all_ziped_batches.append((batch_x_language, batch_id_language_c))
+            all_ziped_batches=all_ziped_batches+zip(batch_x_language, batch_id_language_c)
 
         #unzip
-        batch_x, batch_id = zip(*(all_ziped_batches))
-
-        #TODO workaround we should perfrom the unzip in a proper maner (after priorities)
-        batch_x=batch_x[0]
-        batch_id=batch_id[0]
+        batch_x, batch_id = zip(*all_ziped_batches)
 
         return batch_x, batch_id
 
@@ -181,7 +181,7 @@ class FeatsReaderKaldi(FeatsReader):
 
         for i in range(height):
             uttid_aux, arkfile, offset, feat_len, feat_dim, augment = feat_info[start + i]
-            xinfo.append((arkfile, offset, feat_len, feat_dim, augment))
+            xinfo.append((arkfile, offset, feat_len, feat_dim, augment, uttid_aux))
             uttid.append(uttid_aux)
 
         return xinfo, uttid

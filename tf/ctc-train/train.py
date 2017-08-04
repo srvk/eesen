@@ -90,7 +90,7 @@ def create_online_argu_config(args):
     #TODO enter the values using a conf file or something
     online_augment_config={}
     online_augment_config[constants.AUGMENTATION.WINDOW]=3
-    online_augment_config[constants.AUGMENTATION.FACTOR]=3
+    online_augment_config[constants.AUGMENTATION.FACTOR]=1
     online_augment_config[constants.AUGMENTATION.ROLL]=False
 
     return online_augment_config
@@ -157,28 +157,24 @@ def main():
 
 
     #load training feats
-    print("processing tr_x")
     tr_x = feats_reader_factory.create_reader('train', 'kaldi', config)
 
     #load training targets
-    print("processing tr_y")
     tr_y = labels_reader_factory.create_reader('train', 'txt', config, tr_x.get_batches_id())
 
+
     #create reader for labels
-    print("processing cv_x")
     cv_x = feats_reader_factory.create_reader('cv', 'kaldi', config)
 
     #create reader for labels
-    print("processing cv_y")
     cv_y = labels_reader_factory.create_reader('cv', 'txt', config, cv_x.get_batches_id())
 
     #set config (targets could change)
     config[constants.INPUT_FEATS_DIM] = cv_x.get_num_dim()
-    config[constants.TARGET_SCHEME] = cv_y.get_target_scheme()
+    config[constants.LANGUAGE_SCHEME] = cv_y.get_language_scheme()
 
     #checking that all sets are consitent
     set_checker.check_sets(cv_x, cv_y, tr_x, tr_y)
-
 
     if config[constants.ADAPT_STAGE] != constants.ADAPTATION_STAGES.UNADAPTED:
 
@@ -187,7 +183,6 @@ def main():
         data = (cv_x, tr_x, cv_y, tr_y, cv_sat, tr_sat)
         config[constants.SAT_FEAT_DIM] = tr_sat.get_num_dim()
     else:
-
         data = (cv_x, tr_x, cv_y, tr_y)
 
     config[constants.MODEL_DIR] = os.path.join(config[constants.TRAIN_DIR], "model")

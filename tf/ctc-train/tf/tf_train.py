@@ -4,10 +4,7 @@ import sys, os, re, time, random
 import pdb
 import constants
 from reader.reader_queue import run_reader_queue
-from reader.feats_reader import feats_reader_factory
-from reader.labels_reader import labels_reader_factory
 from random import randint
-import numpy as np
 
 
 class Train():
@@ -64,6 +61,9 @@ class Train():
 
                 #evaluate on validation...
                 print("eval starting")
+
+                #TODO check eval
+                #TODO check results
                 cv_cost, cv_ters, ncv = self.__eval_epoch(cv_x, cv_y, cv_sat)
                 print("eval ended")
 
@@ -71,18 +71,20 @@ class Train():
                 self.__generate_logs(cv_ters, cv_cost, ncv, train_ters, train_cost, ntrain, epoch, lr_rate, tic)
 
                 #change set if needed (mix augmentation)
-                if(tr_x.get_num_augmented_folders() > 1):
-                    self.__update_sets(tr_x, tr_y, tr_sat)
+                self.__update_sets(tr_x, tr_y, tr_sat)
 
                 #update lr_rate if needed
                 lr_rate, best_avg_ters, best_epoch = self.__update_lr_rate(epoch, cv_ters, best_avg_ters, best_epoch, saver)
 
     def __compute_avg_ters(self, ters):
 
+        nters=0
         avg_ters = 0.0
-        for _, ter in ters.iteritems():
-            avg_ters += ter
-        avg_ters /= len(ters.values())
+        for language_id, target_scheme in ters.items():
+            for target_id, ter in target_scheme.items():
+                avg_ters += ter
+                nters+=1
+        avg_ters /= float(nters)
 
         return avg_ters
 
@@ -98,7 +100,7 @@ class Train():
 
                 print ("load_ckpt", best_epoch+1, 100.0*best_avg_ters, epoch+1, 100.0*avg_ters, new_lr_rate)
                 print ("load_ckpt", best_epoch+1, 100.0*best_avg_ters, epoch+1, 100.0*avg_ters, new_lr_rate)
-                saver.restore(self.__sess, "%s/epoch%02d.ckpt" % (self.__config["__model_dir"], best_epoch+1))
+                saver.restore(self.__sess, "%s/epoch%02d.ckpt" % (self.__config["model_dir"], best_epoch+1))
 
             lr_rate = new_lr_rate
         else:
@@ -112,15 +114,22 @@ class Train():
 
     def __update_sets(self, m_tr_x, m_tr_y, m_tr_sat):
 
-        #get a random folder of all previously provided
-        m_tr_x.change_source(randint(0, m_tr_x.get_num_augmented_folders()-1))
+        for language_id, lan_aug_folders in m_tr_x.get_language_augment_scheme().iteritems():
 
-        #reorganize sat reader (augmentation might change the order)
-        if m_tr_sat:
-            m_tr_sat.update_batches_id(m_tr_x.get_batches_id())
+            if(len(lan_aug_folders) > 1):
 
-        #reorganize label reader (augmentation might change the order)
-        m_tr_y.update_batches_id(m_tr_x.get_batches_id())
+                #get a random folder of all previously provided
+                m_tr_x.change_source(randint(0, len(lan_aug_folders)-1))
+
+                #reorganize sat reader (augmentation might change the order)
+                if m_tr_sat:
+                    m_tr_sat.update_batches_id(m_tr_x.get_batches_id())
+
+                #reorganize label reader (augmentation might change the order)
+                m_tr_y.update_batches_id(m_tr_x.get_batches_id())
+            else:
+                print("not mix augmentation found for "+language_id+"...\n")
+                print("skiping language augmentation ...\n")
 
     def __train_epoch(self, epoch, lr_rate, tr_x, tr_y, tr_sat):
 
@@ -180,10 +189,9 @@ class Train():
         #averaging counters
         train_cost /= ntrain
 
-        for target_id, train_ter in train_ters.iteritems():
-
-            train_ters[target_id] = train_ter/float(ntr_labels[target_id])
-
+        for language_id, target_scheme in train_ters.iteritems():
+            for target_id, train_ter in target_scheme.iteritems():
+                train_ters[language_id][target_id] = train_ter/float(ntr_labels[language_id][target_id])
         return train_cost, train_ters, ntrain
 
     def __eval_epoch(self, cv_x, cv_y, cv_sat):
@@ -193,13 +201,14 @@ class Train():
 
         #initializing counters and dicts
         ncv, cv_step, cv_cost = 0.0, 0.0, 0.0
-        ncv_labels, cv_ters = {}, {}, {}
+        ncv_labels, cv_ters = {}, {}
 
-        for language_id, language_scheme in self.__config[constants.LANGUAGE_SCHEME].iteritems():
-            for target_id, _ in self.__config[constants.LANGUAGE_SCHEME].iteritems():
-                ncv_labels[target_id] = 0
-                cv_ters[target_id]= 0
-                ncv_labels[target_id]=0
+        for language_id, target_scheme in self.__config[constants.LANGUAGE_SCHEME].iteritems():
+            ncv_labels[language_id] = {}
+            cv_ters[language_id] = {}
+            for target_id, _ in target_scheme.iteritems():
+                ncv_labels[language_id][target_id] = 0
+                cv_ters[language_id][target_id]= 0
 
         if self.__config["adapt_stage"] == "unadapted":
             p = Process(target = run_reader_queue, args = (data_queue, cv_x, cv_y, self.__config["do_shuf"]))
@@ -222,10 +231,10 @@ class Train():
             count += 1
 
             #getting the feed..
-            feed, batch_size = self.__prepare_feed(data)
+            feed, batch_size, index_correct_lan = self.__prepare_feed(data)
 
             #processing a batch...
-            batch_cost, batch_ters = self.__sess.run([self.__model.cost, self.__model.ters], feed)
+            batch_cost, batch_ters, = self.__sess.run([self.__model.cost[index_correct_lan], self.__model.ters[index_correct_lan]], feed)
 
             #updating values...
             cv_ters, cv_cost, ncv, ncv_labels = self.__update_counters(cv_ters, cv_cost, ncv, ncv_labels, batch_ters, batch_cost, batch_size, data[1])
@@ -236,8 +245,9 @@ class Train():
 
         #averaging counters
         cv_cost /= ncv
-        for target_id, cv_ter in cv_ters.iteritems():
-            cv_ters[target_id] = cv_ter/float(ncv_labels[target_id])
+        for language_id, target_scheme in cv_ters.iteritems():
+            for target_id, cv_ter in target_scheme.iteritems():
+                cv_ters[language_id][target_id] = cv_ter/float(ncv_labels[language_id][target_id])
 
         return cv_cost, cv_ters, ncv
 
@@ -247,17 +257,16 @@ class Train():
         #TODO although this should be changed for now is a workaround
 
         for language_id, target_scheme in self.__config[constants.LANGUAGE_SCHEME].iteritems():
-            if(ybatch == language_id):
-                for target_id, _ in target_scheme.iteritems():
+            if(ybatch[1] == language_id):
+                for idx, (target_id, _) in enumerate(target_scheme.iteritems()):
                     #note that ybatch[0] contains targets and ybathc[1] contains language_id
-                    acum_ters[language_id][target_id] += ter
-                    acum_labels[language_id][target_id] += self.__get_label_len(ybatch[0])
+                    acum_ters[language_id][target_id] += batch_ters[idx]
+                    acum_labels[language_id][target_id] += self.__get_label_len(ybatch[0][language_id][target_id])
 
         acum_cost += batch_cost * batch_size
         acum_samples += batch_size
 
         return acum_ters, acum_cost, acum_samples, acum_labels
-
 
     def __restore_weights(self):
 
@@ -298,16 +307,18 @@ class Train():
         with open("%s/epoch%02d.log" % (self.__config["model_dir"], epoch + 1), 'w') as fp:
             fp.write("Time: %.0f minutes, lrate: %.4g\n" % ((time.time() - tic)/60.0, lr_rate))
 
-            for target_key, cv_ter in cv_ters.iteritems():
-                if(len(cv_ters) > 1):
-                    fp.write("Target: %s" % (target_key))
-                    print("Target: %s" % (target_key))
-                fp.write("Train    cost: %.1f, ter: %.1f%%, #example: %d\n" % (train_cost, 100.0*train_ters[target_key], ntrain))
-                fp.write("Validate cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost, 100.0*cv_ter, ncv))
-
-                print("\t Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost, 100.0*train_ters[target_key], ntrain))
-                print("\t Validate cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost, 100.0*cv_ter, ncv))
-
+            for language_id, target_scheme in cv_ters.iteritems():
+                if(cv_ters > 1):
+                    print("Language: "+language_id)
+                    fp.write("Language: "+language_id)
+                for target_id,  cv_ter in target_scheme.iteritems():
+                    if(len(target_scheme) > 1):
+                        print("\tTarget: %s" % (target_id))
+                        fp.write("\tTarget: %s" % (target_id))
+                    print("\t\t Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost, 100.0*train_ters[language_id][target_id], ntrain))
+                    print("\t\t Validate cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost, 100.0*cv_ter, ncv))
+                    fp.write("\t\tTrain    cost: %.1f, ter: %.1f%%, #example: %d\n" % (train_cost, 100.0*train_ters[language_id][target_id], ntrain))
+                    fp.write("\t\tValidate cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost, 100.0*cv_ter, ncv))
 
     def __print_counts_debug(self, epoch, batch_counter, total_number_batches, batch_cost, batch_size, batch_ters, data_queue):
 

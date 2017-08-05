@@ -1,10 +1,11 @@
 from utils.fileutils import debug
+import constants
 
 def check_sets(cv_x, cv_y, tr_x, tr_y):
     #here we should check that cv and tr have the same languages
 
-    for language in cv_x.get_id_augmented_folders():
-        if((language not in cv_y.get_language_scheme()) or (language not in tr_x.get_id_augmented_folders()) or (language not in tr_y.get_language_scheme())):
+    for language in cv_x.get_language_augment_scheme():
+        if((language not in cv_y.get_language_scheme()) or (language not in tr_x.get_language_augment_scheme()) or (language not in tr_y.get_language_scheme())):
             print("Error: in language: "+language+" not find in cv_y, tr_x or tr_y\n")
             print(debug.get_debug_info())
             print("exiting... \n")
@@ -24,4 +25,19 @@ def check_sets(cv_x, cv_y, tr_x, tr_y):
                 print("exiting... \n")
 
     print("number of targets checked... \n")
+
+
+def check_test(config, test_x, sat_x = None):
+
+    if(config[constants.INPUT_FEATS_DIM] != test_x.get_num_dim()):
+        print("Error: input dimension from model loaded("+str(config[constants.INPUT_FEATS_DIM])+") is not the same as input_feats ("+str(test_x.get_num_dim())+")")
+        print(debug.get_debug_info())
+        print("exiting... \n")
+
+    if(sat_x):
+        if(config[constants.SAT_FEAT_DIM] != sat_x.get_num_dim()):
+            print("Error: input sat dimension from model loaded("+str(config[constants.SAT_FEAT_DIM])+") is not the same as input_feats ("+str(sat_x.get_num_dim())+")")
+            print(debug.get_debug_info())
+            print("exiting... \n")
+
 

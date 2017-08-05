@@ -15,5 +15,6 @@ def run_reader_queue(queue, reader_x, reader_y, do_shuf, reader_sat=None):
             queue.put((x, y, sat))
         else:
             queue.put((x, y))
+
     queue.put(None)
 

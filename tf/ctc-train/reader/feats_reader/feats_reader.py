@@ -22,7 +22,7 @@ class FeatsReader(object):
     def __init__(self, info_set, data_dir, online_augment_config, extension):
 
         #list of all folders
-        self._language_scheme = {}
+        self._language_augment_scheme = {}
         self._info_set = info_set
         self._extension = extension
         self._augmenter = Augmenter(online_augment_config)
@@ -65,8 +65,8 @@ class FeatsReader(object):
         sys.exit()
 
     #TODO here we will need to indicate which language are we looking for
-    def get_id_augmented_folders(self):
-        return self._language_scheme
+    def get_language_augment_scheme(self):
+        return self._language_augment_scheme
 
     #getter number of feature dimension. Just taking the size of the first
     def get_num_dim (self):
@@ -134,7 +134,7 @@ class FeatsReader(object):
                 print("non augmented (mix) training set found for language: "+language_name+" ... \n")
             else:
                 print(self._info_set+" (feats) found for language: "+language_name+" ... \n")
-            self._language_scheme[language_name] = [self.__read_folder(data_dir, self._info_set, self._extension)]
+            self._language_augment_scheme[language_name] = [self.__read_folder(data_dir, self._info_set, self._extension)]
 
     def __count_status_files(self, data_dir):
 
@@ -152,8 +152,9 @@ class FeatsReader(object):
 
     def __read_augmented_folder(self, data_dir, info_set, extension, language_name):
 
-        self._language_scheme[language_name]=[]
+        self._language_augment_scheme[language_name]=[]
 
+        count_augment = 0
         for augmented_dirname in os.listdir(data_dir):
 
             augmented_path = os.path.join(data_dir, augmented_dirname)
@@ -162,7 +163,7 @@ class FeatsReader(object):
             if os.path.isdir(augmented_path) and augmented_dirname.startswith("augment"):
                 feats_file = self.__read_folder(augmented_path, info_set, extension)
                 if(feats_file):
-                    self._language_scheme[language_name].append(feats_file)
+                    self._language_augment_scheme[language_name].append(feats_file)
                 else:
                     print("No feats.scp encountered in  "+augmented_path+" for language "+language_name)
                     print(debug.get_debug_info())

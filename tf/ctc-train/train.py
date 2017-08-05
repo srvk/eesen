@@ -90,7 +90,7 @@ def create_online_argu_config(args):
     #TODO enter the values using a conf file or something
     online_augment_config={}
     online_augment_config[constants.AUGMENTATION.WINDOW]=3
-    online_augment_config[constants.AUGMENTATION.FACTOR]=1
+    online_augment_config[constants.AUGMENTATION.FACTOR]=3
     online_augment_config[constants.AUGMENTATION.ROLL]=False
 
     return online_augment_config
@@ -191,14 +191,6 @@ def main():
     if not os.path.exists(config[constants.MODEL_DIR]):
         os.makedirs(config[constants.MODEL_DIR])
     pickle.dump(config, open(os.path.join(config[constants.TRAIN_DIR], "config.pkl"), "wb"))
-
-    #log of expriment configuration
-    sys.stdout.flush()
-    print(80 * "-")
-    print("experiment configuration:")
-    print(80 * "-")
-    for k, v in config.items():
-        print(k, v)
 
     #start the acutal training
 

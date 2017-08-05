@@ -53,8 +53,15 @@ ADAPT_ORG_PATH="adapt_org_path"
 
 class ADAPTATION_STAGES:
     UNADAPTED="unadapted"
+    TRAIN_ADAPTATION="trainadaptation"
+    FINE_TUNE="trainadaptation"
 
 class AUGMENTATION:
     WINDOW="win"
     FACTOR="factor"
     ROLL="roll"
+
+class LSTM_TYPE:
+    CUDNN= "cudnn_lstm"
+    FUSE= "fuse_lstm"
+    NATIVE= "native_lstm"

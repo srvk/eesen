@@ -48,6 +48,8 @@ class Train():
 
             for epoch in range(alpha, self.__config[constants.NEPOCH]):
 
+                sys.exit()
+
                 #start timer...
                 tic = time.time()
 
@@ -57,7 +59,7 @@ class Train():
                 print("epoch done!")
 
                 if self.__config[constants.STORE_MODEL]:
-                    saver.save(self.__sess, "%s/epoch%02d.ckpr" % (self.__config[constants.MODEL_DIR], epoch + 1))
+                    saver.save(self.__sess, "%s/epoch%02d.ckpt" % (self.__config[constants.MODEL_DIR], epoch + 1))
 
                 #evaluate on validation...
                 print("eval starting")

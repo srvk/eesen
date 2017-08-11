@@ -10,7 +10,7 @@ from utils.fileutils.kaldi import read_scp_info_dic
 
 class FeatsReaderKaldi(FeatsReader):
 
-    def __init__ (self, info_set, config):
+    def __init__ (self, info_set, config, batches_id = None):
 
         self.__config = config
 
@@ -21,10 +21,32 @@ class FeatsReaderKaldi(FeatsReader):
         #getting feat in list format no need to search anything
         feat_dict_info_languages = self.__read_dict_info_languages()
 
-        print("ordering all languages (from scratch) "+info_set+" batches... \n")
-        self._batches_x, self._batches_id = self.__create_ordered_batches_all_languages(feat_dict_info_languages, config[constants.CONF_TAGS.LSTM_TYPE], config[constants.CONF_TAGS.BATCH_SIZE])
+        if info_set == "sat":
+            print(feat_dict_info_languages)
 
-    #TODO check augmentation this idea is kinda ok, but should take a closer look
+            sys.exit()
+        if(batches_id):
+            print("ordering (from batch_id) "+info_set+" batches... \n")
+            self._batches_x = self.__order_feat_info(feat_dict_info_languages, batches_id)
+        else:
+            print("ordering all languages (from scratch) "+info_set+" batches... \n")
+            self._batches_x, self._batches_id = self.__create_ordered_batches_all_languages(feat_dict_info_languages, config[constants.CONF_TAGS.LSTM_TYPE], config[constants.CONF_TAGS.BATCH_SIZE])
+
+    def update_batches_id(self, batches_id):
+
+        if(self._info_set == "train"):
+            print("this option (update_batches_id) is not available for this type of info_set (train)")
+            print(debug.get_debug_info())
+            print("exiting...")
+            sys.exit()
+
+        print("reordering "+self._info_set+" batches...")
+
+        #reordering stuff
+        self.__batches_id=batches_id
+        feat_dict_info = read_scp_info_dic(self.list_files[0])
+        self._batches_x = self.__order_feat_info(feat_dict_info, self._batches_id)
+
     def change_source (self, source_position):
 
         if(self._info_set != 'train'):
@@ -47,7 +69,6 @@ class FeatsReaderKaldi(FeatsReader):
 
     #read batch idx. Input: batch index. Output: batch read with feats
     def read (self, idx):
-
         i=0
         tmpx=None
 
@@ -169,4 +190,26 @@ class FeatsReaderKaldi(FeatsReader):
             uttid.append(uttid_aux)
 
         return xinfo, uttid
+
+    #recieve a dictionary and a batch strucute and it orders everything up
+    def __order_feat_info (self, feat_dict_info, batches_id):
+
+        #all batches
+        batches_xinfo=[]
+
+        for batch_id in batches_id:
+
+            #get language of the batch
+            batch_language = batch_id[1]
+
+            #create new batch
+            batch_xinfo=[]
+
+            for uttid in batch_id[0]:
+
+                #get sat vector according to language and uutid
+                batch_xinfo.append(feat_dict_info[batch_language][uttid])
+            batches_xinfo.append(batch_xinfo)
+
+        return batches_xinfo
 

@@ -14,26 +14,25 @@ class Train():
         self.__model = DeepBidirRNN(config)
         self.__sess = tf.Session()
         self.max_targets_layers = 0
-        for language_id, target_scheme in self.__config[constants.LANGUAGE_SCHEME].iteritems():
+        for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
                 if(self.max_targets_layers < len(target_scheme)):
                     self.max_targets_layers = len(target_scheme)
 
     def train_impl(self, data):
 
             #set random seed so that models can be reproduced
-            tf.set_random_seed(self.__config[constants.RANDOM_SEED])
-            random.seed(self.__config[constants.RANDOM_SEED])
+            tf.set_random_seed(self.__config[constants.CONF_TAGS.RANDOM_SEED])
+            random.seed(self.__config[constants.CONF_TAGS.RANDOM_SEED])
 
             #construct the __model acoring to __config
-            if(self.__config[constants.ADAPT_STAGE] == constants.ADAPTATION_STAGES.UNADAPTED):
+            if(self.__config[constants.CONF_TAGS.APPLY_SAT]):
+                cv_x, tr_x, cv_y, tr_y, cv_sat, tr_sat = data
+            else:
                 cv_x, tr_x, cv_y, tr_y = data
                 tr_sat=None
                 cv_sat=None
-            else:
-                cv_x, tr_x, cv_y, tr_y, cv_sat, tr_sat = data
-
-            if not os.path.exists(self.__config[constants.MODEL_DIR]):
-                os.makedirs(self.__config[constants.MODEL_DIR])
+            if not os.path.exists(self.__config[constants.CONF_TAGS.MODEL_DIR]):
+                os.makedirs(self.__config[constants.CONF_TAGS.MODEL_DIR])
 
             #initialize variables of our model
             self.__sess.run(tf.global_variables_initializer())
@@ -44,32 +43,25 @@ class Train():
             #initialize counters
             best_avg_ters = float("inf")
             best_epoch = 0
-            lr_rate = self.__config[constants.LR_RATE]
+            lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
 
-            for epoch in range(alpha, self.__config[constants.NEPOCH]):
-
-                sys.exit()
+            for epoch in range(alpha, self.__config[constants.CONF_TAGS.NEPOCH]):
 
                 #start timer...
                 tic = time.time()
 
-                print("training!")
                 #training...
                 train_cost, train_ters, ntrain = self.__train_epoch(epoch, lr_rate, tr_x, tr_y, tr_sat)
-                print("epoch done!")
 
-                if self.__config[constants.STORE_MODEL]:
-                    saver.save(self.__sess, "%s/epoch%02d.ckpt" % (self.__config[constants.MODEL_DIR], epoch + 1))
+                if self.__config[constants.CONF_TAGS.STORE_MODEL]:
+                    saver.save(self.__sess, "%s/epoch%02d.ckpt" % (self.__config[constants.CONF_TAGS.MODEL_DIR], epoch + 1))
 
                 #evaluate on validation...
-                print("eval starting")
 
                 #TODO check eval
                 #TODO check results
                 cv_cost, cv_ters, ncv = self.__eval_epoch(cv_x, cv_y, cv_sat)
-                print("eval ended")
 
-                #print results
                 self.__generate_logs(cv_ters, cv_cost, ncv, train_ters, train_cost, ntrain, epoch, lr_rate, tic)
 
                 #change set if needed (mix augmentation)
@@ -139,24 +131,29 @@ class Train():
         data_queue = Queue(self.__config["batch_size"])
 
         #initializing samples, steps and cost counters
-        batch_counter, ntrain, train_cost = 0, 0, 0
+        batch_counter = 0
 
         #initializinzing dictionaries that will count
-        train_ters, ntr_labels = {}, {}
+        train_ters, ntr_labels, ntrain, train_cost = {}, {}, {}, {}
 
         #TODO change all iteritems for iter for python 3.0
         #TODO try to do an utils for this kind of functions
-        for language_id, target_scheme in self.__config[constants.LANGUAGE_SCHEME].iteritems():
+        for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
+
             ntr_labels[language_id]={}
             train_ters[language_id]={}
+
+            ntrain[language_id] = 0
+            train_cost[language_id] = 0
+
             for target_id, _ in target_scheme.iteritems():
                 ntr_labels[language_id][target_id] = 0
                 train_ters[language_id][target_id] = 0
 
-        if self.__config["adapt_stage"] == "unadapted":
-            p = Process(target = run_reader_queue, args = (data_queue, tr_x, tr_y, self.__config["do_shuf"]))
-        else:
+        if self.__config[constants.CONF_TAGS.APPLY_SAT]:
             p = Process(target = run_reader_queue, args = (data_queue, tr_x , tr_y, self.__config["do_shuf"], tr_sat))
+        else:
+            p = Process(target = run_reader_queue, args = (data_queue, tr_x, tr_y, self.__config["do_shuf"]))
 
         #start queue ...
         p.start()
@@ -175,47 +172,52 @@ class Train():
 
             batch_cost, batch_ters, _ = self.__sess.run([self.__model.cost[index_correct_lan], self.__model.ters[index_correct_lan], self.__model.opt[index_correct_lan]], feed)
 
-            train_cost += batch_cost * batch_size
-
             #updating values...
-            train_ters, train_cost, ntrain, ntr_labels = self.__update_counters(train_ters, train_cost, ntrain, ntr_labels, batch_ters, batch_cost, batch_size, data[1])
+            self.__update_counters(train_ters, train_cost, ntrain, ntr_labels, batch_ters, batch_cost, batch_size, data[1])
 
             #print if in debug mode
-            if self.__config["debug"] == True:
-                self.__print_counts_debug(epoch, batch_counter, batch_counter, batch_cost, batch_size, batch_ters, data_queue)
-                batch_counter += 1
+            if self.__config[constants.CONF_TAGS.DEBUG] == True:
 
+                self.__print_counts_debug(epoch, batch_counter, tr_x.get_num_batches(), batch_cost, batch_size, batch_ters, data_queue)
+                batch_counter += 1
         p.join()
         p.terminate()
 
         #averaging counters
-        train_cost /= ntrain
+        for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
+            train_cost[language_id] = train_cost[language_id] / ntrain[language_id]
 
         for language_id, target_scheme in train_ters.iteritems():
             for target_id, train_ter in target_scheme.iteritems():
                 train_ters[language_id][target_id] = train_ter/float(ntr_labels[language_id][target_id])
+
         return train_cost, train_ters, ntrain
 
     def __eval_epoch(self, cv_x, cv_y, cv_sat):
 
         #init data_queue
-        data_queue = Queue(self.__config["batch_size"])
+        data_queue = Queue(self.__config[constants.CONF_TAGS.BATCH_SIZE])
 
         #initializing counters and dicts
-        ncv, cv_step, cv_cost = 0.0, 0.0, 0.0
-        ncv_labels, cv_ters = {}, {}
+        ncv_labels, cv_ters, cv_cost, ncv = {}, {}, {}, {}
 
-        for language_id, target_scheme in self.__config[constants.LANGUAGE_SCHEME].iteritems():
+        for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
             ncv_labels[language_id] = {}
             cv_ters[language_id] = {}
+
+            ncv[language_id] = 0
+            cv_cost[language_id] = 0
+
             for target_id, _ in target_scheme.iteritems():
                 ncv_labels[language_id][target_id] = 0
                 cv_ters[language_id][target_id]= 0
 
-        if self.__config["adapt_stage"] == "unadapted":
-            p = Process(target = run_reader_queue, args = (data_queue, cv_x, cv_y, self.__config["do_shuf"]))
+        if self.__config[constants.CONF_TAGS.APPLY_SAT]:
+            p = Process(target = run_reader_queue, args = (data_queue, cv_x , cv_y,
+                                                           self.__config[constants.CONF_TAGS.DO_SHUF], cv_sat))
         else:
-            p = Process(target = run_reader_queue, args = (data_queue, cv_x , cv_y, self.__config["do_shuf"], cv_sat))
+            p = Process(target = run_reader_queue, args = (data_queue, cv_x, cv_y,
+                                                           self.__config[constants.CONF_TAGS.DO_SHUF]))
 
         #starting the queue...
         p.start()
@@ -239,66 +241,73 @@ class Train():
             batch_cost, batch_ters, = self.__sess.run([self.__model.cost[index_correct_lan], self.__model.ters[index_correct_lan]], feed)
 
             #updating values...
-            cv_ters, cv_cost, ncv, ncv_labels = self.__update_counters(cv_ters, cv_cost, ncv, ncv_labels, batch_ters, batch_cost, batch_size, data[1])
+            self.__update_counters(cv_ters, cv_cost, ncv, ncv_labels, batch_ters, batch_cost, batch_size, data[1])
 
         #terminating the queue
         p.join()
         p.terminate()
 
         #averaging counters
-        cv_cost /= ncv
+        for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
+            cv_cost[language_id] =  cv_cost[language_id] / ncv[language_id]
+
         for language_id, target_scheme in cv_ters.iteritems():
             for target_id, cv_ter in target_scheme.iteritems():
                 cv_ters[language_id][target_id] = cv_ter/float(ncv_labels[language_id][target_id])
 
         return cv_cost, cv_ters, ncv
 
-    def __update_counters(self, acum_ters, acum_cost, acum_samples, acum_labels, batch_ters, batch_cost, batch_size, ybatch):
+    def __update_counters(self, m_acum_ters, m_acum_cost, m_acum_samples, m_acum_labels,
+                          m_batch_ters, m_batch_cost, batch_size, ybatch):
 
         #https://stackoverflow.com/questions/835092/python-dictionary-are-keys-and-values-always-the-same-order
         #TODO although this should be changed for now is a workaround
 
-        for language_id, target_scheme in self.__config[constants.LANGUAGE_SCHEME].iteritems():
+        for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
             if(ybatch[1] == language_id):
                 for idx, (target_id, _) in enumerate(target_scheme.iteritems()):
                     #note that ybatch[0] contains targets and ybathc[1] contains language_id
-                    acum_ters[language_id][target_id] += batch_ters[idx]
-                    acum_labels[language_id][target_id] += self.__get_label_len(ybatch[0][language_id][target_id])
+                    m_acum_ters[language_id][target_id] += m_batch_ters[idx]
+                    m_acum_labels[language_id][target_id] += self.__get_label_len(ybatch[0][language_id][target_id])
 
-        acum_cost += batch_cost * batch_size
-        acum_samples += batch_size
-
-        return acum_ters, acum_cost, acum_samples, acum_labels
+        m_acum_cost[ybatch[1]] += m_batch_cost * batch_size
+        m_acum_samples[ybatch[1]] += batch_size
 
     def __restore_weights(self):
 
         alpha = 0
 
-        saver = tf.train.Saver(max_to_keep=self.__config["nepoch"])
+        saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH])
 
-        if "continue_ckpt" in self.__config or self.__config["adapt_stage"] == "fine_tune":
+        if self.__config[constants.CONF_TAGS.CONTINUE_CKPT] and self.__config[constants.CONF_TAGS.APPLY_SAT]:
 
-            alpha = int(re.match(".*epoch([-+]?\d+).ckpt", self.__config["continue_ckpt"]).groups()[0])
+            #restoring all variables that should be loaded during adaptation stage (all of them except adaptation layer)
+            if self.__config[constants.CONF_TAGS.APPLY_SAT]:
 
-            #check adaptation stage
-            if(self.__config["adapt_stage"] == "fine_tune"):
-                saver.restore(self.__sess, self.__config["adapt_org_path"])
-            else:
-                saver.restore(self.__sess, self.__config["continue_ckpt"])
+                train_vars_all = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+                train_vars=[]
 
-        #restoring all variables that should be loaded during adaptation stage (all of them except adaptation layer)
-        elif self.__config["adapt_org_path"] != "" and self.__config["adapt_stage"] == "train_adapt":
+                #TODO this should be unhardcodded
+                #TODO and use scopes and in second for
+                #TODO take into account projections and LSTMS and everything
+                for var in train_vars_all:
+                    if (not constants.SCOPES.SPEAKER_ADAPTAION in var.name) \
+                            and (not "output_fc_no_name_language" in var.name):
+                        train_vars.append(var)
 
-            train_vars_all = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
-            train_vars=[]
-            for var in train_vars_all:
-                if not "sat" in var.name:
+                for var in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="cudnn_lstm"):
                     train_vars.append(var)
 
-            saver = tf.train.Saver(max_to_keep=self.__config["nepoch"], var_list=train_vars)
+                saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH], var_list=train_vars)
+                saver.restore(self.__sess, self.__config[constants.CONF_TAGS.CONTINUE_CKPT])
 
-            #TODO we should consider to throw a warning and only load needed weights
-            saver.restore(self.__sess, self.__config["adapt_org_path"])
+                #TODO alpha forced to be 0 if SAT
+                alpha = int(re.match(".*epoch([-+]?\d+).ckpt", self.__config[constants.CONF_TAGS.CONTINUE_CKPT]).groups()[0])
+                alpha = 0
+
+            else:
+
+                saver.restore(self.__sess, self.__config[constants.CONF_TAGS.CONTINUE_CKPT])
 
         return saver, alpha
 
@@ -317,43 +326,38 @@ class Train():
                     if(len(target_scheme) > 1):
                         print("\tTarget: %s" % (target_id))
                         fp.write("\tTarget: %s" % (target_id))
-                    print("\t\t Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost, 100.0*train_ters[language_id][target_id], ntrain))
-                    print("\t\t Validate cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost, 100.0*cv_ter, ncv))
-                    fp.write("\t\tTrain    cost: %.1f, ter: %.1f%%, #example: %d\n" % (train_cost, 100.0*train_ters[language_id][target_id], ntrain))
-                    fp.write("\t\tValidate cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost, 100.0*cv_ter, ncv))
+                    print("\t\t Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost[language_id], 100.0*train_ters[language_id][target_id], ntrain[language_id]))
+                    print("\t\t Validate cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost[language_id], 100.0*cv_ter, ncv[language_id]))
+                    fp.write("\t\tTrain    cost: %.1f, ter: %.1f%%, #example: %d\n" % (train_cost[language_id], 100.0*train_ters[language_id][target_id], ntrain[language_id]))
+                    fp.write("\t\tValidate cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost[language_id], 100.0*cv_ter, ncv[language_id]))
 
     def __print_counts_debug(self, epoch, batch_counter, total_number_batches, batch_cost, batch_size, batch_ters, data_queue):
 
         print("epoch={} batch={}/{} size={} batch_cost={}".format(epoch, batch_counter, total_number_batches, batch_size, batch_cost))
-        print("batch",batch_counter,"of",total_number_batches,"size",batch_size,
-              "queue",data_queue.empty(),data_queue.full(),data_queue.qsize())
+        print("batch ",batch_counter," of ",total_number_batches,"size ",batch_size,
+              "queue ",data_queue.empty(),data_queue.full(),data_queue.qsize())
 
-        print("ters:")
-        for target_key, batch_tr_ter in batch_ters.iteritems():
-            print(target_key+" : "+str(batch_tr_ter))
+        print("ters: ")
+        print(batch_ters)
 
     def __prepare_feed(self, data, lr_rate = None):
 
-        if self.__config["adapt_stage"] == 'unadapted':
-            x_batch, y_batch = data
-        else:
+        if self.__config[constants.CONF_TAGS.APPLY_SAT]:
             x_batch, y_batch, sat_batch = data
+        else:
+            x_batch, y_batch = data
 
-        #TODO remove uttid asap(just sanitychek)
-        utt_id = x_batch[1]
         x_batch = x_batch[0]
 
         batch_size = len(x_batch)
 
-        count=0
-        for language_id, language_scheme in self.__config[constants.LANGUAGE_SCHEME].iteritems():
+        current_lan_index = 0
+        for language_id, language_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
             if (language_id == y_batch[1]):
-                index_correct_lan=count
-            count+=1
+                index_correct_lan = current_lan_index
+            current_lan_index += 1
 
         y_batch_list = []
-        count = 0
-
         for _, value in y_batch[0].iteritems():
             for _, value in value.iteritems():
                 y_batch_list.append(value)
@@ -375,7 +379,7 @@ class Train():
         else:
             feed[self.__model.is_training] = False
 
-        if self.__config["adapt_stage"] != 'unadapted':
+        if self.__config[constants.CONF_TAGS.APPLY_SAT]:
             feed[self.__model.sat] = sat_batch
 
         return feed, batch_size, index_correct_lan

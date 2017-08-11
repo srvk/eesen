@@ -24,11 +24,16 @@ class LabelsReader(object):
 
         if(self.__is_multiple_languages(m_conf["data_dir"])):
             print("multilanguage setup detected (in labels)... \n")
-            self.__read_files_multiple_langues(m_conf[constants.DATA_DIR], info_set, all_languages_labels_files)
+            self.__read_files_multiple_langues(m_conf[constants.CONF_TAGS.DATA_DIR],
+                                               info_set,
+                                               all_languages_labels_files)
 
         else:
             print("unilanguage setup detected (in labels)... \n")
-            self.__read_one_language(m_conf[constants.DATA_DIR], constants.NO_LANGUAGE_NAME, info_set, all_languages_labels_files)
+            self.__read_one_language(m_conf[constants.CONF_TAGS.DATA_DIR],
+                                     constants.DEFAULT_NAMES.NO_LANGUAGE_NAME,
+                                     info_set,
+                                     all_languages_labels_files)
 
         #load all dicts
         #iterate over languages
@@ -48,7 +53,7 @@ class LabelsReader(object):
 
         self.__batches_y = self.__order_labels(all_languages_labels_dicts, batches_id)
 
-        if(constants.LANGUAGE_SCHEME in m_conf):
+        if(constants.CONF_TAGS.LANGUAGE_SCHEME in m_conf):
             self.__update_config(m_conf)
 
     def read(self, idx_batch):
@@ -69,12 +74,12 @@ class LabelsReader(object):
     def __update_config(self, m_conf):
         for language in self.__language_scheme:
             for target in self.__language_scheme[language]:
-                conf_value = m_conf[constants.LANGUAGE_SCHEME][language][target]
+                conf_value = m_conf[constants.CONF_TAGS.LANGUAGE_SCHEME][language][target]
                 local_value = self.__language_scheme[language][target]
 
                 if conf_value > local_value:
                     print("Warning: number of targets has changed between sets (e.g. train and validation)")
-                    self.__language_scheme[constants.LANGUAGE_SCHEME][language][target]=conf_value
+                    self.__language_scheme[constants.CONF_TAGS.LANGUAGE_SCHEME][language][target]=conf_value
 
     def __is_multiple_languages(self, data_dir):
         for filename in os.listdir(data_dir):
@@ -97,7 +102,7 @@ class LabelsReader(object):
             if (filename.startswith('labels') and filename.endswith('.'+info_set)):
                 target_id=filename.replace("labels_","").replace("labels","").replace('.'+info_set,"")
                 if(target_id==""):
-                    target_id=constants.NO_TARGET_NAME
+                    target_id=constants.DEFAULT_NAMES.NO_TARGET_NAME
 
                 m_all_languages_labels_files[language_name][target_id] = os.path.join(language_dir, filename)
                 file_find=True
@@ -112,8 +117,6 @@ class LabelsReader(object):
 
         #final batches list
         batches_y=[]
-
-
 
         #iterate over all batches
         for batch_id in batches_id:

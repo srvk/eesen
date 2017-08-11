@@ -13,14 +13,12 @@ https://google.github.io/styleguide/pyguide.html#naming
 # -----------------------------------------------------------------
 
 import argparse
-import os
-import os.path
-import pickle
 import sys
 from functools import reduce
-from reader.feats_reader import feats_reader_factory
-from eesen import Eesen
+
 import constants
+from eesen import Eesen
+from reader.sat_reader import feats_reader_factory
 
 
 # -----------------------------------------------------------------
@@ -81,7 +79,7 @@ def main():
 
 
     config
-    test_x = feats_reader_factory.create_reader('cv','kaldi', config[constants.DATA_DIR], args.lstm_type,online_augment_config, args.batch_size)
+    test_x = feats_reader_factory.create_reader('cv', 'kaldi', config[constants.DATA_DIR], args.lstm_type, online_augment_config, args.batch_size)
 
     config = add_args_test_config(args, config)
 

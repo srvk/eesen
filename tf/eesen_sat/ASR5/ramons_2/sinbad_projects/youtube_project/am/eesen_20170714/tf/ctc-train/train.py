@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from utils.fileutils import debug
 """
 this project has been wrtien following this naming convention:
 
@@ -20,10 +21,8 @@ import pickle
 import sys
 from eesen import Eesen
 from utils.checkers import set_checkers
-from utils.fileutils import debug
 
-from reader.sat_reader import sat_reader_factory
-from reader.feats_reader import feats_reader_factory
+from reader.sat_reader import feats_reader_factory
 from reader.labels_reader import labels_reader_factory
 
 
@@ -69,7 +68,7 @@ def main_parser():
 
     #sat arguments
     parser.add_argument('--apply_sat', default = False, action='store_true', help='apply and train a sat layer')
-    parser.add_argument('--num_sat_layers', default = 2, type=int, help='number of sat layers for sat module')
+    parser.add_argument('--num_sat_layers', default = 2, type=int, help='continue this experiment')
 
     return parser
 
@@ -97,7 +96,6 @@ def create_global_config(args):
     config = {
 
         #general arguments
-        constants.CONF_TAGS.CONTINUE_CKPT: args.continue_ckpt,
         constants.CONF_TAGS.DEBUG: False,
         constants.CONF_TAGS.STORE_MODEL: args.store_model,
         constants.CONF_TAGS.DATA_DIR: args.data_dir,
@@ -156,15 +154,13 @@ def import_config(args):
     #for now we will only consider sat arguments
     sat_config = create_sat_config(args)
     config.update(sat_config)
-    config[constants.CONF_TAGS.DATA_DIR] = args.data_dir
-    config[constants.CONF_TAGS.TRAIN_DIR] = args.train_dir
-    config[constants.CONF_TAGS.CONTINUE_CKPT] = args.continue_ckpt
+
+    config[constants.CONF_TAGS.DATA_DIR]= args.data_dir
     config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF] = create_online_argu_config(args)
-    config[constants.CONF_TAGS.DEBUG] = False
-    config[constants.CONF_TAGS.BATCH_SIZE] = 16
-    config[constants.CONF_TAGS.DEBUG] = False
 
     return config
+
+
 
 # -----------------------------------------------------------------
 #   Main part
@@ -188,6 +184,7 @@ def main():
     #load training targets
     tr_y = labels_reader_factory.create_reader('train', 'txt', config, tr_x.get_batches_id())
 
+
     #create reader for labels
     cv_x = feats_reader_factory.create_reader('cv', 'kaldi', config)
 
@@ -198,22 +195,18 @@ def main():
     config[constants.CONF_TAGS.INPUT_FEATS_DIM] = cv_x.get_num_dim()
     config[constants.CONF_TAGS.LANGUAGE_SCHEME] = cv_y.get_language_scheme()
 
-    if set_checkers.check_sat_exist(config, tr_x):
 
-        cv_sat = sat_reader_factory.create_reader('kaldi', config, cv_x.get_batches_id())
-        tr_sat = sat_reader_factory.create_reader('kaldi', config, tr_x.get_batches_id())
-
+    #TODO how to fine tune an addapted model?
+    if config[constants.CONF_TAGS.APPLY_SAT]:
+        cv_sat = feats_reader_factory.create_reader('sat', 'kaldi', config, cv_x.get_batches_id())
+        tr_sat = feats_reader_factory.create_reader('sat', 'kaldi', config, tr_x.get_batches_id())
+        data = (cv_x, tr_x, cv_y, tr_y, cv_sat, tr_sat)
         config[constants.CONF_TAGS.SAT_FEAT_DIM] = tr_sat.get_num_dim()
         config[constants.CONF_TAGS.MODEL_DIR] = os.path.join(config[constants.CONF_TAGS.TRAIN_DIR],
                                                              constants.DEFAULT_NAMES.MODEL_DIR_NAME,
                                                              constants.DEFAULT_NAMES.SAT_DIR_NAME)
-
         #checking that all sets are consitent
-        set_checkers.check_sets_training(cv_x, cv_y, tr_x, tr_y, tr_sat, cv_sat)
-
-        data = (cv_x, tr_x, cv_y, tr_y, cv_sat, tr_sat)
-
-        print("adaptation data with a dimensionality of "+str(config[constants.CONF_TAGS.SAT_FEAT_DIM])+" prepared...\n")
+        set_checkers.check_sets_training(cv_x, cv_y, tr_x, tr_y, tr_sat)
 
     else:
         data = (cv_x, tr_x, cv_y, tr_y)
@@ -231,12 +224,10 @@ def main():
     #start the acutal training
     eesen=Eesen()
 
-    print(80 * "-")
-    print("begining training with following config:")
-    print(config)
-    print(80 * "-")
+    print("done!!!")
+    sys.exit()
     eesen.train(data, config)
 
-if __name__ == "__main__":
+if __name__ == "__main_":
     main()
 

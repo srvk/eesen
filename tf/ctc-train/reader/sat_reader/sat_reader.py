@@ -53,7 +53,7 @@ class SatReader(object):
 
         count_augmented_folder, count_scp_files = self.__count_status_files(data_dir)
 
-        if(count_augmented_folder > 0 and count_scp_files == 1):
+        if(count_augmented_folder == 0 and count_scp_files == 0):
 
             print("multilingual set up detected on sat set ( "+str(len(os.listdir(data_dir)))+" languages )... \n")
             self.__process_multilingual_folder(data_dir)

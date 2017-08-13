@@ -139,9 +139,10 @@ class DeepBidirRNN:
         lstm_type = config[constants.CONF_TAGS.LSTM_TYPE]
         grad_opt = config[constants.CONF_TAGS.GRAD_OPT]
 
-        if config[constants.CONF_TAGS.APPLY_SAT]:
-            num_sat_layers = int(config[constants.CONF_TAGS.NUM_SAT_LAYERS])
-            adapt_dim = int(config[constants.CONF_TAGS.SAT_FEAT_DIM])
+        if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
+                != constants.SAT_SATGES.UNADAPTED:
+            num_sat_layers = config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.NUM_SAT_LAYERS]
+            adapt_dim = config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_FEAT_DIM]
             self.is_trainable_sat=False
 
         else:
@@ -207,7 +208,8 @@ class DeepBidirRNN:
         batch_size = tf.shape(self.feats)[0]
         outputs = tf.transpose(self.feats, (1, 0, 2), name = "feat_transpose")
 
-        if config[constants.CONF_TAGS.APPLY_SAT]:
+        if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
+                != constants.SAT_SATGES.UNADAPTED:
             #SAT
             with tf.variable_scope(constants.SCOPES.SPEAKER_ADAPTAION):
                 self.sat = tf.placeholder(tf.float32, [None, 1, adapt_dim], name = "sat")
@@ -249,6 +251,10 @@ class DeepBidirRNN:
         self.cost = []
 
         count=0
+
+        print(80 * "-")
+        print("preparing model variables...")
+        print(80 * "-")
         for language_id, language_target_dict in language_scheme.iteritems():
             losses=[]
             tmp_ter=[]
@@ -269,20 +275,26 @@ class DeepBidirRNN:
             self.ters.append(tmp_ter)
 
 
-            if config[constants.CONF_TAGS.APPLY_SAT]:
+            if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
+                == constants.SAT_SATGES.TRAIN_SAT:
                 var_list_new = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=constants.SCOPES.SPEAKER_ADAPTAION)
-                for element in self.get_variables_by_lan(language_id):
-                    if "output_fc_" in element.name:
-                        var_list_new.append(element)
+                print(tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES))
             else:
                 var_list_new = self.get_variables_by_lan(language_id)
+
+            print(80 * "-")
+            print("for language: "+language_id)
+            print("following variables will be optimized: ")
+            print(80 * "-")
+            for var in var_list_new:
+                print(var)
+            print(80 * "-")
 
             with tf.variable_scope("loss"):
                 regularized_loss = tf.add_n([tf.nn.l2_loss(v) for v in var_list_new])
 
             tmp_cost = tf.reduce_mean(losses) + l2 * regularized_loss
 
-            gvs = optimizer.compute_gradients(tmp_cost, var_list = var_list_new)
 
             capped_gvs = [(tf.clip_by_value(grad, -clip, clip), var) for grad, var in gvs]
 
@@ -292,6 +304,8 @@ class DeepBidirRNN:
             #ter: list of target ters in each language. When we get a language we get all ter targets
             self.cost.append(tmp_cost)
             self.opt.append(optimizer.apply_gradients(capped_gvs))
+
+        print(80 * "-")
 
 
 

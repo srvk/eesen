@@ -54,8 +54,8 @@ class CONF_TAGS:
     RANDOM_SEED="random_seed"
 
     #sat arguments
-    SAT="sat"
-    APPLY_SAT="apply_sat"
+    SAT_CONF="sat_conf"
+    SAT_SATGE="sat_stage"
     NUM_SAT_LAYERS="num_sat_layers"
     SAT_FEAT_DIM="sat_feat_dim"
 
@@ -68,3 +68,8 @@ class LSTM_TYPE:
     CUDNN= "cudnn_lstm"
     FUSE= "fuse_lstm"
     NATIVE= "native_lstm"
+
+class SAT_SATGES:
+    UNADAPTED = "non_adapted"
+    TRAIN_SAT = "train_sat"
+    FINE_TUNE = "fine_tune"

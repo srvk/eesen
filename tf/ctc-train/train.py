@@ -73,29 +73,43 @@ def main_parser():
 
     return parser
 
-def create_sat_config(args):
+def create_sat_config(args, config_imported = None):
 
     sat={}
 
-    sat[constants.CONF_TAGS.APPLY_SAT]=args.apply_sat
-    sat[constants.CONF_TAGS.NUM_SAT_LAYERS]=args.num_sat_layers
+    if(config_imported):
+        if(args.apply_sat):
+
+            #this is a inheritance workaround
+            if(constants.CONF_TAGS.SAT_CONF in config_imported):
+                if(config_imported[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] == constants.SAT_SATGES.UNADAPTED):
+                    sat[constants.CONF_TAGS.SAT_SATGE] = constants.SAT_SATGES.TRAIN_SAT
+                elif(config_imported[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] == constants.SAT_SATGES.TRAIN_SAT):
+                    sat[constants.CONF_TAGS.SAT_SATGE] = constants.SAT_SATGES.FINE_TUNE
+                elif(config_imported[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] == constants.SAT_SATGES.FINE_TUNE):
+                    sat[constants.CONF_TAGS.SAT_SATGE] = constants.SAT_SATGES.FINE_TUNE
+            else:
+                sat[constants.CONF_TAGS.SAT_SATGE] = constants.SAT_SATGES.TRAIN_SAT
+    else:
+        sat[constants.CONF_TAGS.SAT_SATGE] = constants.SAT_SATGES.UNADAPTED
+
+    sat[constants.CONF_TAGS.NUM_SAT_LAYERS] = int(args.num_sat_layers)
 
     return sat
 
-def create_online_argu_config(args):
+def create_online_arg_config():
 
     #TODO enter the values using a conf file or something
     online_augment_config={}
-    online_augment_config[constants.AUGMENTATION.WINDOW]=3
-    online_augment_config[constants.AUGMENTATION.FACTOR]=3
-    online_augment_config[constants.AUGMENTATION.ROLL]=False
+    online_augment_config[constants.AUGMENTATION.WINDOW] = 3
+    online_augment_config[constants.AUGMENTATION.FACTOR] = 3
+    online_augment_config[constants.AUGMENTATION.ROLL] = False
 
     return online_augment_config
 
 def create_global_config(args):
 
     config = {
-
         #general arguments
         constants.CONF_TAGS.CONTINUE_CKPT: args.continue_ckpt,
         constants.CONF_TAGS.DEBUG: False,
@@ -127,22 +141,18 @@ def create_global_config(args):
         constants.CONF_TAGS.FEAT_PROJ: args.feat_proj,
         constants.CONF_TAGS.GRAD_OPT: args.grad_opt,
 
-        #adptation
-        constants.CONF_TAGS.APPLY_SAT: args.apply_sat,
-        constants.CONF_TAGS.NUM_SAT_LAYERS: args.num_sat_layers
     }
 
-    #org_path has been removed we will use continue_cpkt
-    config[constants.CONF_TAGS.SAT] = create_sat_config(args)
-    config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF] = create_online_argu_config(args)
-
-    if len(args.continue_ckpt):
-        config[constants.CONF_TAGS.CONTINUE_CKPT] = args.continue_ckpt
+    config[constants.CONF_TAGS.SAT_CONF] = create_sat_config(args)
+    config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF] = create_online_arg_config()
 
     return config
 
 
 def import_config(args):
+
+    config = create_global_config(args)
+
 
     if not os.path.exists(args.import_config):
         print("Error: path_config does not correspond to a valid path: "+args.import_config)
@@ -150,19 +160,13 @@ def import_config(args):
         print("exiting...")
         sys.exit()
 
-    config = pickle.load(open(args.import_config, "rb"))
-    #TODO get non default args and add/substitute them
+    config_imported = pickle.load(open(args.import_config, "rb"))
+    config.update(config_imported)
 
-    #for now we will only consider sat arguments
-    sat_config = create_sat_config(args)
-    config.update(sat_config)
-    config[constants.CONF_TAGS.DATA_DIR] = args.data_dir
-    config[constants.CONF_TAGS.TRAIN_DIR] = args.train_dir
-    config[constants.CONF_TAGS.CONTINUE_CKPT] = args.continue_ckpt
-    config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF] = create_online_argu_config(args)
-    config[constants.CONF_TAGS.DEBUG] = False
-    config[constants.CONF_TAGS.BATCH_SIZE] = 16
-    config[constants.CONF_TAGS.DEBUG] = False
+    config[constants.CONF_TAGS.SAT_CONF] = create_sat_config(args, config_imported)
+
+    config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF] = create_online_arg_config()
+
 
     return config
 
@@ -198,12 +202,12 @@ def main():
     config[constants.CONF_TAGS.INPUT_FEATS_DIM] = cv_x.get_num_dim()
     config[constants.CONF_TAGS.LANGUAGE_SCHEME] = cv_y.get_language_scheme()
 
-    if set_checkers.check_sat_exist(config, tr_x):
+    if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] != constants.SAT_SATGES.UNADAPTED:
 
         cv_sat = sat_reader_factory.create_reader('kaldi', config, cv_x.get_batches_id())
         tr_sat = sat_reader_factory.create_reader('kaldi', config, tr_x.get_batches_id())
 
-        config[constants.CONF_TAGS.SAT_FEAT_DIM] = tr_sat.get_num_dim()
+        config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_FEAT_DIM] = int(tr_sat.get_num_dim())
         config[constants.CONF_TAGS.MODEL_DIR] = os.path.join(config[constants.CONF_TAGS.TRAIN_DIR],
                                                              constants.DEFAULT_NAMES.MODEL_DIR_NAME,
                                                              constants.DEFAULT_NAMES.SAT_DIR_NAME)
@@ -213,7 +217,9 @@ def main():
 
         data = (cv_x, tr_x, cv_y, tr_y, cv_sat, tr_sat)
 
-        print("adaptation data with a dimensionality of "+str(config[constants.CONF_TAGS.SAT_FEAT_DIM])+" prepared...\n")
+        print("adaptation data with a dimensionality of "
+              +str(config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_FEAT_DIM])+
+              " prepared...\n")
 
     else:
         data = (cv_x, tr_x, cv_y, tr_y)
@@ -232,8 +238,11 @@ def main():
     eesen=Eesen()
 
     print(80 * "-")
+    print("done with data preparation")
+    print(80 * "-")
     print("begining training with following config:")
-    print(config)
+    for key, value in config.items():
+        print(key+" "+str(value))
     print(80 * "-")
     eesen.train(data, config)
 

@@ -119,10 +119,10 @@ class DeepBidirRNN:
         with tf.variable_scope(scope):
             for i in range(num_sat_layers-1):
                 with tf.variable_scope("layer%d" % i):
-                    outputs = tf.contrib.layers.fully_connected(activation_fn = tf.nn.elu, inputs = outputs, num_outputs = adapt_dim)
+                    outputs = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = adapt_dim)
 
             with tf.variable_scope("last_sat_layer"):
-                outputs = tf.contrib.layers.fully_connected(activation_fn = tf.nn.elu, inputs = outputs, num_outputs = nfeat)
+                outputs = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = nfeat)
 
         return outputs
 
@@ -277,24 +277,24 @@ class DeepBidirRNN:
 
             if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
                 == constants.SAT_SATGES.TRAIN_SAT:
-                var_list_new = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=constants.SCOPES.SPEAKER_ADAPTAION)
-                print(tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES))
+                var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=constants.SCOPES.SPEAKER_ADAPTAION)
             else:
-                var_list_new = self.get_variables_by_lan(language_id)
+                var_list = self.get_variables_by_lan(language_id)
 
             print(80 * "-")
             print("for language: "+language_id)
             print("following variables will be optimized: ")
             print(80 * "-")
-            for var in var_list_new:
+            for var in var_list:
                 print(var)
             print(80 * "-")
 
             with tf.variable_scope("loss"):
-                regularized_loss = tf.add_n([tf.nn.l2_loss(v) for v in var_list_new])
+                regularized_loss = tf.add_n([tf.nn.l2_loss(v) for v in var_list])
 
             tmp_cost = tf.reduce_mean(losses) + l2 * regularized_loss
 
+            gvs = optimizer.compute_gradients(tmp_cost, var_list=var_list)
 
             capped_gvs = [(tf.clip_by_value(grad, -clip, clip), var) for grad, var in gvs]
 
@@ -306,8 +306,6 @@ class DeepBidirRNN:
             self.opt.append(optimizer.apply_gradients(capped_gvs))
 
         print(80 * "-")
-
-
 
     def get_variables_by_lan(self, current_name):
 

@@ -43,7 +43,7 @@ class FeatsReader(object):
             print("exiting...")
             sys.exit()
 
-    def change_source (self, source_position):
+    def change_source (self, new_source_positions):
         print("def change_source (self, source_position) is a virutal function need to be caled from an instance that has implemented it")
         print(debug.get_debug_info())
         print("exiting... \n")
@@ -55,7 +55,6 @@ class FeatsReader(object):
         print("exiting... \n")
         sys.exit()
 
-    #TODO here we will need to indicate which language are we looking for
     def get_language_augment_scheme(self):
         return self._language_augment_scheme
 
@@ -108,18 +107,11 @@ class FeatsReader(object):
 
         count_augmented_folder, count_scp_files = self.__count_status_files(data_dir)
 
+        #is train
         #there is sample augmentation
-        if(count_augmented_folder > 0):
-            #is train
-            if(not is_test):
-                print("augmented data (mix) found for language "+language_name+"... \n")
-                self.__read_augmented_folder(data_dir, self._info_set, self._extension, language_name)
-            else:
-                print("cv set can not be augmented ( "+str(count_augmented_folder)+" augment folders found in "+data_dir+" )")
-                print("the test feats and targets have to be in the root data_dir")
-                print(debug.get_debug_info())
-                print("exiting... \n")
-                sys.exit()
+        if(count_augmented_folder > 0 and not is_test):
+            print("augmented data (mix) found for language "+language_name+"... \n")
+            self.__read_augmented_folder(data_dir, self._info_set, self._extension, language_name)
         else:
             #is train
             if(not is_test):

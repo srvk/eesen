@@ -185,16 +185,33 @@ def main():
         config = import_config(args)
     else:
         config = create_global_config(args)
+    print(config)
 
+    print(80 * "-")
+    print("reading training set")
+    print(80 * "-")
+    print(80 * "-")
+    print("tr_x:")
+    print(80 * "-")
     #load training feats
     tr_x = feats_reader_factory.create_reader('train', 'kaldi', config)
 
+    print(80 * "-")
+    print("tr_y:")
+    print(80 * "-")
     #load training targets
     tr_y = labels_reader_factory.create_reader('train', 'txt', config, tr_x.get_batches_id())
 
+    print(80 * "-")
+    print("cv_x:")
+    print(80 * "-")
     #create reader for labels
     cv_x = feats_reader_factory.create_reader('cv', 'kaldi', config)
 
+
+    print(80 * "-")
+    print("cv_y:")
+    print(80 * "-")
     #create reader for labels
     cv_y = labels_reader_factory.create_reader('cv', 'txt', config, cv_x.get_batches_id())
 
@@ -204,8 +221,23 @@ def main():
 
     if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] != constants.SAT_SATGES.UNADAPTED:
 
-        cv_sat = sat_reader_factory.create_reader('kaldi', config, cv_x.get_batches_id())
+        print(80 * "-")
+        print(80 * "-")
+        print("reading speaker adaptation set:")
+        print(80 * "-")
+        print(80 * "-")
+
+        print("tr_sat:")
+        print(80 * "-")
         tr_sat = sat_reader_factory.create_reader('kaldi', config, tr_x.get_batches_id())
+        print(80 * "-")
+
+        print("cv_sat:")
+        print(80 * "-")
+        cv_sat = sat_reader_factory.create_reader('kaldi', config, cv_x.get_batches_id())
+        print(80 * "-")
+        print(80 * "-")
+
 
         config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_FEAT_DIM] = int(tr_sat.get_num_dim())
         config[constants.CONF_TAGS.MODEL_DIR] = os.path.join(config[constants.CONF_TAGS.TRAIN_DIR],

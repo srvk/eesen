@@ -18,14 +18,14 @@ class FeatsReaderKaldi(FeatsReader):
         super(FeatsReaderKaldi, self).__init__(info_set, self.__config[constants.CONF_TAGS.DATA_DIR],
                                                self.__config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF], "scp")
 
-        #getting feat in list format no need to search anything
+        #getting feat in dict format
         feat_dict_info_languages = self.__read_dict_info_languages()
 
         print("ordering all languages (from scratch) "+info_set+" batches... \n")
         self._batches_x, self._batches_id = self.__create_ordered_batches_all_languages(feat_dict_info_languages, config[constants.CONF_TAGS.LSTM_TYPE], config[constants.CONF_TAGS.BATCH_SIZE])
 
     #TODO check augmentation this idea is kinda ok, but should take a closer look
-    def change_source (self, source_position):
+    def change_source (self, new_source_positions):
 
         if(self._info_set != 'train'):
             print("this option is not available for this type of info_set (cv)")
@@ -33,17 +33,17 @@ class FeatsReaderKaldi(FeatsReader):
             print("exiting...")
             sys.exit()
 
-        #sanity check
-        if(len(self.__filenames) < source_position -1):
-            print(str(source_position)+" does not exists for this current source")
-            print("get_num_augmented_folders() will provide this information for you")
-            print(debug.get_debug_info())
-            print("exiting...")
-            sys.exit()
+        #we need to recreat and refill the dictionary becuase we removed it before
+        feat_dict_info_languages={}
+        for language_id, scp_path in self._language_augment_scheme.iteritems():
+            print(80 * "-")
+            print("preparing dictionary for "+language_id+"...\n")
+            feat_dict_info_languages[language_id] = read_scp_info(scp_path[new_source_positions[language_id]])
 
-        #getting feat in dict format (faster to search)
-        feat_dict_info = read_scp_info_dic(self.list_files[source_position])
-        self._batches_x, self._batches_id = self.__create_ordered_batches(feat_dict_info, self.__config[constants.CONF_TAGS.LSTM_TYPE], self.__config[constants.CONF_TAGS.BATCH_SIZE])
+        print(80 * "-")
+        self._batches_x, self._batches_id = self.__create_ordered_batches_all_languages(feat_dict_info_languages,
+                                                                                        self.__config[constants.CONF_TAGS.LSTM_TYPE],
+                                                                                        self.__config[constants.CONF_TAGS.BATCH_SIZE])
 
     #read batch idx. Input: batch index. Output: batch read with feats
     def read (self, idx):

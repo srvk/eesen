@@ -10,13 +10,13 @@ class LabelsReader(object):
     def __init__(self, info_set, m_conf, batches_id):
 
         #temporal dictonary that stores all paths from all targets dict[language][target_1]=path_target_1
-        all_languages_labels_files={}
-
-        #temporal dictornary to store all targets dict[language][target_1]=dict_target_1
-        all_languages_labels_dicts={}
+        self.__all_languages_labels_files={}
 
         #permanent list to store the number of classes of each language dict[language][target_1]=number_target_1
         self.__language_scheme={}
+
+        #temporal dictornary to store all targets dict[language][target_1]=dict_target_1
+        all_languages_labels_dicts={}
 
         #hack to get the correct name for the file
         if(info_set=='train'):
@@ -25,19 +25,17 @@ class LabelsReader(object):
         if(self.__is_multiple_languages(m_conf["data_dir"])):
             print("multilanguage setup detected (in labels)... \n")
             self.__read_files_multiple_langues(m_conf[constants.CONF_TAGS.DATA_DIR],
-                                               info_set,
-                                               all_languages_labels_files)
+                                               info_set)
 
         else:
             print("unilanguage setup detected (in labels)... \n")
             self.__read_one_language(m_conf[constants.CONF_TAGS.DATA_DIR],
                                      constants.DEFAULT_NAMES.NO_LANGUAGE_NAME,
-                                     info_set,
-                                     all_languages_labels_files)
+                                     info_set)
 
         #load all dicts
         #iterate over languages
-        for language, labels_path_dic in all_languages_labels_files.iteritems():
+        for language, labels_path_dic in self.__all_languages_labels_files.iteritems():
 
             self.__language_scheme[language] = {}
             all_languages_labels_dicts[language] = {}
@@ -53,9 +51,6 @@ class LabelsReader(object):
 
         self.__batches_y = self.__order_labels(all_languages_labels_dicts, batches_id)
 
-        if(constants.CONF_TAGS.LANGUAGE_SCHEME in m_conf):
-            self.__update_config(m_conf)
-
     def read(self, idx_batch):
 
         if(idx_batch > len(self.__batches_y) - 1):
@@ -69,6 +64,31 @@ class LabelsReader(object):
     #getter
     def get_language_scheme(self):
         return self.__language_scheme
+
+    def update_batches_id(self, batches_id):
+
+        #temporal dictornary to store all targets dict[language][target_1]=dict_target_1
+        all_languages_labels_dicts={}
+
+        #iterate over languages
+        for language, labels_path_dic in self.__all_languages_labels_files.iteritems():
+
+            self.__language_scheme[language] = {}
+            all_languages_labels_dicts[language] = {}
+
+            #iterate over all targets of this language
+            for target_id, target_path in labels_path_dic.iteritems():
+
+                #get number of targets and dictioanries (utt -> sequence)
+                ntarget, label_dict = self._load_dict(target_path)
+
+                self.__language_scheme[language][target_id] = ntarget
+                all_languages_labels_dicts[language][target_id] = label_dict
+
+        self.__batches_y = self.__order_labels(all_languages_labels_dicts, batches_id)
+
+    def set_number_targets(self, language, target_id, number_targets):
+        self.__language_scheme[language][target_id] = number_targets
 
     #this will assure that we always have the maximum number of labels
     def __update_config(self, m_conf):
@@ -87,14 +107,14 @@ class LabelsReader(object):
                 return False
         return True
 
-    def __read_files_multiple_langues(self, data_dir, info_set, m_all_languages_labels_files):
+    def __read_files_multiple_langues(self, data_dir, info_set):
 
         for language_name in os.listdir(data_dir):
-            self.__read_one_language(os.path.join(data_dir,language_name), language_name, info_set, m_all_languages_labels_files)
+            self.__read_one_language(os.path.join(data_dir,language_name), language_name, info_set)
 
-    def __read_one_language(self, language_dir, language_name, info_set, m_all_languages_labels_files):
+    def __read_one_language(self, language_dir, language_name, info_set):
 
-        m_all_languages_labels_files[language_name]={}
+        self.__all_languages_labels_files[language_name]={}
 
         file_find=False
 
@@ -104,7 +124,7 @@ class LabelsReader(object):
                 if(target_id==""):
                     target_id=constants.DEFAULT_NAMES.NO_TARGET_NAME
 
-                m_all_languages_labels_files[language_name][target_id] = os.path.join(language_dir, filename)
+                self.__all_languages_labels_files[language_name][target_id] = os.path.join(language_dir, filename)
                 file_find=True
 
         if(not file_find):

@@ -48,15 +48,22 @@ def check_sets_training(cv_x, cv_y, tr_x, tr_y, tr_sat = None, cv_sat = None):
                 sys.exit()
 
             if(number_targets != cv_y.get_language_scheme()[language][target_id]):
-                print("Error: number of targets ("+str(number_targets)+") from tr_y in language: "+str(language)+" in target: "+str(target_id)+"is different form cv_y")
+                print(80 * "*")
+                print(80 * "*")
+                print("WARINING!: number of targets ("+str(number_targets)+") from tr_y ("+str(cv_y.get_language_scheme()[language][target_id])+") in language: "+str(language)+" in target: "+str(target_id)+"is different form cv_y")
                 print(debug.get_debug_info())
-                print("exiting... \n")
-                sys.exit()
+                print("replicating biggest one...")
+                if(number_targets > cv_y.get_language_scheme()[language][target_id]):
+                    cv_y.set_number_targets(language, target_id, number_targets)
+                else:
+                    tr_y.set_number_targets(language, target_id, cv_y.get_language_scheme()[language][target_id])
+                print(80 * "*")
+                print(80 * "*")
+
+
 
         print("languages checked ...")
         print("(cv_x vs cv_y vs tr_x vs tr_y)")
-        print("correct\n")
-
 
 def check_sets_testing(config, test_x, sat_x = None):
 

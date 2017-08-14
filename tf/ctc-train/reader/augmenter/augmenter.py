@@ -23,7 +23,7 @@ class Augmenter(object):
             win=self.online_augment_config[constants.AUGMENTATION.WINDOW]
 
             feat_info = [
-                (tup[0], tup[1], tup[2], (tup[3] + factor - 1 - shift) // factor, win * tup[4], (shift, factor, win))
+                (tup[0], tup[1], tup[2], (int(tup[3]) + factor - 1 - shift) // factor, win * tup[4], (shift, factor, win))
                 for shift in range(factor) for tup in feat_info]
         else:
 

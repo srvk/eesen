@@ -14,6 +14,7 @@ class Train():
         self.__model = DeepBidirRNN(config)
         self.__sess = tf.Session()
         self.max_targets_layers = 0
+
         for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
                 if(self.max_targets_layers < len(target_scheme)):
                     self.max_targets_layers = len(target_scheme)

@@ -75,17 +75,24 @@ class SAT_SATGES:
     FINE_TUNE = "fine_tune"
 
 class CONFIG_TAGS_TEST:
-    TEST_CONFIG = "test_config"
 
-    EVAL_CONFIG_FILE = "eval_config_file"
-    WEIGHT_FILE = "eval_weights"
 
-    BATCH_SIZE = "batch_size"
-    TEMPERATURE = "temperature"
+    TRAIN_CONFIG = "train_config"
+
+    PRIORS_SCHEME = "priors_scheme"
+
+    #io dir
+    DATA_DIR = "data_dir"
     RESULTS_DIR = "results_dir"
 
-    PRIORS = "priors"
-    TER_REF_LABELS = "ter_ref_labels"
+    #train configuration
+    EVAL_CONFIG_FILE = "eval_config_file"
+    TRAINED_WEIGHTS = "trained_weights"
 
-    TEST_SCP_FILE = "test_scp_file"
+    #computing options
+    BATCH_SIZE = "batch_size"
+    TEMPERATURE = "temperature"
+    USE_PRIORS = "use_priors"
+    COMPUTE_TER = "compute_ter"
+
 

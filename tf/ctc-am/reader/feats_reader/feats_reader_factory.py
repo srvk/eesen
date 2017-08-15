@@ -10,7 +10,7 @@ from utils.fileutils import debug
 def create_reader(info_set, info_format, config):
 
     #TODO deduce file type
-    if(not (info_set == "train" or info_set == "cv")):
+    if(not (info_set == "train" or info_set == "cv" or info_set == "test")):
         print("Error: info_set ( "+info_set+" ) is not contemplated")
         print(debug.get_debug_info())
         print("exiting...")

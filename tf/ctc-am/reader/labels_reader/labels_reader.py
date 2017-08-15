@@ -193,8 +193,6 @@ class LabelsReader(object):
                             yval[language_id][target_id].append(0)
 
 
-
-
             #construct the final batch
             batch_y={}
             for language_id, target_scheme in all_languages_labels_dicts.iteritems():

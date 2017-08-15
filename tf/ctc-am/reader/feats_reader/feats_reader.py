@@ -36,6 +36,11 @@ class FeatsReader(object):
         elif (info_set =='cv'):
 
             self.__read_test(data_dir)
+
+        elif (info_set =='test'):
+
+            self.__read_test(data_dir)
+
         else:
 
             print("Error: info_set var has an unkonwn value: "+info_set)

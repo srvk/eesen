@@ -19,7 +19,10 @@ import constants
 import sys
 from eesen import Eesen
 import pickle
+
+from reader.sat_reader import sat_reader_factory
 from reader.feats_reader import feats_reader_factory
+from reader.labels_reader import labels_reader_factory
 
 # -----------------------------------------------------------------
 #   Function definitions
@@ -46,6 +49,23 @@ def load_prior(prior_paths, nclass):
         priors.append(prior)
     return priors
 
+def generate_priors(data_dir, language_scheme):
+
+    priors_scheme={}
+
+    for language_id, target_scheme in language_scheme.iter():
+        if(language_scheme == 1):
+            language_dir=data_dir
+        else:
+            language_dir=os.path.join(data_dir,language_id)
+        priors_scheme[language_dir]={}
+
+        for target_id, nclass in target_scheme.iter():
+            priors_path=os.path.join(language_dir,target_id+".priors")
+            priors=load_prior(priors_path, nclass)
+            priors_scheme[language_dir][target_id]=priors
+
+    return priors_scheme
 
 # -----------------------------------------------------------------
 #   Parser and Configuration
@@ -54,91 +74,65 @@ def load_prior(prior_paths, nclass):
 def main_parser():
     parser = argparse.ArgumentParser(description='Test TF-Eesen Model')
 
-    parser.add_argument('--eval_config', default = "", help = "model to load for evaluation")
-    parser.add_argument('--eval_weights', default = "", help = "model to load for evaluation")
+    #io dir
+    parser.add_argument('--data_dir', default = "", help = "like data_dir for training script")
+    parser.add_argument('--results_dir', default = "log", help='log and results dir')
 
+    #train configuration
+    parser.add_argument('--train_config', default = "", help = "model to load for evaluation")
+    parser.add_argument('--trained_weights', default = "", help = "model to load for evaluation")
+
+    #computing options
     parser.add_argument('--batch_size', default = 32, type=int, help='batch size')
     parser.add_argument('--temperature', default = 1, type=float, help='temperature used in softmax')
-    parser.add_argument('--results_dir', default = "log", help='log and model (output) dir')
-
-    parser.add_argument('--use_priors', default = "", help='path to priors file (if more than one use :)')
-    parser.add_argument('--compute_ter', default = "", help='compute ter using labels file. --compute_ter path/to/labels.test')
-    parser.add_argument('--test_scp_file', default = "", help = "data dir")
+    parser.add_argument('--use_priors', default = False, action='store_true', help='if --use_priors it will take ')
+    parser.add_argument('--compute_ter', default = False, action='store_true', help='if --compute_ter the labels will be taken from data_dir (label_phn.test)and ter will be computed')
 
     return parser
 
-def check_priors(priors, language_scheme):
-
-    #TODO here we need to code a sanity check of priors vs language scheme (from the trained model)
-    print("checking priors")
-    return True
-
-def generate_priors(priors):
-
-    #TODO here we will generate a dict of priors according the input
-    print("checking priors")
-    return True
-
-def generate_test_labels(test_):
-
 def create_test_config(args, language_scheme):
 
-    config = {}
-    config[constants.CONFIG_TAGS_TEST.TEMPERATURE] = args.temperature
+    config_test = {}
 
-    if(args.use_priors != ""):
-        check_priors(args.use_priors, language_scheme)
-        config[constants.CONFIG_TAGS_TEST.PRIORS] = generate_priors(args.use_priors)
+    #io dir
+    config_test[constants.CONFIG_TAGS_TEST.DATA_DIR] = args.data_dir
+    config_test[constants.CONFIG_TAGS_TEST.RESULTS_DIR] = args.results_dir
 
-    if(args.use_priors != ""):
-        config[constants.CONFIG_TAGS_TEST.RESULTS_DIR] = args.results_dir
+    #train configuration
+    config_test[constants.CONFIG_TAGS_TEST.TRAINED_WEIGHTS] = args.trained_weights
+    config_test[constants.CONFIG_TAGS_TEST.TRAIN_CONFIG] = args.train_config
 
-    config[constants.CONFIG_TAGS_TEST.WEIGHT_FILE] = args.eval_config
-    config[constants.CONFIG_TAGS_TEST.EVAL_CONFIG_FILE] = args.eval_config
-    config[constants.CONFIG_TAGS_TEST.BATCH_SIZE] = args.batch_size
-    config[constants.CONFIG_TAGS_TEST.TEMPERATURE] = args.temperature
-    config[constants.CONFIG_TAGS_TEST.RESULTS_DIR] = args.results_dir
+    #computing options
+    config_test[constants.CONFIG_TAGS_TEST.TEMPERATURE] = args.temperature
+    config_test[constants.CONFIG_TAGS_TEST.COMPUTE_TER] = args.compute_ter
+    config_test[constants.CONFIG_TAGS_TEST.USE_PRIORS] = args.use_priors
+    config_test[constants.CONFIG_TAGS_TEST.BATCH_SIZE] = args.batch_size
+    if(config_test[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
+        config_test[constants.CONFIG_TAGS_TEST.PRIORS_SCHEME] = generate_priors(config_test[constants.CONFIG_TAGS_TEST.DATA_DIR], language_scheme)
 
-
-    parser.add_argument('--compute_ter', default = "", help='compute ter using labels file. --compute_ter path/to/labels.test')
-    parser.add_argument('--test_scp_file', default = "", help = "data dir")
-    return config
+    return config_test
 
 def check_paths(args):
 
     #mandatory
-    if not os.path.exists(args.eval_config):
-        print("Error: eval_config does not correspond to a valid path: "+args.import_config)
+    if not os.path.exists(args.train_config):
+        print("Error: train_config does not correspond to a valid path: "+args.train_config)
         print(debug.get_debug_info())
         print("exiting...")
         sys.exit()
 
-    if not os.path.exists(args.eval_weights):
-        print("Error: eval_weights does not correspond to a valid path: "+args.import_config)
+    if not os.path.exists(args.trained_weights+".index"):
+        print("Error: eval_weights does not correspond to a valid path: "+args.eval_weights)
         print(debug.get_debug_info())
         print("exiting...")
         sys.exit()
 
-    if not os.path.exists(args.test_data):
-        print("Error: test_data does not correspond to a valid path: "+args.import_config)
+    if not os.path.exists(args.data_dir):
+        print("Error: test_data does not correspond to a valid path: "+args.data_dir)
         print(debug.get_debug_info())
         print("exiting...")
         sys.exit()
 
-    #optionals
-    if(args.use_priors != ""):
-        if not os.path.exists(args.use_priors):
-            print("Error: path_config does not correspond to a valid path: "+args.import_config)
-            print(debug.get_debug_info())
-            print("exiting...")
-            sys.exit()
-
-    if(args.compute_ter != ""):
-        if not os.path.exists(args.compute_ter):
-            print("Error: path_config does not correspond to a valid path: "+args.import_config)
-            print(debug.get_debug_info())
-            print("exiting...")
-            sys.exit()
 def main():
 
     parser = main_parser()
@@ -146,32 +140,43 @@ def main():
 
     check_paths(args)
 
-    config = create_test_config(args.eval_config)
+    config = pickle.load(open(args.train_config, "rb"))
 
-    config[]
+    config_test = create_test_config(args, config[constants.CONF_TAGS.LANGUAGE_SCHEME])
 
-    config_imported = pickle.load(open(args.import_config, "rb"))
+    config.update(config_test)
 
-    config.update(config_imported)
-
-    config[constants.CONF_TAGS.SAT_CONF] = create_sat_config(args, config_imported)
-
-    config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF] = create_online_arg_config()
     print(80 * "-")
     print("reading testing set")
     print(80 * "-")
     print(80 * "-")
-    print("tr_x:")
+    print("test_x:")
     print(80 * "-")
 
     #load training feats
-    tr_x = feats_reader_factory.create_reader('train', 'kaldi', config)
+    test_x = feats_reader_factory.create_reader('test', 'kaldi', config)
+    print(80 * "-")
 
+    if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]):
+        print(80 * "-")
+        print("test_y (for ter computation):")
+        print(80 * "-")
+        test_y = labels_reader_factory.create_reader('test', 'txt', config, test_x.get_batches_id())
+    else:
+        test_y = None
 
-    sys.exit()
-    if(len(nclass) != len(config["nclass"])):
-        print("Error. Number of labels provided not correct. "+str(len(nclass))+" provided "+str(len(config["nclass"]))+" needed")
-        sys.exit()
+    if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
+            != constants.SAT_SATGES.UNADAPTED:
+
+        print("tr_sat:")
+        print(80 * "-")
+        tr_sat = sat_reader_factory.create_reader('kaldi', config, test_x.get_batches_id())
+        print(80 * "-")
+
+    else:
+        tr_sat = None
+
+    data=(test_x, test_y, tr_sat)
 
     eesen = Eesen()
     eesen.test(data, config)

@@ -1,6 +1,8 @@
 import random
 
 
+#TODO we should do something like: def run_reader_queue(queue, do_shuf, reader_x=None, reader_y=None, reader_sat=None):
+#TODO after changing this signature all calls have to be made using the key_id of argument
 def run_reader_queue(queue, reader_x, reader_y, do_shuf, reader_sat=None):
 
     idx_shuf = list(range(reader_x.get_num_batches()))
@@ -9,13 +11,26 @@ def run_reader_queue(queue, reader_x, reader_y, do_shuf, reader_sat=None):
 
     for idx_batch in idx_shuf:
         x = reader_x.read(idx_batch)
-        y = reader_y.read(idx_batch)
+        if(reader_y):
+            y = reader_y.read(idx_batch)
 
         if(reader_sat):
-            sat=reader_sat.read(idx_batch)
-            queue.put((x, y, sat))
+            if(reader_y):
+                #x, y, sat
+                sat=reader_sat.read(idx_batch)
+                queue.put((x, y, sat))
+
+            else:
+                #x, sat (for testing)
+                sat=reader_sat.read(idx_batch)
+                queue.put((x, sat))
         else:
-            queue.put((x, y))
+            if(reader_y):
+                #x, y
+                queue.put((x, y))
+            else:
+                #x (for training)
+                queue.put(x)
 
     queue.put(None)
 

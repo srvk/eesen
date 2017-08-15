@@ -144,7 +144,7 @@ class DeepBidirRNN:
                 != constants.SAT_SATGES.UNADAPTED:
             num_sat_layers = config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.NUM_SAT_LAYERS]
             adapt_dim = config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_FEAT_DIM]
-            self.is_trainable_sat=True
+            self.is_trainable_sat=False
 
         else:
             self.is_trainable_sat=True
@@ -160,48 +160,28 @@ class DeepBidirRNN:
         self.feats = tf.placeholder(tf.float32, [None, None, nfeat], name = "feats")
         self.temperature = tf.placeholder(tf.float32, name = "temperature")
         self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
+        self.opt = []
+
+
         self.labels=[]
-
-        # try:
-            #TODO can not do xrange directly?
-            #TODO iterterm vs iter python 3 vs 2
-
-            # this is because of Python2 vs 3
-            # self.labels = [tf.sparse_placeholder(tf.int32)
-                           # for _ in xrange(len(target_scheme.values()))]
-
-        #for now we will create the maximum sparse_placeholder needed
-        #TODO try to come out with a niter solution
-        max_targets_layers=0
-        for language_id, language_target_dict in language_scheme.iteritems():
-                if(max_targets_layers < len(language_target_dict)):
-                    max_targets_layers = len(language_target_dict)
-
-        for language_id, target_scheme in language_scheme.iteritems():
-            for target_id, _ in target_scheme.iteritems():
-                self.labels.append(tf.sparse_placeholder(tf.int32))
-
-        # except:
-            # self.labels = [tf.sparse_placeholder(tf.int32)
-                           # for _ in range(len(target_scheme.values()))]
-
-        # try:
-            #TODO deal with priors
-            # this is because of Python2 vs 3
-
-            # self.priors = [tf.placeholder(tf.float32)
-                           # for _ in xrange(len(target_scheme.values()))]
-
-        # self.priors = {key : tf.placeholder(tf.float32)
-                       # for (key, value) in target_scheme.iteritems()}
-
-        #TODO for now only taking into consideration the labels. Languages will be needed
         self.priors=[]
-        for target_id, _ in language_scheme.iteritems():
-            self.priors.append(tf.placeholder(tf.float32))
-        # except:
-            # self.priors = [tf.placeholder(tf.float32)
-                           # for _ in range(len(target_scheme.values()))]
+
+        #optional outputs for test
+        self.ters = []
+        self.costs = []
+
+        #mantadory outpus for test
+        self.softmax_probs = []
+        self.log_softmax_probs = []
+        self.log_likelihoods = []
+        self.seq_len = []
+        self.logits = []
+
+        #creating enough placeholders for out graph
+        for language_id, target_scheme in language_scheme.items():
+            for target_id, _ in target_scheme.items():
+                self.labels.append(tf.sparse_placeholder(tf.int32))
+                self.priors.append(tf.placeholder(tf.float32))
 
         self.seq_len = self.length(self.feats)
 
@@ -216,12 +196,10 @@ class DeepBidirRNN:
                 self.sat = tf.placeholder(tf.float32, [None, 1, adapt_dim], name = "sat")
 
                 sat_t=tf.transpose(self.sat, (1, 0, 2), name = "sat_transpose")
-                l_sat = tf.contrib.layers.fully_connected(activation_fn = None, inputs = sat_t, num_outputs = adapt_dim)
-                l_sat = tf.contrib.layers.fully_connected(activation_fn = None, inputs = l_sat, num_outputs = adapt_dim)
-                l_sat = tf.contrib.layers.fully_connected(activation_fn = None, inputs = l_sat, num_outputs = nfeat)
 
-                #self.learned_sat = self.my_sat_layers(num_sat_layers, adapt_dim,  nfeat, sat_t, "sat_layers")
-                outputs=tf.add(outputs, l_sat, name="shift")
+                learned_sat = self.my_sat_layers(num_sat_layers, adapt_dim,  nfeat, sat_t, "sat_layers")
+
+                outputs=tf.add(outputs, learned_sat, name="shift")
 
 
         if batch_norm:
@@ -251,40 +229,58 @@ class DeepBidirRNN:
             elif grad_opt == "momentum":
                 optimizer = tf.train.MomentumOptimizer(self.lr_rate, 0.9)
 
-
-        self.opt = []
-        self.ters = []
-        self.cost = []
-
         count=0
 
         print(80 * "-")
         print("preparing model variables...")
         print(80 * "-")
-        for language_id, language_target_dict in language_scheme.iteritems():
-            losses=[]
-            tmp_ter=[]
+
+
+        for language_id, language_target_dict in language_scheme.items():
+
+
+            tmp_cost, tmp_ter, tmp_logits, tmp_softmax_probs, tmp_log_softmax_probs, tmp_log_likelihoods = [], [], [], [], [], []
 
             with tf.variable_scope(constants.SCOPES.OUTPUT):
-                for target_id, num_targets in language_target_dict.iteritems():
+                for target_id, num_targets in language_target_dict.items():
+
                     scope="output_fc_"+language_id+"_"+target_id
                     logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs,
                                                               num_outputs=num_targets,
                                                               scope = scope,
                                                               biases_initializer = tf.contrib.layers.xavier_initializer(),
                                                               trainable=self.is_trainable_sat)
+
                     loss = tf.nn.ctc_loss(labels=self.labels[count], inputs=logit, sequence_length=self.seq_len)
-                    losses.append(loss)
+                    tmp_cost.append(loss)
 
                     decoded, log_prob = tf.nn.ctc_greedy_decoder(logit, self.seq_len)
                     ter = tf.reduce_sum(tf.edit_distance(tf.cast(decoded[0], tf.int32), self.labels[count], normalize = False), name = "ter")
                     tmp_ter.append(ter)
 
+                    #storing outputs
+                    tran_logit = tf.transpose(logit, (1, 0, 2)) * self.temperature
+                    tmp_logits.append(tran_logit)
+
+                    softmax_prob = tf.nn.softmax(tran_logit, dim=-1, name=None)
+                    tmp_softmax_probs.append(softmax_prob)
+
+                    log_softmax_prob = tf.log(softmax_prob)
+                    tmp_log_softmax_probs.append(log_softmax_prob)
+
+                    log_likelihood = log_softmax_prob - tf.log(self.priors[count])
+                    tmp_log_likelihoods.append(log_likelihood)
+
                     count=count+1
 
+            self.costs.append(tmp_cost)
             self.ters.append(tmp_ter)
+            self.logits.append(tmp_logits)
+            self.softmax_probs.append(tmp_softmax_probs)
+            self.log_softmax_probs.append(tmp_log_softmax_probs)
+            self.log_likelihoods.append(tmp_log_likelihoods)
 
-
+            #preparing variables to optimize
             if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
                 == constants.SAT_SATGES.TRAIN_SAT:
                 var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=constants.SCOPES.SPEAKER_ADAPTAION)
@@ -302,20 +298,18 @@ class DeepBidirRNN:
             with tf.variable_scope("loss"):
                 regularized_loss = tf.add_n([tf.nn.l2_loss(v) for v in var_list])
 
-            tmp_cost = tf.reduce_mean(losses) + l2 * regularized_loss
+            #reduce the mean of all targets of current language(language_id)
+            tmp_cost = tf.reduce_mean(tmp_cost) + l2 * regularized_loss
 
             gvs = optimizer.compute_gradients(tmp_cost, var_list=var_list)
 
             capped_gvs = [(tf.clip_by_value(grad, -clip, clip), var) for grad, var in gvs]
 
-            #at end  of the day we will just pick up:
-            #cost: averaged cost of all targets of a language
-            #opt: activate the optimitzation over all the var_list (new_var_list) of a language
-            #ter: list of target ters in each language. When we get a language we get all ter targets
-            self.cost.append(tmp_cost)
+            #at end  of the day we will decide whch optimizer to call:
+            #each one will optimize over all targets of the selected language (correct idx)
             self.opt.append(optimizer.apply_gradients(capped_gvs))
 
-        print(80 * "-")
+            print(80 * "-")
 
     def get_variables_by_lan(self, current_name):
 

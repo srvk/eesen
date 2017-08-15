@@ -19,7 +19,6 @@ class Test():
 
         self.__model = DeepBidirRNN(config)
 
-        cv_x, cv_y, cv_sat = data
 
         saver = tf.train.Saver()
 
@@ -39,7 +38,7 @@ class Test():
             soft_probs, log_soft_probs, log_likes, logits = self.__create_result_containers(config)
             ntest, test_costs, test_ters, ntest_labels = self.__create_counter_containers(config)
 
-            process, data_queue = self.__generate_queue(config, data)
+            process, data_queue, test_x = self.__generate_queue(config, data)
             process.start()
 
             while True:
@@ -48,7 +47,7 @@ class Test():
                 if data is None:
                     break
 
-                feed, batch_size, index_correct_lan = self.__prepare_feed(data)
+                feed, batch_size, index_correct_lan, batch_id = self.__prepare_feed(data, config)
 
                 if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]):
 
@@ -81,70 +80,90 @@ class Test():
 
                 self.__update_probs_containers(config, config, index_correct_lan, batch_soft_probs,
                                                batch_log_soft_probs, batch_log_likes, batch_logits,
-                                               soft_probs, log_soft_probs, log_likes, logits)
+                                               batch_id, soft_probs, log_soft_probs, log_likes, logits)
 
             process.join()
             process.terminate()
 
+            if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]):
+                #averaging ters and costs
+                for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME]:
+                    for target_id, _ in config[constants.CONF_TAGS.LANGUAGE_SCHEME]:
+                        test_ters[language_id][target_id] = test_ters[language_id][target_id]/float(ntest_labels[language_id][target_id])
+                        test_costs[language_id][target_id] = test_ters[language_id][target_id]/float(ntest_labels[language_id][target_id])
+
+                self.__print_logs(config, test_costs, test_ters, ntest)
 
             if(config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF]):
-                self.__average_over_augmented_data(self, )
 
+                self.__average_over_augmented_data(config, test_x.get_batches_id(), soft_probs, log_soft_probs, logits)
 
-            # for all classes
-            cv_cost = cv_cost/ncv
-            for idx, _ in enumerate(nclass):
-                cv_ters[idx] /= float(ncv_labels[idx])
+            self.__store_results(config, test_x.get_batches_id(), soft_probs, log_soft_probs, log_likes, logits)
 
-                if config["augment"]:
+    def __average_over_augmented_data(self, config, batches_id, soft_probs, log_soft_probs, log_likes, logits):
 
-                __print_logs()
-                __store_results()
+        soft_probs = {}; log_soft_probs = {}; log_likes = {}; logits = {};
 
-    def __average_over_augmented_data(self, config, uttids, soft_probs, log_soft_probs, log_likes, logits):
+        for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME]:
+            for target_id, num_targets in target_scheme:
 
-        for language_id,  target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME]:
-            for target_id,  number_targets in target_scheme:
-                # let's average the three(?) sub-sampled outputs
-                S1 = {}; P1 = {}; L1 = {}; O1 = {}; S2 = {}; P2 = {}; L2 = {}; O2 = {}; U = []
-                for u, s, p, l, o in zip(uttids, soft_probs[language_id][target_id], log_soft_probs[language_id][target_id],
+                S={}; P={}; L={}; O={};
+                #iterate over all utterances of a concrete language
+                for utt_id, s, p, l, o in zip(batches_id[language_id], soft_probs[language_id][target_id], log_soft_probs[language_id][target_id],
                                          log_likes[language_id][target_id], logits[language_id][target_id]):
+                    #utt did not exist. Lets create it
+                    if not utt_id in S:
+                        S[utt_id] = [s]; P[utt_id] = [p]; L[utt_id] = [l]; O[utt_id] = [o]
 
-                    #we store all results utterance wise
-                    if not u in S1:
-                        S1[u] = s; P1[u] = p; L1[u] = l; O1[u] = o
-                    elif not u in S2:
-                        S2[u] = s; P2[u] = p; L2[u] = l; O2[u] = o
+                    #utt exists. Lets concatenate
                     else:
-                        L = min(S1[u].shape[0],S2[u].shape[0],s.shape[0])
-                        if S1[u].shape[0] > L:
-                            S1[u] = S1[u][0:L][:]; P1[u] = P1[u][0:L][:]; L1[u] = L1[u][0:L][:]; O1[u] = O1[u][0:L][:]
-                        if S2[u].shape[0] > L:
-                            S2[u] = S2[u][0:L][:]; P2[u] = P2[u][0:L][:]; L2[u] = L2[u][0:L][:]; O2[u] = O2[u][0:L][:]
-                        if s.shape[0] > L:
-                            s     =     s[0:L][:]; p     =     p[0:L][:]; l     =     l[0:L][:]; o     =     o[0:L][:]
-                        S1[u]=(s+S1[u]+S2[u])/3; P1[u]=(p+P1[u]+P2[u])/3; L1[u]=(l+L1[u]+L2[u])/3; O1[u]=(o+O1[u]+O2[u])/3
-                        del S2[u]; del P2[u]; del L2[u]; del O2[u]
-                        U.append(u)
-                soft_prob = []; log_soft_prob = []; log_like = []; logit = []
+                        S[utt_id] += [s]; P[utt_id] += [p]; L[utt_id] += [l]; O[utt_id] += [o]
 
-                for u in U:
-                    soft_prob += [S1[u]]
-                    log_soft_prob += [P1[u]]
-                    log_like += [L1[u]]
-                    logit += [O1[u]]
+                S, P, L, O = self.__shrink_and_average(S, P, L, O)
 
+                soft_probs[language_id][target_id] = []
+                log_soft_probs[language_id][target_id] = []
+                log_likes[language_id][target_id] = []
+                logits[language_id][target_id] = []
+
+                #iterate over all uttid again
+                for utt_id in batches_id[language_id]:
+                    soft_probs[language_id][target_id] += [S[utt_id]]
+                    log_soft_probs[language_id][target_id] += [P[utt_id]]
+                    log_likes[language_id][target_id] += [L[utt_id]]
+                    logits[language_id][target_id] += [O[utt_id]]
+
+
+    def __shrink_and_average(self, S, P, L, O):
+
+        avg_S={}; avg_P={}; avg_L={}; avg_O={}
+
+        for utt_id, _ in S:
+
+            #computing minimum L
+            min_length = sys.maxint
+            for utt_prob in S[utt_id]:
+                if(utt_prob.shape[0] < min_length):
+                    min_length = utt_prob.shape[0]
+
+            for utt_prob in S[utt_id]:
+                avg_S[utt_id] += S[utt_id][0:min_length][:]/float(len(S[utt_id]))
+                avg_P[utt_id] += P[utt_id][0:min_length][:]/float(len(S[utt_id]))
+                avg_L[utt_id] += L[utt_id][0:min_length][:]/float(len(S[utt_id]))
+                avg_O[utt_id] += O[utt_id][0:min_length][:]/float(len(S[utt_id]))
+
+        return avg_S, avg_P, avg_L, avg_O
 
 
     def __update_probs_containers(self, config, correct_language_idx, batch_soft_probs,
                                   batch_log_soft_probs, batch_log_likes, batch_logits, batch_seq_len,
-                                  m_soft_probs, m_log_soft_probs, m_log_likes, m_logits):
-
+                                  batch_id, m_soft_probs, m_log_soft_probs, m_log_likes, m_logits, m_batches_id):
 
         language_current_idx=0
         for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME]:
             idx=0
             if(language_current_idx == correct_language_idx):
+                m_batches_id[language_id] += batch_id
                 for target_id, num_targets in target_scheme:
                     m_soft_probs[language_id][target_id] += self.__mat2list(batch_soft_probs[idx], batch_seq_len)
                     m_log_soft_probs[language_id][target_id] += self.__mat2list(batch_log_soft_probs[idx], batch_seq_len)
@@ -152,22 +171,6 @@ class Test():
                     m_logits[language_id][target_id] += self.__mat2list(batch_logits[idx], batch_seq_len)
                 idx=idx+1
             language_current_idx+=1
-
-    def __update_counters(self, batch_ter, batch_cost, batch_size, ybatch, m_acum_ters, m_acum_cost,m_acum_samples, m_acum_labels):
-
-
-        #https://stackoverflow.com/questions/835092/python-dictionary-are-keys-and-values-always-the-same-order
-        #TODO although this should be changed for now is a workaround
-
-        for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
-            if(ybatch[1] == language_id):
-                for idx, (target_id, _) in enumerate(target_scheme.iteritems()):
-                    #note that ybatch[0] contains targets and ybathc[1] contains language_id
-                    m_acum_ters[language_id][target_id] += m_batch_ters[idx]
-                    m_acum_labels[language_id][target_id] += self.__get_label_len(ybatch[0][language_id][target_id])
-
-        m_acum_cost[ybatch[1]] += m_batch_cost * batch_size
-        m_acum_samples[ybatch[1]] += batch_size
 
     def __create_counter_containers(self, config):
 
@@ -229,7 +232,7 @@ class Test():
         fp.close()
 
 
-    def __store_results(self, config, utterances, soft_prob, log_soft_prob, logit, log_like=None):
+    def __store_results(self, config, uttids, soft_probs, log_soft_probs, log_likes, logits):
 
         for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
             if(len(config[constants.CONF_TAGS.LANGUAGE_SCHEME]) > 1):
@@ -242,15 +245,15 @@ class Test():
             for target_id, _ in target_scheme.iteritems():
 
                     if(config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
-                        writeScp(os.path.join(results_dir, "log_like_"+target_id+".scp"), utterances,
-                                 writeArk(os.path.join(results_dir, "log_like_"+target_id+".ark"), log_like[language_id][target_id], utterances))
+                        writeScp(os.path.join(results_dir, "log_like_"+target_id+".scp"), uttids,
+                                 writeArk(os.path.join(results_dir, "log_like_"+target_id+".ark"), log_likes[language_id][target_id], uttids))
 
-                    writeScp(os.path.join(results_dir, "soft_prob_"+target_id+".scp"), utterances,
-                             writeArk(os.path.join(results_dir, "soft_prob_"+target_id+".ark"), soft_prob[language_id][target_id], utterances))
-                    writeScp(os.path.join(results_dir, "log_soft_prob_"+target_id+".scp"), utterances,
-                             writeArk(os.path.join(results_dir, "log_soft_prob_"+target_id+".ark"), log_soft_prob[language_id][target_id], utterances))
-                    writeScp(os.path.join(results_dir, "logit_"+target_id+".scp"), utterances,
-                             writeArk(os.path.join(results_dir, "logit"+target_id+".ark"), logit[language_id][target_id], utterances))
+                    writeScp(os.path.join(results_dir, "soft_prob_"+target_id+".scp"), uttids,
+                             writeArk(os.path.join(results_dir, "soft_prob_"+target_id+".ark"), soft_probs[language_id][target_id], uttids))
+                    writeScp(os.path.join(results_dir, "log_soft_prob_"+target_id+".scp"), uttids,
+                             writeArk(os.path.join(results_dir, "log_soft_prob_"+target_id+".ark"), log_soft_probs[language_id][target_id], uttids))
+                    writeScp(os.path.join(results_dir, "logit_"+target_id+".scp"), uttids,
+                             writeArk(os.path.join(results_dir, "logit"+target_id+".ark"), logits[language_id][target_id], uttids))
 
 
     def __update_counters(self, m_acum_ters, m_acum_cost, m_acum_samples, m_acum_labels,
@@ -261,6 +264,7 @@ class Test():
 
         for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
             if(ybatch[1] == language_id):
+
                 for idx, (target_id, _) in enumerate(target_scheme.iteritems()):
                     #note that ybatch[0] contains targets and ybathc[1] contains language_id
                     m_acum_ters[language_id][target_id] += m_batch_ters[idx]
@@ -269,6 +273,7 @@ class Test():
         m_acum_cost[ybatch[1]] += m_batch_cost * batch_size
         m_acum_samples[ybatch[1]] += batch_size
 
+    #important to note that shuf = False (to be able to reuse uttid)
     def __generate_queue (self, config, data):
 
         test_x, test_y, test_sat = data
@@ -278,17 +283,20 @@ class Test():
         if test_y:
             if test_sat:
                 #x, y, sat
-                return Process(run_reader_queue, data_queue, test_x , test_y, test_sat), data_queue
+                process = Process(target= run_reader_queue, args= (data_queue, test_x, test_y, False, test_sat))
             else:
                 #x, y
-                return Process(run_reader_queue, data_queue, test_x , test_y, None), data_queue
+                process = Process(target = run_reader_queue, args= (data_queue, test_x, test_y, False, None))
         else:
             if test_sat:
                 #x, sat
-                return Process(run_reader_queue, data_queue, test_x , None, test_sat), data_queue
+                process = Process(target = run_reader_queue, args= (data_queue, test_x, None, False, test_sat))
             else:
                 #x
-                return Process(run_reader_queue, data_queue, test_x , None, None), data_queue
+                process =  Process(target = run_reader_queue, args = (data_queue, test_x, None, False, None))
+
+        return process, data_queue, test_x
+
 
     def __prepare_feed(self, data, config):
 
@@ -318,13 +326,6 @@ class Test():
                 y_batch_list.append(batch_targets)
 
 
-        #y_batch_list containts [batch_target_1, batch_target_2, ...,, batch_target_n]
-        #we need to fill all the target container of the __model
-        #the target container has a capacity of self.max_targets_layers
-        if(len(y_batch_list) < self.max_targets_layers):
-            for count in range(self.max_targets_layers- len(y_batch_list)):
-                y_batch_list.append(y_batch_list[0])
-
         #eventhough self.__model.labels will be equal or grater we will use only until_batch_list
         feed = {i: y for i, y in zip(self.__model.labels, y_batch_list)}
 
@@ -333,7 +334,7 @@ class Test():
 
         feed[self.__model.is_training] = False
 
-        if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
+        if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
                 != constants.SAT_SATGES.UNADAPTED:
             feed[self.__model.sat] = sat_batch
 
@@ -341,20 +342,21 @@ class Test():
         #TODO we need to add priors also:
         #feed_priors={i: y for i, y in zip(model.priors, config["prior"])}
 
-        return feed, batch_size, index_correct_lan
+        #return feed, batch_size, correct_index, uttid_batch
+        return feed, batch_size, index_correct_lan, x_batch[1]
 
-    def __info(s):
+    def __info(self, s):
         s = "[" + time.strftime("%Y-%m-%d %H:%M:%S") + "] " + s
         print(s)
 
-    def __get_label_len(label):
+    def __get_label_len(self, label):
         idx, _, _ = label
         return len(idx)
 
-    def __mat2list(a, seq_len):
+    def __mat2list(self, a, seq_len):
         # roll to match the output of essen code, blank label first
         return [np.roll(a[i, :seq_len[i], :], 1, axis = 1) for i in range(len(a))]
 
-    def __chunk(it, size):
+    def __chunk(self, it, size):
         it = iter(it)
         return iter(lambda: tuple(islice(it, size)), ())

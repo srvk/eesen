@@ -383,6 +383,7 @@ class Train():
         else:
             x_batch, y_batch = data
 
+        #it contains the actuall value of x
         x_batch = x_batch[0]
 
         batch_size = len(x_batch)

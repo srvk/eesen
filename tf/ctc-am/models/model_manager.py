@@ -102,12 +102,12 @@ class DeepBidirRNN:
         #for now we will create the maximum sparse_placeholder needed
         #TODO try to come out with a niter solution
         max_targets_layers=0
-        for language_id, language_target_dict in language_scheme.iteritems():
+        for language_id, language_target_dict in language_scheme.items():
                 if(max_targets_layers < len(language_target_dict)):
                     max_targets_layers = len(language_target_dict)
 
-        for language_id, target_scheme in language_scheme.iteritems():
-            for target_id, _ in target_scheme.iteritems():
+        for language_id, target_scheme in language_scheme.items():
+            for target_id, _ in target_scheme.items():
                 self.labels.append(tf.sparse_placeholder(tf.int32))
 
         # except:
@@ -126,8 +126,9 @@ class DeepBidirRNN:
 
         #TODO for now only taking into consideration the labels. Languages will be needed
         self.priors=[]
-        for target_id, _ in language_scheme.iteritems():
-            self.priors.append(tf.placeholder(tf.float32))
+        for language_id, target_scheme in language_scheme.items():
+            for target_id, _ in target_scheme.items():
+                self.priors.append(tf.placeholder(tf.float32, name="place_holder_"+language_id+"_"+target_id))
         # except:
             # self.priors = [tf.placeholder(tf.float32)
                            # for _ in range(len(target_scheme.values()))]
@@ -180,11 +181,11 @@ class DeepBidirRNN:
         self.cost = []
 
         count=0
-        for language_id, language_target_dict in language_scheme.iteritems():
+        for language_id, language_target_dict in language_scheme.items():
             losses=[]
             tmp_ter=[]
 
-            for target_id, num_targets in language_target_dict.iteritems():
+            for target_id, num_targets in language_target_dict.items():
                 scope="output_fc_"+language_id+"_"+target_id
                 logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs=num_targets, scope = scope, biases_initializer = tf.contrib.layers.xavier_initializer())
                 loss = tf.nn.ctc_loss(labels=self.labels[count], inputs=logit, sequence_length=self.seq_len)

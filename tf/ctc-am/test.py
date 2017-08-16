@@ -28,25 +28,12 @@ from reader.labels_reader import labels_reader_factory
 #   Function definitions
 # -----------------------------------------------------------------
 
-def load_prior(prior_paths, nclass):
+def load_prior(prior_path, nclass):
     priors = []
 
-    if(len(prior_paths.split(":")) != len(nclass)):
-        print("Error: Wrong number or prior paths given. Only "+str(len(prior_paths.split(":")))+" paths were given and "+str(len(nclass))+" needed")
-        sys.exit()
+    print ("loading priors loaded for path: "+(prior_path))
+    print ("with nclass: "+str(nclass))
 
-    for idx, prior_path in enumerate(prior_paths.split(":")):
-        with open(prior_path, "r") as f:
-            for line in f.readlines():
-                parts = [int(x) for x in line.strip().split(" ")[1:-1]]
-                counts = parts[1:]
-                counts.append(parts[0])
-                cnt_sum = reduce(lambda x, y: x + y, counts)
-                prior = [float(x) / cnt_sum for x in counts]
-            if(len(prior) != nclass[idx]):
-                print("Error: Wrong number of elements given in prior file number "+str(idx)+" it has "+str(len(prior))+" and it should have "+str(nclass[idx]))
-
-        priors.append(prior)
     return priors
 
 def generate_priors(data_dir, language_scheme):
@@ -155,6 +142,7 @@ def main():
 
     #load training feats
     test_x = feats_reader_factory.create_reader('test', 'kaldi', config)
+
     print(80 * "-")
 
     if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]):

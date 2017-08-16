@@ -15,27 +15,32 @@ from utils.fileutils.kaldi import writeArk, writeScp
 
 class Test():
 
-    def test(self, data, config):
+    def test_impl(self, data, config):
+        print(80 * "-")
+        print(80 * "-")
+        print("loading config path:")
+        print(config)
+
+
+        print("weights restored")
+        print(80 * "-")
+        print(80 * "-")
 
         self.__model = DeepBidirRNN(config)
 
 
         saver = tf.train.Saver()
 
-
         with tf.Session() as sess:
 
 
-            print(80 * "-")
             print("restoring weights from path:")
-            print (self.__config[constants.CONFIG_TAGS_TEST.TRANED_WEIGHTS])
+            print (config[constants.CONFIG_TAGS_TEST.TRAINED_WEIGHTS])
 
-            saver.restore(sess, self.__config[constants.CONFIG_TAGS_TEST.TRANED_WEIGHTS])
+            saver.restore(sess, config[constants.CONFIG_TAGS_TEST.TRAINED_WEIGHTS])
 
-            print("weights restored")
-            print(80 * "-")
+            ters, soft_probs, log_soft_probs, log_likes, logits, batches_id = self.__create_result_containers(config)
 
-            soft_probs, log_soft_probs, log_likes, logits = self.__create_result_containers(config)
             ntest, test_costs, test_ters, ntest_labels = self.__create_counter_containers(config)
 
             process, data_queue, test_x = self.__generate_queue(config, data)
@@ -47,43 +52,54 @@ class Test():
                 if data is None:
                     break
 
-                feed, batch_size, index_correct_lan, batch_id = self.__prepare_feed(data, config)
+                feed, batch_size, index_correct_lan, batch_id, y_batch = self.__prepare_feed(data, config)
+
+                request_list = self.__prepare_request_list(config)
+
+                #TODO clean this up
+                batch_ters = None
+                batch_log_likes = None
+
+                request_list = [
+
+                    self.__model.softmax_probs,
+                    self.__model.log_softmax_probs,
+                    self.__model.seq_len,
+                    self.__model.logits]
 
                 if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]):
+                    request_list.append(self.__model.ters)
+                    request_list.append(self.__model.cost)
 
-                    if(config[constants.CONF_TAGS.SAT_SATGE] != constants.SAT_SATGES.UNADAPTED):
-                        _, batch_y = data
-                    else:
-                        batch_y, _, _ = data
+                if(config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
+                    request_list.append(self.__model.log_likelihoods)
 
-                    batch_cost, batch_ters, batch_soft_probs, batch_log_soft_probs, batch_log_likes, batch_seq_len, batch_logits = \
-                        sess.run([self.__model.cost,
-                                  self.__model.ters,
-                                  self.__model.softmax_probs,
-                                  self.__model.log_softmax_probs,
-                                  self.__model.log_likelihoods,
-                                  self.__model.seq_len,
-                                  self.__model.logits],
-                                 feed)
 
-                    self.__update_counters(test_ters, test_costs, ntest, ntest_labels,
-                                           batch_ters, batch_cost, batch_size, batch_y)
-                else:
+                if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER] and config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
+                    batch_soft_probs, batch_log_soft_probs, batch_seq_len, batch_logits, batch_cost, batch_ters, batch_log_likes= \
+                        sess.run(request_list, feed)
 
-                        batch_soft_probs, batch_log_soft_probs, batch_log_likes, batch_seq_len, batch_logits = \
-                        sess.run([self.__model.softmax_probs,
-                                  self.__model.log_softmax_probs,
-                                  self.__model.log_likelihoods,
-                                  self.__model.seq_len,
-                                  self.__model.logits],
-                                 feed)
+                elif(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER] and not config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
+                    batch_soft_probs, batch_log_soft_probs, batch_seq_len, batch_logits, batch_cost, batch_ters = \
+                        sess.run(request_list, feed)
 
-                self.__update_probs_containers(config, config, index_correct_lan, batch_soft_probs,
-                                               batch_log_soft_probs, batch_log_likes, batch_logits,
-                                               batch_id, soft_probs, log_soft_probs, log_likes, logits)
+                elif(not config[constants.CONFIG_TAGS_TEST.COMPUTE_TER] and config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
+                    batch_soft_probs, batch_log_soft_probs, batch_seq_len, batch_logits, batch_log_likes= \
+                        sess.run(request_list, feed)
+
+                elif(not config[constants.CONFIG_TAGS_TEST.COMPUTE_TER] and not config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
+                    batch_soft_probs, batch_log_soft_probs, batch_seq_len, batch_logits = \
+                        sess.run(request_list, feed)
+
+                self.__update_probs_containers(config, batch_id, batches_id, batch_seq_len, batch_soft_probs, soft_probs,
+                                  batch_log_soft_probs , log_soft_probs, batch_logits, logits, batch_log_likes, log_likes)
+
+                if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]):
+                    self.__update_counters(batch_size, ntest, y_batch, ntest_labels,batch_ters, ters, batch_cost, test_costs)
 
             process.join()
             process.terminate()
+            print("done decoding")
 
             if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]):
                 #averaging ters and costs
@@ -99,6 +115,24 @@ class Test():
                 self.__average_over_augmented_data(config, test_x.get_batches_id(), soft_probs, log_soft_probs, logits)
 
             self.__store_results(config, test_x.get_batches_id(), soft_probs, log_soft_probs, log_likes, logits)
+
+    def __prepare_request_list(self, config):
+
+                request_list = [
+
+                self.__model.softmax_probs,
+                  self.__model.log_softmax_probs,
+                  self.__model.seq_len,
+                  self.__model.logits]
+
+                if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]):
+                    request_list.append(self.__model.ters)
+                    request_list.append(self.__model.cost)
+
+                if(config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
+                    request_list.append(self.__model.log_likelihoods)
+
+                return request_list
 
     def __average_over_augmented_data(self, config, batches_id, soft_probs, log_soft_probs, log_likes, logits):
 
@@ -155,22 +189,27 @@ class Test():
         return avg_S, avg_P, avg_L, avg_O
 
 
-    def __update_probs_containers(self, config, correct_language_idx, batch_soft_probs,
-                                  batch_log_soft_probs, batch_log_likes, batch_logits, batch_seq_len,
-                                  batch_id, m_soft_probs, m_log_soft_probs, m_log_likes, m_logits, m_batches_id):
+    def __update_probs_containers(self, config,
+                                  batch_id, m_batches_id,
+                                  batch_seq_len,
+                                  batch_soft_probs, m_soft_probs,
+                                  batch_log_soft_probs , m_log_soft_probs,
+                                  batch_logits, m_logits,
+                                  batch_log_likes, m_log_likes):
 
-        language_current_idx=0
-        for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME]:
-            idx=0
-            if(language_current_idx == correct_language_idx):
-                m_batches_id[language_id] += batch_id
-                for target_id, num_targets in target_scheme:
-                    m_soft_probs[language_id][target_id] += self.__mat2list(batch_soft_probs[idx], batch_seq_len)
-                    m_log_soft_probs[language_id][target_id] += self.__mat2list(batch_log_soft_probs[idx], batch_seq_len)
-                    m_log_likes[language_id][target_id] += self.__mat2list(batch_log_likes[idx], batch_seq_len)
-                    m_logits[language_id][target_id] += self.__mat2list(batch_logits[idx], batch_seq_len)
-                idx=idx+1
-            language_current_idx+=1
+        language_idx=0
+        for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
+            m_batches_id[language_id] += batch_id
+            target_idx=0
+            for target_id, num_targets in target_scheme.items():
+                m_soft_probs[language_id][target_id] += self.__mat2list(batch_soft_probs[language_idx][target_idx], batch_seq_len)
+                m_log_soft_probs[language_id][target_id] += self.__mat2list(batch_log_soft_probs[language_idx][target_idx], batch_seq_len)
+                m_logits[language_id][target_id] += self.__mat2list(batch_logits[language_idx][target_idx], batch_seq_len)
+
+                if(config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
+                    m_log_likes[language_id][target_id] += self.__mat2list(batch_log_likes[language_idx][target_idx], batch_seq_len)
+                target_idx += 1
+            language_idx += 1
 
     def __create_counter_containers(self, config):
 
@@ -192,25 +231,29 @@ class Test():
 
     def __create_result_containers(self, config):
 
+        batches_id={}
+        ters={}
         soft_probs = {}
         log_soft_probs = {}
         log_likes = {}
         logits = {}
 
-
         for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
+            batches_id[language_id] = []
+            ters[language_id] = {}
             soft_probs[language_id] = {}
             soft_probs[language_id] = {}
             log_soft_probs[language_id] = {}
             log_likes[language_id] = {}
             logits[language_id] = {}
             for target_id, _ in target_scheme.iteritems():
+                ters[language_id][target_id] = []
                 soft_probs[language_id][target_id] = []
                 log_soft_probs[language_id][target_id] = []
                 log_likes[language_id][target_id]=[]
                 logits[language_id][target_id]=[]
 
-        return soft_probs, log_soft_probs, log_likes, logits
+        return ters, soft_probs, log_soft_probs, log_likes, logits, batches_id
 
     def __print_logs(self, config, test_cost, test_ters, ntest):
 
@@ -256,8 +299,8 @@ class Test():
                              writeArk(os.path.join(results_dir, "logit"+target_id+".ark"), logits[language_id][target_id], uttids))
 
 
-    def __update_counters(self, m_acum_ters, m_acum_cost, m_acum_samples, m_acum_labels,
-                          m_batch_ters, m_batch_cost, batch_size, ybatch):
+    def __update_counters(self, batch_size, m_acum_samples, ybatch, m_acum_labels, batch_ters, m_acum_ters, batch_cost, m_acum_cost):
+
 
         #https://stackoverflow.com/questions/835092/python-dictionary-are-keys-and-values-always-the-same-order
         #TODO although this should be changed for now is a workaround
@@ -267,10 +310,10 @@ class Test():
 
                 for idx, (target_id, _) in enumerate(target_scheme.iteritems()):
                     #note that ybatch[0] contains targets and ybathc[1] contains language_id
-                    m_acum_ters[language_id][target_id] += m_batch_ters[idx]
+                    m_acum_ters[language_id][target_id] += batch_ters[idx]
                     m_acum_labels[language_id][target_id] += self.__get_label_len(ybatch[0][language_id][target_id])
 
-        m_acum_cost[ybatch[1]] += m_batch_cost * batch_size
+        m_acum_cost[ybatch[1]] += batch_cost * batch_size
         m_acum_samples[ybatch[1]] += batch_size
 
     #important to note that shuf = False (to be able to reuse uttid)
@@ -300,50 +343,61 @@ class Test():
 
     def __prepare_feed(self, data, config):
 
+        #TODO solve this
+        y_batch = None
         if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
                 != constants.SAT_SATGES.UNADAPTED:
             x_batch, y_batch, sat_batch = data
-        else:
+        elif config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]:
             x_batch, y_batch = data
+        else:
+            x_batch = data
 
-        x_batch = x_batch[0]
-
-        batch_size = len(x_batch)
+        #getting the actual x_batch that is in position 0
+        batch_size = len(x_batch[0])
 
         current_lan_index = 0
-        for language_id, language_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
-            if (language_id == y_batch[1]):
-                index_correct_lan = current_lan_index
-            current_lan_index += 1
 
-        #we just convert from dict to a list
-        y_batch_list = []
-        #every batch has the structue of:
-        # batch{language_1;{target_1: labels, target_2: labels},
-        # language_2;{target_1: labels, target_2: labels}]
-        for language_id, batch_targets in y_batch[0].iteritems():
-            for targets_id, batch_targets in batch_targets.iteritems():
-                y_batch_list.append(batch_targets)
+        index_correct_lan = None
+        if config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]:
+            #we just convert from dict to a list
+            y_batch_list = []
+            # batch{language_1;{target_1: labels, target_2: labels},
+            # language_2;{target_1: labels, target_2: labels}]
+            for language_id, batch_targets in y_batch[0].items:
+                for targets_id, batch_targets in batch_targets.iteritems():
+                    y_batch_list.append(batch_targets)
 
+            for language_id, language_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
+                if (language_id == y_batch[1]):
+                    index_correct_lan = current_lan_index
+                current_lan_index += 1
 
-        #eventhough self.__model.labels will be equal or grater we will use only until_batch_list
-        feed = {i: y for i, y in zip(self.__model.labels, y_batch_list)}
+            #eventhough self.__model.labels will be equal or grater we will use only until_batch_list
+            feed = {i: y for i, y in zip(self.__model.labels, y_batch_list)}
+
+        else:
+            feed = {}
 
         #TODO remove this prelimenary approaches
-        feed[self.__model.feats] = x_batch
-
+        #getting the actual x_batch that is in position 0
+        feed[self.__model.feats] = x_batch[0]
+        feed[self.__model.temperature] = float(config[constants.CONFIG_TAGS_TEST.TEMPERATURE])
         feed[self.__model.is_training] = False
+
 
         if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
                 != constants.SAT_SATGES.UNADAPTED:
             feed[self.__model.sat] = sat_batch
 
 
-        #TODO we need to add priors also:
-        #feed_priors={i: y for i, y in zip(model.priors, config["prior"])}
+        if(config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
+            #TODO we need to add priors also:
+            #feed_priors={i: y for i, y in zip(model.priors, config["prior"])}
+            print(config[constants.CONFIG_TAGS_TEST.PRIORS_SCHEME])
 
         #return feed, batch_size, correct_index, uttid_batch
-        return feed, batch_size, index_correct_lan, x_batch[1]
+        return feed, batch_size, index_correct_lan, x_batch[1], y_batch
 
     def __info(self, s):
         s = "[" + time.strftime("%Y-%m-%d %H:%M:%S") + "] " + s
@@ -354,6 +408,7 @@ class Test():
         return len(idx)
 
     def __mat2list(self, a, seq_len):
+
         # roll to match the output of essen code, blank label first
         return [np.roll(a[i, :seq_len[i], :], 1, axis = 1) for i in range(len(a))]
 

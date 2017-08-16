@@ -22,8 +22,8 @@ class Eesen(object):
 
 
     def test(self, data, config):
-        test = Test(config)
-        test.test_impl(data)
+        test = Test()
+        test.test_impl(data, config)
 
 
 

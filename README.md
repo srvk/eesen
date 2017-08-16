@@ -37,4 +37,4 @@ Yajie Miao, Mohammad Gowayyed, and Florian Metze, "[EESEN: End-to-End Speech Rec
 
 For max perturbation and dropout:
 
-Jayadev Billa, "[Improving LSTM-CTC based ASR performance in domains with limited training data](papers/LSTM-CTCperf2017.pdf)"
+Jayadev Billa, "[Improving LSTM-CTC based ASR performance in domains with limited training data](https://arxiv.org/abs/1707.00722)"

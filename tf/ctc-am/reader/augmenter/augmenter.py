@@ -17,9 +17,9 @@ class Augmenter(object):
         #TODO @florian here you can have more room to play with augmentation option
         if(self.online_augment_config[constants.AUGMENTATION.WINDOW] and self.online_augment_config[constants.AUGMENTATION.WINDOW]):
 
-            print("Augmenting data x" + str(self.online_augment_config[constants.AUGMENTATION.FACTOR])+" and win "+str(self.online_augment_config[constants.AUGMENTATION.WINDOW])+"...\n")
+            print("Augmenting data x" + str(self.online_augment_config[constants.AUGMENTATION.SUBSAMPLING])+" and win "+str(self.online_augment_config[constants.AUGMENTATION.WINDOW])+"...\n")
 
-            factor=self.online_augment_config[constants.AUGMENTATION.FACTOR]
+            factor=self.online_augment_config[constants.AUGMENTATION.SUBSAMPLING]
             win=self.online_augment_config[constants.AUGMENTATION.WINDOW]
 
             feat_info = [

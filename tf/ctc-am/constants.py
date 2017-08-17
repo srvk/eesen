@@ -1,4 +1,8 @@
 
+class MODEL_NAME:
+    ACHEN="achen"
+    ACHEN_SUM="achen_sum"
+    DEEP_BILSTM="deepbilstm"
 
 class DEFAULT_FILENAMES:
     SAT="sat_local"
@@ -32,6 +36,7 @@ class CONF_TAGS:
 
     #architecture arguments
     LSTM_TYPE = "lstm_type"
+    MODEL = "model"
     NPROJ = "nproj"
     L2="l2"
     NLAYERS="nlayer"
@@ -60,8 +65,8 @@ class CONF_TAGS:
     SAT_FEAT_DIM="sat_feat_dim"
 
 class AUGMENTATION:
-    WINDOW="win"
-    FACTOR="factor"
+    WINDOW="window"
+    SUBSAMPLING="subsampling"
     ROLL="roll"
 
 class LSTM_TYPE:

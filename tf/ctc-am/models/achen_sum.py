@@ -3,7 +3,7 @@ import constants
 import tensorflow as tf
 from utils.fileutils import debug
 
-class DeepBidirRNN:
+class AchenSum:
 
     def length(self, sequence):
         with tf.variable_scope("seq_len"):
@@ -13,9 +13,36 @@ class DeepBidirRNN:
         return length
 
 
-    #def my_cnn (self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope, batch_norm, is_training = True):
+    def my_dnn_layer(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope, batch_norm, is_training = True):
+        scope="DNN_test"
+        # with tf.variable_scope(scope):
+        #     i = 1
+        #     with tf.variable_scope("layer%d" % i):
+        outputs = tf.contrib.layers.fully_connected(
+            activation_fn = tf.nn.tanh , inputs = outputs , num_outputs= 400, biases_initializer = tf.contrib.layers.xavier_initializer(), scope='fully_connected_DNN1')
+        # Dropout to be added!
+        if(batch_norm):
+            outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True,decay=0.9, is_training=self.is_training,  updates_collections=None)
 
-    #    if(nlayer > 0 ):
+        outputs = tf.contrib.layers.dropout(outputs,keep_prob=0.7,is_training=self.is_training)
+
+
+        outputs = tf.contrib.layers.fully_connected(
+            activation_fn = tf.nn.tanh , inputs = outputs , num_outputs= 200, biases_initializer = tf.contrib.layers.xavier_initializer(), scope='fully_connected_DNN2')
+        # Dropout to be added!
+        if(batch_norm):
+            outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True,decay=0.9, is_training=self.is_training,  updates_collections=None)
+        outputs = tf.contrib.layers.dropout(outputs,keep_prob=0.7,is_training=self.is_training)
+
+        outputs = tf.contrib.layers.fully_connected(
+            activation_fn = tf.nn.tanh , inputs = outputs , num_outputs= 100, biases_initializer = tf.contrib.layers.xavier_initializer(), scope='fully_connected_DNN3')
+        # Dropout to be added!
+        if(batch_norm):
+            outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True,decay=0.9, is_training=self.is_training,  updates_collections=None)
+        outputs = tf.contrib.layers.dropout(outputs,keep_prob=0.7,is_training=self.is_training)
+        return outputs
+
+
 
 
     def my_cudnn_lstm(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope, batch_norm, is_training = True):
@@ -36,8 +63,8 @@ class DeepBidirRNN:
                             cudnn_params = tf.Variable(tf.random_uniform([params_size_t], -bound, bound), validate_shape = False, name = "params", trainable=self.is_trainable_sat)
                             #TODO is_training=is_training should be changed!
                             outputs, _output_h, _output_c = cudnn_model(is_training=is_training,
-                                input_data=outputs, input_h=input_h, input_c=input_c,
-                                params=cudnn_params)
+                                                                        input_data=outputs, input_h=input_h, input_c=input_c,
+                                                                        params=cudnn_params)
                             outputs = tf.contrib.layers.fully_connected(
                                 activation_fn = None, inputs = outputs,
                                 num_outputs = nproj, scope = "projection")
@@ -54,10 +81,10 @@ class DeepBidirRNN:
                     bound = tf.sqrt(6. / (nhidden + nhidden))
 
                     cudnn_params = tf.Variable(tf.random_uniform([params_size_t], -bound, bound),
-                        validate_shape = False, name = "params", trainable=self.is_trainable_sat)
+                                               validate_shape = False, name = "params", trainable=self.is_trainable_sat)
 
                     outputs, _output_h, _output_c = cudnn_model(is_training=is_training,input_data=outputs,
-                            input_h=input_h, input_c=input_c,params=cudnn_params)
+                                                                input_h=input_h, input_c=input_c,params=cudnn_params)
 
                     if(batch_norm):
                         outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True,decay=0.9, is_training=self.is_training,  updates_collections=None)
@@ -99,17 +126,17 @@ class DeepBidirRNN:
                     # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs,
                     # self.seq_len, swap_memory=True, time_major = True, dtype = tf.float32)
                     outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs,
-                        self.seq_len, time_major = True, dtype = tf.float32)
+                                                                 self.seq_len, time_major = True, dtype = tf.float32)
                     # also some API change
                     outputs = tf.concat_v2(values = outputs, axis = 2, name = "output")
                     # outputs = tf.concat(values = outputs, axis = 2, name = "output")
-            # for i in range(nlayer):
-                # with tf.variable_scope("layer%d" % i):
+                    # for i in range(nlayer):
+                    # with tf.variable_scope("layer%d" % i):
                     # cell = tf.contrib.rnn.LSTMBlockCell(nhidden)
                     # if nproj > 0:
-                        # cell = tf.contrib.rnn.OutputProjectionWrapper(cell, nproj)
+                    # cell = tf.contrib.rnn.OutputProjectionWrapper(cell, nproj)
                     # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell,
-                        # outputs, self.seq_len, swap_memory=True, dtype = tf.float32, time_major = True)
+                    # outputs, self.seq_len, swap_memory=True, dtype = tf.float32, time_major = True)
                     # # outputs = tf.concat_v2(outputs, 2, name = "output")
                     # outputs = tf.concat(outputs, 2, name = "output")
                     # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs, self.seq_len, dtype = tf.float32)
@@ -213,7 +240,13 @@ class DeepBidirRNN:
                 scope = "input_fc", biases_initializer = tf.contrib.layers.xavier_initializer())
 
         if lstm_type == "cudnn":
-            outputs = self.my_cudnn_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj,  "cudnn_lstm", batch_norm)
+            outputs_lstm = self.my_cudnn_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj,  "cudnn_lstm", batch_norm)
+
+            outputs_dnn=tf.transpose(outputs, (1, 0, 2), name = "dnn_transpose")
+            outputs_dnn = self.my_dnn_layer(outputs_dnn, batch_size, nlayer, nhidden, nfeat, nproj,  "dnn_layer", batch_norm)
+            outputs_dnn=tf.transpose(outputs_dnn, (1, 0, 2), name = "final_dnn_transpose")
+            outputs = tf.add(outputs_lstm, outputs_dnn, name = "output")
+
         elif lstm_type == "fuse":
             outputs = self.my_fuse_block_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "fuse_lstm")
         else:
@@ -239,7 +272,6 @@ class DeepBidirRNN:
 
         for language_id, language_target_dict in language_scheme.items():
 
-
             tmp_cost, tmp_debug_cost, tmp_ter, tmp_logits, tmp_softmax_probs, tmp_log_softmax_probs, tmp_log_likelihoods = [], [], [], [], [], [], []
 
             with tf.variable_scope(constants.SCOPES.OUTPUT):
@@ -255,10 +287,12 @@ class DeepBidirRNN:
                     loss = tf.nn.ctc_loss(labels=self.labels[count], inputs=logit, sequence_length=self.seq_len)
                     tmp_cost.append(loss)
                     tmp_debug_cost.append(tf.reduce_mean(loss))
+                    tmp_debug_cost.append(tf.reduce_mean(loss))
 
                     decoded, log_prob = tf.nn.ctc_greedy_decoder(logit, self.seq_len)
 
                     ter = tf.reduce_sum(tf.edit_distance(tf.cast(decoded[0], tf.int32), self.labels[count], normalize = False))
+                    tmp_ter.append(ter)
                     tmp_ter.append(ter)
 
                     #storing outputs
@@ -278,7 +312,7 @@ class DeepBidirRNN:
 
             #preparing variables to optimize
             if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
-                == constants.SAT_SATGES.TRAIN_SAT:
+                    == constants.SAT_SATGES.TRAIN_SAT:
                 var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=constants.SCOPES.SPEAKER_ADAPTAION)
             else:
                 var_list = self.get_variables_by_lan(language_id)
@@ -299,8 +333,13 @@ class DeepBidirRNN:
 
 
             self.debug_costs.append(tmp_debug_cost)
+            self.debug_costs.append(tmp_debug_cost)
+
             self.costs.append(tmp_cost)
+
             self.ters.append(tmp_ter)
+            self.ters.append(tmp_ter)
+
             self.logits.append(tmp_logits)
             self.softmax_probs.append(tmp_softmax_probs)
             self.log_softmax_probs.append(tmp_log_softmax_probs)
@@ -326,4 +365,3 @@ class DeepBidirRNN:
                 train_vars.append(var)
 
         return train_vars
-

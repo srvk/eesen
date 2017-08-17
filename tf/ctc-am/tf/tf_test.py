@@ -9,6 +9,7 @@ from reader.reader_queue import run_reader_queue
 import numpy as np
 import tensorflow as tf
 from models.deep_bilstm import *
+from models.achen import *
 
 from utils.fileutils.kaldi import writeArk, writeScp
 
@@ -25,8 +26,6 @@ class Test():
         print("weights restored")
         print(80 * "-")
         print(80 * "-")
-
-        self.__model = DeepBidirRNN(config)
 
 
         saver = tf.train.Saver()
@@ -59,21 +58,6 @@ class Test():
                 #TODO clean this up
                 batch_ters = None
                 batch_log_likes = None
-
-                request_list = [
-
-                    self.__model.softmax_probs,
-                    self.__model.log_softmax_probs,
-                    self.__model.seq_len,
-                    self.__model.logits]
-
-                if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]):
-                    request_list.append(self.__model.ters)
-                    request_list.append(self.__model.cost)
-
-                if(config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
-                    request_list.append(self.__model.log_likelihoods)
-
 
                 if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER] and config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
                     batch_soft_probs, batch_log_soft_probs, batch_seq_len, batch_logits, batch_cost, batch_ters, batch_log_likes= \
@@ -110,9 +94,9 @@ class Test():
 
                 self.__print_logs(config, test_costs, test_ters, ntest)
 
-            if(config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF]):
+            if(config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF][constants.AUGMENTATION.FACTOR] > 0):
 
-                self.__average_over_augmented_data(config, test_x.get_batches_id(), soft_probs, log_soft_probs, logits)
+                self.__average_over_augmented_data(config, test_x.get_batches_id(), soft_probs, log_soft_probs, log_likes, logits)
 
             self.__store_results(config, test_x.get_batches_id(), soft_probs, log_soft_probs, log_likes, logits)
 
@@ -138,33 +122,53 @@ class Test():
 
         soft_probs = {}; log_soft_probs = {}; log_likes = {}; logits = {};
 
-        for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME]:
-            for target_id, num_targets in target_scheme:
+        for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
+            for target_id, num_targets in target_scheme.items():
 
-                S={}; P={}; L={}; O={};
-                #iterate over all utterances of a concrete language
-                for utt_id, s, p, l, o in zip(batches_id[language_id], soft_probs[language_id][target_id], log_soft_probs[language_id][target_id],
-                                         log_likes[language_id][target_id], logits[language_id][target_id]):
-                    #utt did not exist. Lets create it
-                    if not utt_id in S:
-                        S[utt_id] = [s]; P[utt_id] = [p]; L[utt_id] = [l]; O[utt_id] = [o]
+                if(config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
 
-                    #utt exists. Lets concatenate
-                    else:
-                        S[utt_id] += [s]; P[utt_id] += [p]; L[utt_id] += [l]; O[utt_id] += [o]
+                    S={}; P={}; L={}; O={};
+                    #iterate over all utterances of a concrete language
+                    for utt_id, s, p, l, o in zip(batches_id[language_id], soft_probs[language_id][target_id], log_soft_probs[language_id][target_id],
+                                             log_likes[language_id][target_id], logits[language_id][target_id]):
+                        #utt did not exist. Lets create it
+                        if not utt_id in S:
+                            S[utt_id] = [s]; P[utt_id] = [p]; L[utt_id] = [l]; O[utt_id] = [o]
 
-                S, P, L, O = self.__shrink_and_average(S, P, L, O)
+                        #utt exists. Lets concatenate
+                        else:
+                            S[utt_id] += [s]; P[utt_id] += [p]; L[utt_id] += [l]; O[utt_id] += [o]
+
+                    S, P, L, O = self.__shrink_and_average(S, P, L, O)
+
+                else:
+
+                    S={}; P={}; O={};
+                    #iterate over all utterances of a concrete language
+                    for utt_id, s, p, o in zip(batches_id[language_id], soft_probs[language_id][target_id], log_soft_probs[language_id][target_id],
+                                                logits[language_id][target_id]):
+                        #utt did not exist. Lets create it
+                        if not utt_id in S:
+                            S[utt_id] = [s]; P[utt_id] = [p]; O[utt_id] = [o]
+
+                        #utt exists. Lets concatenate
+                        else:
+                            S[utt_id] += [s]; P[utt_id] += [p]; O[utt_id] += [o]
+
+                    S, P, O = self.__shrink_and_average(S, P, O)
 
                 soft_probs[language_id][target_id] = []
                 log_soft_probs[language_id][target_id] = []
-                log_likes[language_id][target_id] = []
+                if(config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
+                    log_likes[language_id][target_id] = []
                 logits[language_id][target_id] = []
 
                 #iterate over all uttid again
                 for utt_id in batches_id[language_id]:
                     soft_probs[language_id][target_id] += [S[utt_id]]
                     log_soft_probs[language_id][target_id] += [P[utt_id]]
-                    log_likes[language_id][target_id] += [L[utt_id]]
+                    if(config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
+                        log_likes[language_id][target_id] += [L[utt_id]]
                     logits[language_id][target_id] += [O[utt_id]]
 
 

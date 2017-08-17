@@ -47,10 +47,19 @@ def main_parser():
     parser.add_argument('--continue_ckpt', default = "", help='continue this experiment')
     parser.add_argument('--batch_size', default = 32, type=int, help='batch size')
     parser.add_argument('--noshuffle', default=True, dest='do_shuf', action='store_false', help='do not shuffle training samples')
+
+
+    #augment arugments
     parser.add_argument('--augment', default=False, dest='augment', action='store_true', help='do internal data augmentation')
+    parser.add_argument('--window', default=3, type=int, help='how many frames will concatenate')
+    parser.add_argument('--subsampling', default=3, type=int, help='how much subsampling will you apply')
+    parser.add_argument('--roll', default=False, action='store_true', help='apply random rolls to the frames in the batch')
 
     #architecture arguments
     parser.add_argument('--lstm_type', default="cudnn", help = "lstm type: cudnn, fuse, native")
+
+    #TODO this should be done through a model manager
+    parser.add_argument('--model', default="deepbilstm", help = "model: achen, bilstm, achen_sum")
     parser.add_argument('--nproj', default = 0, type=int, help='dimension of projection units, set to 0 if no projection needed')
     parser.add_argument('--l2', default = 0.0, type=float, help='l2 normalization')
     parser.add_argument('--nlayer', default = 5, type=int, help='#layer')
@@ -99,14 +108,20 @@ def create_sat_config(args, config_imported = None):
 
     return sat
 
-def create_online_arg_config():
+def create_online_arg_config(args):
 
     #TODO enter the values using a conf file or something
     online_augment_config={}
-    online_augment_config[constants.AUGMENTATION.WINDOW] = 3
-    online_augment_config[constants.AUGMENTATION.FACTOR] = 3
-    online_augment_config[constants.AUGMENTATION.ROLL] = False
 
+    if(args.window % 2 == 0):
+        print("Error: window can not be even currently : "+str(args.window))
+        print(debug.get_debug_info())
+        print("exiting...")
+        sys.exit()
+
+    online_augment_config[constants.AUGMENTATION.WINDOW] = args.window
+    online_augment_config[constants.AUGMENTATION.SUBSAMPLING] = args.subsampling
+    online_augment_config[constants.AUGMENTATION.ROLL] = args.roll
     return online_augment_config
 
 def create_global_config(args):
@@ -133,6 +148,7 @@ def create_global_config(args):
 
         #architecture arguments
         #TODO this can be joined with one argument
+        constants.CONF_TAGS.MODEL: args.model,
         constants.CONF_TAGS.LSTM_TYPE: args.lstm_type,
         constants.CONF_TAGS.NPROJ: args.nproj,
         constants.CONF_TAGS.L2: args.l2,
@@ -146,7 +162,7 @@ def create_global_config(args):
     }
 
     config[constants.CONF_TAGS.SAT_CONF] = create_sat_config(args)
-    config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF] = create_online_arg_config()
+    config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF] = create_online_arg_config(args)
 
     return config
 
@@ -167,7 +183,8 @@ def import_config(args):
 
     config[constants.CONF_TAGS.SAT_CONF] = create_sat_config(args, config_imported)
 
-    config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF] = create_online_arg_config()
+    if not os.path.exists(args.augment):
+        config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF] = create_online_arg_config(args)
 
 
     return config

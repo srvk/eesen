@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
-import layers
+from core.lipnet_layers import layers
 import summary_utils
 import video_utils
 
@@ -9,11 +9,12 @@ import pdb
 
 FLAGS = tf.app.flags.FLAGS
 
-class LipNet:
+class ArcNet:
     '''
     LipNet Model
     '''
 
+    #def __init__(self, config):
     def __init__(self, x, y, phase):
         '''
         Sets up network enough to do a forward pass.
@@ -90,6 +91,7 @@ class LipNet:
                 labels=self.y,
                 inputs=self.ctc_ready_fc_1,
                 sequence_length=self.sequence_length)
+
         self.cost = tf.reduce_mean(self.loss)
 
         dense_y = tf.sparse_tensor_to_dense(self.y, default_value=FLAGS.num_classes)
@@ -141,7 +143,7 @@ class LipNet:
                 name='v_conv_1')
 
         # Add a TensorBoard image summary for conv1 kernels
-        summary_utils.conv_visual_summary(weights, name='v_conv_1')
+        #summary_utils.conv_visual_summary(weights, name='v_conv_1')
 
         # Even though it says 3d, we're using it only spatially
         self.v_pool_1 = tf.nn.max_pool3d(

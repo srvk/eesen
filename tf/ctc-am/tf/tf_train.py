@@ -1,9 +1,7 @@
-from models.deep_bilstm import *
-from models.achen import *
-from models.achen_sum import *
-
 from multiprocessing import Process, Queue
+from models.model_factory import create_model
 import os, re, time, random
+import tensorflow as tf
 import pdb
 import constants
 from reader.reader_queue import run_reader_queue
@@ -13,20 +11,9 @@ from random import randint
 class Train():
 
     def __init__(self, config):
-        self.__config = config
 
-        #TODO need to create a factory + manager for this
-        if config[constants.CONF_TAGS.MODEL] == constants.MODEL_NAME.DEEP_BILSTM:
-            self.__model = DeepBidirRNN(config)
-        elif config[constants.CONF_TAGS.MODEL] == constants.MODEL_NAME.ACHEN:
-            self.__model = Achen(config)
-        elif config[constants.CONF_TAGS.MODEL] == constants.MODEL_NAME.ACHEN_SUM:
-            self.__model = AchenSum(config)
-        else:
-            print("model selected not existing")
-            print(debug.get_debug_info())
-            print("exiting...\n")
-            sys.exit()
+        self.__config = config
+        self.__model = create_model(config)
         self.__sess = tf.Session()
         self.max_targets_layers = 0
 
@@ -76,6 +63,11 @@ class Train():
                 if self.__config[constants.CONF_TAGS.STORE_MODEL]:
                     saver.save(self.__sess, "%s/epoch%02d.ckpt" % (self.__config[constants.CONF_TAGS.MODEL_DIR], epoch + 1))
 
+                print("done with training!!!!")
+                print("done with training!!!!")
+                print("done with training!!!!")
+                print("done with training!!!!")
+                print("done with training!!!!")
                 #evaluate on validation...
 
                 #TODO check eval

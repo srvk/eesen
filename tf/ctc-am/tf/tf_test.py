@@ -4,6 +4,7 @@ import sys
 import time
 from itertools import islice
 from multiprocessing import Process, Queue
+from models.model_factory import create_model
 
 from reader.reader_queue import run_reader_queue
 import numpy as np
@@ -20,24 +21,27 @@ class Test():
         print(80 * "-")
         print(80 * "-")
         print("loading config path:")
+
+        print(80 * "-")
+        print(80 * "-")
+        print("config: ")
         print(config)
 
-
-        print("weights restored")
-        print(80 * "-")
-        print(80 * "-")
-
-
-        saver = tf.train.Saver()
+        self.__model = create_model(config)
 
         with tf.Session() as sess:
 
+            saver = tf.train.Saver()
 
             print("restoring weights from path:")
             print (config[constants.CONFIG_TAGS_TEST.TRAINED_WEIGHTS])
 
             saver.restore(sess, config[constants.CONFIG_TAGS_TEST.TRAINED_WEIGHTS])
 
+            print("weights restored")
+            print(80 * "-")
+            print(80 * "-")
+            print("start decoding...")
             ters, soft_probs, log_soft_probs, log_likes, logits, batches_id = self.__create_result_containers(config)
 
             ntest, test_costs, test_ters, ntest_labels = self.__create_counter_containers(config)
@@ -75,6 +79,7 @@ class Test():
                     batch_soft_probs, batch_log_soft_probs, batch_seq_len, batch_logits = \
                         sess.run(request_list, feed)
 
+                #TODO the sum should be done online
                 self.__update_probs_containers(config, batch_id, batches_id, batch_seq_len, batch_soft_probs, soft_probs,
                                   batch_log_soft_probs , log_soft_probs, batch_logits, logits, batch_log_likes, log_likes)
 
@@ -84,6 +89,8 @@ class Test():
             process.join()
             process.terminate()
             print("done decoding")
+            print(80 * "-")
+            print(80 * "-")
 
             if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]):
                 #averaging ters and costs
@@ -94,20 +101,19 @@ class Test():
 
                 self.__print_logs(config, test_costs, test_ters, ntest)
 
-            if(config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF][constants.AUGMENTATION.FACTOR] > 0):
+            if(config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF][constants.AUGMENTATION.SUBSAMPLING] > 0):
 
-                self.__average_over_augmented_data(config, test_x.get_batches_id(), soft_probs, log_soft_probs, log_likes, logits)
+                batches_id = self.__average_over_augmented_data(config, batches_id, soft_probs, log_soft_probs, log_likes, logits)
 
-            self.__store_results(config, test_x.get_batches_id(), soft_probs, log_soft_probs, log_likes, logits)
+            self.__store_results(config, batches_id, soft_probs, log_soft_probs, log_likes, logits)
 
     def __prepare_request_list(self, config):
 
                 request_list = [
-
-                self.__model.softmax_probs,
-                  self.__model.log_softmax_probs,
-                  self.__model.seq_len,
-                  self.__model.logits]
+                    self.__model.softmax_probs,
+                    self.__model.log_softmax_probs,
+                    self.__model.seq_len,
+                    self.__model.logits]
 
                 if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]):
                     request_list.append(self.__model.ters)
@@ -118,19 +124,21 @@ class Test():
 
                 return request_list
 
-    def __average_over_augmented_data(self, config, batches_id, soft_probs, log_soft_probs, log_likes, logits):
+    def __average_over_augmented_data(self, config, m_batches_id, m_soft_probs, m_log_soft_probs, m_log_likes, m_logits):
 
-        soft_probs = {}; log_soft_probs = {}; log_likes = {}; logits = {};
+        #new batch structure
+        new_batch_id = {}
 
         for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
-            for target_id, num_targets in target_scheme.items():
+            new_batch_id[language_id] = {}
 
+            for target_id, num_targets in target_scheme.items():
                 if(config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
 
                     S={}; P={}; L={}; O={};
                     #iterate over all utterances of a concrete language
-                    for utt_id, s, p, l, o in zip(batches_id[language_id], soft_probs[language_id][target_id], log_soft_probs[language_id][target_id],
-                                             log_likes[language_id][target_id], logits[language_id][target_id]):
+                    for utt_id, s, p, l, o in zip(m_batches_id[language_id], m_soft_probs[language_id][target_id], m_log_soft_probs[language_id][target_id],
+                                                  m_log_likes[language_id][target_id], m_logits[language_id][target_id]):
                         #utt did not exist. Lets create it
                         if not utt_id in S:
                             S[utt_id] = [s]; P[utt_id] = [p]; L[utt_id] = [l]; O[utt_id] = [o]
@@ -139,14 +147,14 @@ class Test():
                         else:
                             S[utt_id] += [s]; P[utt_id] += [p]; L[utt_id] += [l]; O[utt_id] += [o]
 
-                    S, P, L, O = self.__shrink_and_average(S, P, L, O)
+                    S, P, O, L = self.__shrink_and_average(S, P, O, L)
 
                 else:
 
-                    S={}; P={}; O={};
+                    S={}; P={}; O={}
                     #iterate over all utterances of a concrete language
-                    for utt_id, s, p, o in zip(batches_id[language_id], soft_probs[language_id][target_id], log_soft_probs[language_id][target_id],
-                                                logits[language_id][target_id]):
+                    for utt_id, s, p, o in zip(m_batches_id[language_id], m_soft_probs[language_id][target_id], m_log_soft_probs[language_id][target_id],
+                                               m_logits[language_id][target_id]):
                         #utt did not exist. Lets create it
                         if not utt_id in S:
                             S[utt_id] = [s]; P[utt_id] = [p]; O[utt_id] = [o]
@@ -155,28 +163,32 @@ class Test():
                         else:
                             S[utt_id] += [s]; P[utt_id] += [p]; O[utt_id] += [o]
 
-                    S, P, O = self.__shrink_and_average(S, P, O)
+                    S, P, O, _ = self.__shrink_and_average(S, P, O)
 
-                soft_probs[language_id][target_id] = []
-                log_soft_probs[language_id][target_id] = []
+                m_soft_probs[language_id][target_id] = []
+                m_log_soft_probs[language_id][target_id] = []
+                m_logits[language_id][target_id] = []
+                new_batch_id[language_id][target_id] = []
+
                 if(config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
-                    log_likes[language_id][target_id] = []
-                logits[language_id][target_id] = []
+                    m_log_likes[language_id][target_id] = []
 
                 #iterate over all uttid again
-                for utt_id in batches_id[language_id]:
-                    soft_probs[language_id][target_id] += [S[utt_id]]
-                    log_soft_probs[language_id][target_id] += [P[utt_id]]
+                for idx, (utt_id, _) in enumerate(S.items()):
+                    m_log_soft_probs[language_id][target_id] += [P[utt_id]]
+                    m_logits[language_id][target_id] += [O[utt_id]]
+                    new_batch_id[language_id][target_id].append(utt_id)
+
                     if(config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
-                        log_likes[language_id][target_id] += [L[utt_id]]
-                    logits[language_id][target_id] += [O[utt_id]]
+                        m_log_likes[language_id][target_id] += [L[utt_id]]
 
+        return new_batch_id
 
-    def __shrink_and_average(self, S, P, L, O):
+    def __shrink_and_average(self, S, P, O, L=None):
 
         avg_S={}; avg_P={}; avg_L={}; avg_O={}
 
-        for utt_id, _ in S:
+        for utt_id, _ in S.items():
 
             #computing minimum L
             min_length = sys.maxint
@@ -184,13 +196,23 @@ class Test():
                 if(utt_prob.shape[0] < min_length):
                     min_length = utt_prob.shape[0]
 
-            for utt_prob in S[utt_id]:
-                avg_S[utt_id] += S[utt_id][0:min_length][:]/float(len(S[utt_id]))
-                avg_P[utt_id] += P[utt_id][0:min_length][:]/float(len(S[utt_id]))
-                avg_L[utt_id] += L[utt_id][0:min_length][:]/float(len(S[utt_id]))
-                avg_O[utt_id] += O[utt_id][0:min_length][:]/float(len(S[utt_id]))
+            for idx, (utt_prob) in enumerate(S[utt_id]):
+                if(utt_id not in avg_S):
 
-        return avg_S, avg_P, avg_L, avg_O
+                    avg_S[utt_id] = S[utt_id][idx][0:min_length][:]/float(len(S[utt_id]))
+                    avg_P[utt_id] = P[utt_id][idx][0:min_length][:]/float(len(P[utt_id]))
+                    avg_O[utt_id] = O[utt_id][idx][0:min_length][:]/float(len(O[utt_id]))
+
+                    if(L):
+                        avg_L[utt_id] = L[utt_id][0:min_length][:]/float(len(L[utt_id]))
+                else:
+                    avg_S[utt_id] += S[utt_id][idx][0:min_length][:]/float(len(S[utt_id]))
+                    avg_P[utt_id] += P[utt_id][idx][0:min_length][:]/float(len(P[utt_id]))
+                    avg_O[utt_id] += O[utt_id][idx][0:min_length][:]/float(len(O[utt_id]))
+
+                    if(L):
+                        avg_L[utt_id] += L[utt_id][0:min_length][:]/float(len(L[utt_id]))
+        return avg_S, avg_P, avg_O, avg_L
 
 
     def __update_probs_containers(self, config,
@@ -284,23 +306,25 @@ class Test():
         for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
             if(len(config[constants.CONF_TAGS.LANGUAGE_SCHEME]) > 1):
                 results_dir = os.path.join(config[constants.CONFIG_TAGS_TEST.RESULTS_DIR], language_id)
-                if not os.path.exists(results_dir):
-                    os.makedirs(results_dir)
             else:
                 results_dir = config[constants.CONFIG_TAGS_TEST.RESULTS_DIR]
+            if not os.path.exists(results_dir):
+                os.makedirs(results_dir)
 
             for target_id, _ in target_scheme.iteritems():
 
                     if(config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
-                        writeScp(os.path.join(results_dir, "log_like_"+target_id+".scp"), uttids,
-                                 writeArk(os.path.join(results_dir, "log_like_"+target_id+".ark"), log_likes[language_id][target_id], uttids))
+                        writeScp(os.path.join(results_dir, "log_like_"+target_id+".scp"), uttids[language_id][target_id],
+                                 writeArk(os.path.join(results_dir, "log_like_"+target_id+".ark"), log_likes[language_id][target_id], uttids[language_id][target_id]))
 
-                    writeScp(os.path.join(results_dir, "soft_prob_"+target_id+".scp"), uttids,
-                             writeArk(os.path.join(results_dir, "soft_prob_"+target_id+".ark"), soft_probs[language_id][target_id], uttids))
-                    writeScp(os.path.join(results_dir, "log_soft_prob_"+target_id+".scp"), uttids,
-                             writeArk(os.path.join(results_dir, "log_soft_prob_"+target_id+".ark"), log_soft_probs[language_id][target_id], uttids))
-                    writeScp(os.path.join(results_dir, "logit_"+target_id+".scp"), uttids,
-                             writeArk(os.path.join(results_dir, "logit"+target_id+".ark"), logits[language_id][target_id], uttids))
+                    writeScp(os.path.join(results_dir, "soft_prob_"+target_id+".scp"), uttids[language_id][target_id],
+                             writeArk(os.path.join(results_dir, "soft_prob_"+target_id+".ark"), soft_probs[language_id][target_id], uttids[language_id][target_id]))
+
+                    writeScp(os.path.join(results_dir, "log_soft_prob_"+target_id+".scp"), uttids[language_id][target_id],
+                             writeArk(os.path.join(results_dir, "log_soft_prob_"+target_id+".ark"), log_soft_probs[language_id][target_id], uttids[language_id][target_id]))
+
+                    writeScp(os.path.join(results_dir, "logit_"+target_id+".scp"), uttids[language_id][target_id],
+                             writeArk(os.path.join(results_dir, "logit_"+target_id+".ark"), logits[language_id][target_id], uttids[language_id][target_id]))
 
 
     def __update_counters(self, batch_size, m_acum_samples, ybatch, m_acum_labels, batch_ters, m_acum_ters, batch_cost, m_acum_cost):
@@ -388,7 +412,6 @@ class Test():
         feed[self.__model.feats] = x_batch[0]
         feed[self.__model.temperature] = float(config[constants.CONFIG_TAGS_TEST.TEMPERATURE])
         feed[self.__model.is_training] = False
-
 
         if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
                 != constants.SAT_SATGES.UNADAPTED:

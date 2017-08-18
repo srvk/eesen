@@ -20,6 +20,7 @@ class Augmenter(object):
             print("Augmenting data x" + str(self.online_augment_config[constants.AUGMENTATION.SUBSAMPLING])+" and win "+str(self.online_augment_config[constants.AUGMENTATION.WINDOW])+"...\n")
 
             factor=self.online_augment_config[constants.AUGMENTATION.SUBSAMPLING]
+
             win=self.online_augment_config[constants.AUGMENTATION.WINDOW]
 
             feat_info = [

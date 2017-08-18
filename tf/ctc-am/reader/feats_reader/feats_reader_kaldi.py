@@ -106,6 +106,11 @@ class FeatsReaderKaldi(FeatsReader):
         for language, scp_path in self._language_augment_scheme.iteritems():
             print("preparing dictionary for "+language+"...\n")
             feat_dict_info_languages[language] = read_scp_info(scp_path[0])
+            if(len(feat_dict_info_languages[language]) == 0):
+                print("feature file ("+scp_path[0]+") for language: "+language+" is void")
+                print(debug.get_debug_info())
+                print("exiting...")
+                sys.exit()
 
         return feat_dict_info_languages
 

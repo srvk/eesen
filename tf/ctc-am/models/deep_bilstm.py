@@ -43,7 +43,7 @@ class DeepBidirRNN:
                                 num_outputs = nproj, scope = "projection")
 
                             if(batch_norm):
-                                outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True,decay=0.9, is_training=self.is_training,  updates_collections=None)
+                                outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
 
                             ninput = nproj
                 else:
@@ -60,7 +60,7 @@ class DeepBidirRNN:
                             input_h=input_h, input_c=input_c,params=cudnn_params)
 
                     if(batch_norm):
-                        outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True,decay=0.9, is_training=self.is_training,  updates_collections=None)
+                        outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
 
         return outputs
 
@@ -140,6 +140,11 @@ class DeepBidirRNN:
         lstm_type = config[constants.CONF_TAGS.LSTM_TYPE]
         grad_opt = config[constants.CONF_TAGS.GRAD_OPT]
 
+        if(constants.CONFIG_TAGS_TEST in config):
+            self.is_training = False
+        else:
+            self.is_training = True
+
         if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
                 != constants.SAT_SATGES.UNADAPTED:
             num_sat_layers = config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.NUM_SAT_LAYERS]
@@ -159,7 +164,7 @@ class DeepBidirRNN:
         self.lr_rate = tf.placeholder(tf.float32, name = "learning_rate")[0]
         self.feats = tf.placeholder(tf.float32, [None, None, nfeat], name = "feats")
         self.temperature = tf.placeholder(tf.float32, name = "temperature")
-        self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
+        self.is_training_ph = tf.placeholder(tf.bool, shape=(), name="is_training")
         self.opt = []
 
 
@@ -204,7 +209,7 @@ class DeepBidirRNN:
 
 
         if batch_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training, updates_collections=None)
+            outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
 
 
         if featproj > 0:
@@ -213,7 +218,7 @@ class DeepBidirRNN:
                 scope = "input_fc", biases_initializer = tf.contrib.layers.xavier_initializer())
 
         if lstm_type == "cudnn":
-            outputs = self.my_cudnn_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj,  "cudnn_lstm", batch_norm)
+            outputs = self.my_cudnn_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj,  "cudnn_lstm", batch_norm, self.is_training)
         elif lstm_type == "fuse":
             outputs = self.my_fuse_block_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "fuse_lstm")
         else:
@@ -283,13 +288,18 @@ class DeepBidirRNN:
             else:
                 var_list = self.get_variables_by_lan(language_id)
 
-            print(80 * "-")
-            print("for language: "+language_id)
-            print("following variables will be optimized: ")
-            print(80 * "-")
-            for var in var_list:
-                print(var)
-            print(80 * "-")
+            if(self.is_training):
+                print(80 * "-")
+                print("for language: "+language_id)
+                print("following variables will be optimized: ")
+                print(80 * "-")
+                for var in var_list:
+                    print(var)
+                print(80 * "-")
+            else:
+                print(80 * "-")
+                print("testing... no variables will be optimized.")
+                print(80 * "-")
 
             with tf.variable_scope("loss"):
                 regularized_loss = tf.add_n([tf.nn.l2_loss(v) for v in var_list])

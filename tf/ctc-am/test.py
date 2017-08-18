@@ -61,11 +61,12 @@ def generate_priors(data_dir, language_scheme):
 def main_parser():
     parser = argparse.ArgumentParser(description='Test TF-Eesen Model')
 
-    #io dir
+    #io options
     parser.add_argument('--data_dir', default = "", help = "like data_dir for training script")
     parser.add_argument('--results_dir', default = "log", help='log and results dir')
+    parser.add_argument('--save_every_batch', default = -1, type=int, help='log and results dir')
 
-    #train configuration
+    #train configuration options
     parser.add_argument('--train_config', default = "", help = "model to load for evaluation")
     parser.add_argument('--trained_weights', default = "", help = "model to load for evaluation")
 

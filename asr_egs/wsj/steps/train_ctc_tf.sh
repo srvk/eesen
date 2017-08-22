@@ -7,7 +7,7 @@
 # This script trains acoustic models based on CTC and using SGD.
 
 ## Begin configuration section
-train_tool="python -m main" # the command for training; by default, we use the
+train_tool="python -m train" # the command for training; by default, we use the
                 # parallel version which processes multiple utterances at the same time
 train_opts="--store_model --lstm_type=cudnn --augment"
 
@@ -20,9 +20,6 @@ feat_proj=0              # project features, 0 if none
 # configs for multiple sequences
 num_sequence=16          # during training, how many utterances to be processed in parallel
 valid_num_sequence=60    # number of parallel sequences in validation
-frame_num_limit=20000    # the number of frames to be processed at a time in training; this config acts to
-         # to prevent running out of GPU memory if #num_sequence very long sequences are processed; the max
-         # number of training examples is decided by if num_sequence or frame_num_limit is reached first.
 
 # learning rate
 learn_rate=0.02          # learning rate
@@ -53,7 +50,6 @@ shuffle=true             # shuffle feature order after first iteration
 
 feats_std=1.0            # scale features
 splice_feats=false       # whether to splice neighboring frams
-subsample_feats=false    # whether to subsample features
 norm_vars=true           # whether to apply variance normalization when we do cmn
 add_deltas=false         # whether to add deltas
 copy_feats=true          # whether to copy features into a local dir (on the GPU machine)
@@ -80,7 +76,7 @@ function prepare_features() {
 
     # This can be 1 or 3 and controls parallelization
     local par=3
-    
+
     # do we do data augmentation?
     if [ -d $targetdir ]; then
 	: # no need to do anything
@@ -112,11 +108,11 @@ function prepare_features() {
     fi
 
     mkdir -p $tmpdir
-    if $subsample_feats; then
-	echo "subsampling not supported" && exit 1;
-    fi
     if $copy_feats; then
 	# Save the features to a local dir on the GPU machine. On Linux, this usually points to /tmp
+	echo ""
+	echo copying feats_train ...
+	echo ""
 	if [ $par -gt 1 ]; then
             split -l `wc -l $data_tr/feats.scp | awk -v c=$par '{print int((\$1+c)/c)}'` $data_tr/feats.scp $tmpdir/xxx
             f2=`echo $feats_tr | sed 's/xxxaa/xxxab/'`
@@ -129,24 +125,33 @@ function prepare_features() {
 	else
 	copy-feats "$feats_tr" ark,scp:$tmpdir/train.ark,$tmpdir/train_local_raw.scp || exit 1;
 	fi
-	copy-feats "$feats_cv" ark,scp:$tmpdir/cv.ark,$tmpdir/cv_local.scp || exit 1;
-	feats_tr="ark,s,cs:copy-feats scp:$tmpdir/feats_tr.scp ark:- |"
-	feats_cv="ark,s,cs:copy-feats scp:$tmpdir/feats_cv.scp ark:- |"
 
-	if $sort_by_len; then
-	    cp $data_tr/feats.scp $dir/train.scp
-	    gzip -cd $dir/labels.tr.gz | join <(feat-to-len scp:$tmpdir/train_local_raw.scp ark,t:- | paste -d " " - $tmpdir/train_local_raw.scp) - | sort -gk 2 | \
-	        awk -v c=$context_window '{out=""; for (i=5;i<=NF;i++) {out=out" "$i}; if (!(out in done) && $2 > (2*c+1)*NF) {done[out]=1; print $3 " " $4}}' > $tmpdir/train_local.scp
-	    feat-to-len scp:$data_cv/feats.scp ark,t:- | awk '{print $2}' | \
-		paste -d " " $data_cv/feats.scp - | sort -k3 -n - | awk '{print $1 " " $2}' > $dir/cv.scp || exit 1;
-	else
-	    echo "sorting required" && exit 1;
-	fi
-	
-	gzip -cd $dir/labels.tr.gz > $tmpdir/labels.tr
-	gzip -cd $dir/labels.cv.gz > $tmpdir/labels.cv
-	
+	echo ""
+	echo copying feats_cv ...
+
+	copy-feats "$feats_cv" ark,scp:$tmpdir/cv.ark,$tmpdir/cv_local.scp || exit 1;
+
+	echo ""
+	echo copying labels ...
+
+	cp $dir/labels.tr $tmpdir/labels.tr
+	cp $dir/labels.cv $tmpdir/labels.cv
+
+	echo ""
+	echo cleaning train set ...
+	echo ""
+
+	python /data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/asr_egs/wsj/utils/clean_length.py --scp_in  $tmpdir/train_local_raw.scp --labels $tmpdir/labels.tr --subsampling 3 --scp_out $tmpdir/train_local.scp
+
+	echo ""
+	echo cleaning cv set ...
+	echo ""
+
+	python /data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/asr_egs/wsj/utils/clean_length.py --scp_in  $tmpdir/cv_local.scp --labels $tmpdir/labels.cv --subsampling 3 --scp_out $tmpdir/cv_local.scp
+
 	trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; rm -r $tmpdir" EXIT ERR
+
+
     else
 	echo "copying required" && exit 1;
     fi
@@ -254,7 +259,7 @@ echo "TRAINING STARTS [$cur_time]"
 # - temperature
 # - continuation of training
 # - data mixing in multiple directories
-# 
+#
 $train_tool $train_opts --lr_rate $learn_rate --batch_size $num_sequence --l2 $l2 \
     --nhidden $nhidden --nlayer $nlayer $nproj $feat_proj $ckpt $max_iters \
     --train_dir $dir --data_dir $tmpdir || exit 1;

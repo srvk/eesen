@@ -64,7 +64,7 @@ elif [[ `uname -n` =~ islpc* ]]; then
   export EESEN_ROOT=/data/MM23/sdalmia/eesen
   export PATH=$PWD/utils/:$EESEN_ROOT/src/netbin:$EESEN_ROOT/src/featbin:$EESEN_ROOT/src/decoderbin:$EESEN_ROOT/src/fstbin:$EESEN_ROOT/tools/openfst/bin:$EESEN_ROOT/tools/sph2pipe_v2.5:/data/ASR5/fmetze/kaldi-latest/src/latbin:/data/ASR5/fmetze/kaldi-latest/src/featbin:$PATH
   #source ~/tf/bin/activate
-  
+
   unset CUDA_VISIBLE_DEVICES
   unset GPU_DEVICE_ORDINAL
 
@@ -84,7 +84,8 @@ else
   export KALDI_ROOT=/data/ASR1/tools/kaldi
   export EESEN_ROOT=/data/MM23/sdalmia/eesen
   #export PYTHONPATH=/data/ASR5/fmetze/asr-test/lorelei-audio/egs/asr/s5c/201-haitian-flp:/data/ASR5/fmetze/eesen-tf/tf/tf1
-  export PYTHONPATH=./eesen-tf/tf/ctc-train:./eesen-tf/tf/ctc-decode/code:./eesen-tf/tf/rnn-lm/code
+  #export PYTHONPATH=./eesen-tf/tf/ctc-train:./eesen-tf/tf/ctc-decode/code:./eesen-tf/tf/rnn-lm/code
+  export PYTHONPATH=/data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/tf/ctc-am
 
   #. /export/babel/data/software/env.sh
   export PATH=$PWD/utils/:$EESEN_ROOT/src/netbin:$EESEN_ROOT/src/featbin:$EESEN_ROOT/src/decoderbin:$EESEN_ROOT/src/fstbin:$EESEN_ROOT/tools/openfst/bin:$EESEN_ROOT/tools/sph2pipe_v2.5:/home/fmetze/tools/kaldi/src/bin:/data/ASR5/fmetze/kaldi-latest/src/latbin:$PATH

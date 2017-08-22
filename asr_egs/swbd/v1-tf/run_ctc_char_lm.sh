@@ -14,7 +14,7 @@
            ## This relates to the queue.
 . path.sh
 
-stage=3
+stage=4
 
 fisher_dirs="/path/to/LDC2004T19/fe_03_p1_tran/ /path/to/LDC2005T19/fe_03_p2_tran/" # Set to "" if you don't have the fisher corpus
 eval2000_dirs="/path/to/LDC2002S09/hub5e_00 /path/to/LDC2002T43"
@@ -82,7 +82,7 @@ if [ $stage -le 3 ]; then
   lstm_layer_num=4     # number of LSTM layers
   lstm_cell_dim=320    # number of memory cells in every LSTM layer
 
-  dir=exp_110h/train_char_l${lstm_layer_num}_c${lstm_cell_dim}
+  dir=exp_110h/train_am_char_l${lstm_layer_num}_c${lstm_cell_dim}
 
   mkdir -p $dir
 
@@ -104,6 +104,20 @@ if [ $stage -le 4 ]; then
   echo =====================================================================
   echo "                CharRNN Training with the 110-Hour Set             "
   echo =====================================================================
+
+  embed_size=120   # dimension of the input features; we will use 40-dimensional fbanks with deltas and double deltas
+  lstm_layer_num=2     # number of LSTM layers
+  lstm_cell_dim=320    # number of memory cells in every LSTM layer
+
+  dir=exp_110h/tain_lm_char_l${lstm_layer_num}_c${lstm_cell_dim}_e${embed_size}/
+
+  mkdir -p $dir
+  mkdir -p ./data/local/dict_char_lm/
+
+  python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_100k_nodup/text --output_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.tr --lm
+
+  python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_100k_nodup/text --input_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.cv
+
 
 fi
 

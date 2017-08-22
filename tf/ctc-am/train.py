@@ -195,8 +195,6 @@ def import_config(args):
     config = pickle.load(open(args.import_config, "rb"))
     update_conf_import(config, args)
     config[constants.CONF_TAGS.SAT_CONF] = create_sat_config(args, config)
-    print(config)
-    sys.exit()
 
     return config
 

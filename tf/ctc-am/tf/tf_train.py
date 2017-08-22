@@ -339,6 +339,9 @@ class Train():
 
                 saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH], var_list=vars_to_load)
                 saver.restore(self.__sess, self.__config[constants.CONF_TAGS.CONTINUE_CKPT])
+
+                #lets track all the variables again...
+                saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH])
                 alpha = int(re.match(".*epoch([-+]?\d+).ckpt", self.__config[constants.CONF_TAGS.CONTINUE_CKPT]).groups()[0])
 
             else:
@@ -350,6 +353,7 @@ class Train():
 
                 saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH])
                 saver.restore(self.__sess, self.__config[constants.CONF_TAGS.CONTINUE_CKPT])
+
                 alpha = int(re.match(".*epoch([-+]?\d+).ckpt", self.__config[constants.CONF_TAGS.CONTINUE_CKPT]).groups()[0])
 
             print(80 * "-")

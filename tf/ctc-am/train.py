@@ -37,8 +37,8 @@ def main_parser():
     #general arguments
     parser.add_argument('--debug', default=False, dest='debug', action='store_true', help='enable debug mode')
     parser.add_argument('--store_model', default=False, dest='store_model', action='store_true', help='store model')
-    parser.add_argument('--data_dir', default = "./tmp", help = "data dir")
-    parser.add_argument('--train_dir', default = "log", help='log and model (output) dir')
+    parser.add_argument('--data_dir', default = "", help = "data dir")
+    parser.add_argument('--train_dir', default = "", help='log and model (output) dir')
 
     #TODO check name of config.pkl
     parser.add_argument('--import_config', default = "", help='load an old configuration file (config.pkl) extra labels will be added to old configuration')
@@ -167,10 +167,24 @@ def create_global_config(args):
     return config
 
 
+def update_conf_import(config, args):
+
+    if(args.data_dir):
+        config[constants.CONF_TAGS.DATA_DIR] = args.data_dir
+
+    if(args.train_dir):
+        config[constants.CONF_TAGS.TRAIN_DIR] = args.train_dir
+
+    if(args.continue_ckpt):
+        config[constants.CONF_TAGS.CONTINUE_CKPT] = args.continue_ckpt
+
+    if(config[constants.CONF_TAGS.NEPOCH] != args.nepoch):
+        config[constants.CONF_TAGS.NEPOCH] = args.nepoch
+
+    if(config[constants.CONF_TAGS.LR_RATE] != args.lr_rate):
+        config[constants.CONF_TAGS.LR_RATE] = args.lr_rate
+
 def import_config(args):
-
-    config = create_global_config(args)
-
 
     if not os.path.exists(args.import_config):
         print("Error: path_config does not correspond to a valid path: "+args.import_config)
@@ -178,14 +192,11 @@ def import_config(args):
         print("exiting...")
         sys.exit()
 
-    config_imported = pickle.load(open(args.import_config, "rb"))
-    config.update(config_imported)
-
-    config[constants.CONF_TAGS.SAT_CONF] = create_sat_config(args, config_imported)
-
-    if not os.path.exists(args.augment):
-        config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF] = create_online_arg_config(args)
-
+    config = pickle.load(open(args.import_config, "rb"))
+    update_conf_import(config, args)
+    config[constants.CONF_TAGS.SAT_CONF] = create_sat_config(args, config)
+    print(config)
+    sys.exit()
 
     return config
 
@@ -194,6 +205,7 @@ def import_config(args):
 # -----------------------------------------------------------------
 
 def main():
+
 
     #TODO construct a factory/helper to load everything by just looking at data_dir
 
@@ -291,6 +303,7 @@ def main():
     print("done with data preparation")
     print(80 * "-")
     print("begining training with following config:")
+
     for key, value in config.items():
         print(key+" "+str(value))
     print(80 * "-")

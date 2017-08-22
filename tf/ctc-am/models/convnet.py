@@ -3,7 +3,7 @@ import constants
 import tensorflow as tf
 from utils.fileutils import debug
 
-class DeepBidirRNN:
+class ConvNet:
 
     def length(self, sequence):
         with tf.variable_scope("seq_len"):
@@ -17,115 +17,6 @@ class DeepBidirRNN:
 
     #    if(nlayer > 0 ):
 
-
-    def my_cudnn_lstm(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope, batch_norm, is_training = True):
-        """
-        outputs: time, batch_size, feat_dim
-        """
-        if(nlayer > 0 ):
-            with tf.variable_scope(scope):
-                if nproj > 0:
-                    ninput = nfeat
-                    for i in range(nlayer):
-                        with tf.variable_scope("layer%d" % i):
-                            cudnn_model = tf.contrib.cudnn_rnn.CudnnLSTM(1, nhidden, ninput, direction = 'bidirectional')
-                            params_size_t = cudnn_model.params_size()
-                            input_h = tf.zeros([2, batch_size, nhidden], dtype = tf.float32, name = "init_lstm_h")
-                            input_c = tf.zeros([2, batch_size, nhidden], dtype = tf.float32, name = "init_lstm_c")
-                            bound = tf.sqrt(6. / (nhidden + nhidden))
-                            cudnn_params = tf.Variable(tf.random_uniform([params_size_t], -bound, bound), validate_shape = False, name = "params", trainable=self.is_trainable_sat)
-                            #TODO is_training=is_training should be changed!
-                            outputs, _output_h, _output_c = cudnn_model(is_training=is_training,
-                                input_data=outputs, input_h=input_h, input_c=input_c,
-                                params=cudnn_params)
-                            outputs = tf.contrib.layers.fully_connected(
-                                activation_fn = None, inputs = outputs,
-                                num_outputs = nproj, scope = "projection")
-
-                            if(batch_norm):
-                                outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
-
-                            ninput = nproj
-                else:
-                    cudnn_model = tf.contrib.cudnn_rnn.CudnnLSTM(nlayer, nhidden, nfeat, direction = 'bidirectional')
-                    params_size_t = cudnn_model.params_size()
-                    input_h = tf.zeros([nlayer * 2, batch_size, nhidden], dtype = tf.float32, name = "init_lstm_h")
-                    input_c = tf.zeros([nlayer * 2, batch_size, nhidden], dtype = tf.float32, name = "init_lstm_c")
-                    bound = tf.sqrt(6. / (nhidden + nhidden))
-
-                    cudnn_params = tf.Variable(tf.random_uniform([params_size_t], -bound, bound),
-                        validate_shape = False, name = "params", trainable=self.is_trainable_sat)
-
-                    outputs, _output_h, _output_c = cudnn_model(is_training=is_training,input_data=outputs,
-                            input_h=input_h, input_c=input_c,params=cudnn_params)
-
-                    if(batch_norm):
-                        outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
-
-        return outputs
-
-    def my_fuse_block_lstm(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope):
-        """
-        outputs: time, batch_size, feat_dim
-        """
-        with tf.variable_scope(scope):
-            for i in range(nlayer):
-                with tf.variable_scope("layer%d" % i):
-                    with tf.variable_scope("fw_lstm"):
-                        fw_lstm = tf.contrib.rnn.LSTMBlockFusedCell(nhidden, cell_clip = 0)
-                        fw_out, _ = fw_lstm(outputs, dtype=tf.float32, sequence_length = self.seq_len)
-                    with tf.variable_scope("bw_lstm"):
-                        bw_lstm = tf.contrib.rnn.TimeReversedFusedRNN(tf.contrib.rnn.LSTMBlockFusedCell(nhidden, cell_clip = 0))
-                        bw_out, _ = bw_lstm(outputs, dtype=tf.float32, sequence_length = self.seq_len)
-                    outputs = tf.concat_v2([fw_out, bw_out], 2, name = "output")
-                    # outputs = tf.concat([fw_out, bw_out], 2, name = "output")
-                    if nproj > 0:
-                        outputs = tf.contrib.layers.fully_connected(
-                            activation_fn = None, inputs = outputs,
-                            num_outputs = nproj, scope = "projection")
-        return outputs
-
-    def my_native_lstm(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope):
-        """
-        outputs: time, batch_size, feat_dim
-        """
-        with tf.variable_scope(scope):
-            for i in range(nlayer):
-                with tf.variable_scope("layer%d" % i):
-                    if nproj > 0:
-                        cell = tf.contrib.rnn.LSTMCell(nhidden, num_proj = nproj, state_is_tuple = True)
-                    else:
-                        cell = tf.contrib.rnn.BasicLSTMCell(nhidden, state_is_tuple = True)
-                    # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs,
-                    # self.seq_len, swap_memory=True, time_major = True, dtype = tf.float32)
-                    outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs,
-                        self.seq_len, time_major = True, dtype = tf.float32)
-                    # also some API change
-                    outputs = tf.concat_v2(values = outputs, axis = 2, name = "output")
-                    # outputs = tf.concat(values = outputs, axis = 2, name = "output")
-            # for i in range(nlayer):
-                # with tf.variable_scope("layer%d" % i):
-                    # cell = tf.contrib.rnn.LSTMBlockCell(nhidden)
-                    # if nproj > 0:
-                        # cell = tf.contrib.rnn.OutputProjectionWrapper(cell, nproj)
-                    # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell,
-                        # outputs, self.seq_len, swap_memory=True, dtype = tf.float32, time_major = True)
-                    # # outputs = tf.concat_v2(outputs, 2, name = "output")
-                    # outputs = tf.concat(outputs, 2, name = "output")
-                    # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs, self.seq_len, dtype = tf.float32)
-        return outputs
-
-    def my_sat_layers(self, num_sat_layers, adapt_dim, nfeat, outputs, scope):
-
-        with tf.variable_scope(scope):
-            for i in range(num_sat_layers-1):
-                with tf.variable_scope("layer%d" % i):
-                    outputs = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = adapt_dim)
-
-            with tf.variable_scope("last_sat_layer"):
-                outputs = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = nfeat)
-
-        return outputs
 
     def __init__(self, config):
 
@@ -153,12 +44,6 @@ class DeepBidirRNN:
 
         else:
             self.is_trainable_sat=True
-
-        try:
-            featproj = config["feat_proj"]
-        except:
-            featproj = 0
-
 
         # build the graph
         self.lr_rate = tf.placeholder(tf.float32, name = "learning_rate")[0]
@@ -205,32 +90,76 @@ class DeepBidirRNN:
 
                 learned_sat = self.my_sat_layers(num_sat_layers, adapt_dim,  nfeat, sat_t, "sat_layers")
 
-                outputs=tf.add(outputs, learned_sat, name="shift")
-
         with tf.variable_scope("input"):
-            outputs = tf.expand_dims(self.feats, -1)  # (B,T,F) -> (B,T,F,1)
+            # outputs = tf.transpose(self.feats, (0, 1, 2), name = "feat_transpose") # (B,T,F) -> (B,F,T)
+            outputs = tf.expand_dims(self.feats, -1) # (B,T,F) -> (B,T,F,1)
+            # self.shape_0 = tf.shape(outputs)
 
+
+
+
+        ################################CONV1##################################################
         with tf.name_scope('conv1_0') as scope:
-            kernel = tf.Variable(tf.truncated_normal([3, 3, 1, 64], dtype=tf.float32, stddev = 1e-1))
-            outputs = tf.nn.conv2d(outputs, kernel, [1, 1, 1, 1], padding='SAME', use_cudnn_on_gpu=True, name="conv0")  # (B,T,F,      1) -> (B,T,F,32)
-            biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32), trainable = True, name = 'biases_conv0')
-            outputs = tf.nn.bias_add(outputs, biases)
+            kernel = tf.Variable(tf.truncated_normal([3, 3, 1, 64], dtype=tf.float32, stddev=1e-1))
+
+            outputs = tf.nn.conv2d(outputs, kernel, [1, 1, 1, 1], padding='SAME',  use_cudnn_on_gpu=True, name="conv0") # (B,T,F,1) -> (B,T,F,32)
+
+            biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
+                                     trainable=True, name='biases_conv0')
+
+            outputs= tf.nn.bias_add(outputs, biases)
+
             outputs = tf.nn.relu(outputs, name="relu_conv0")
+            # self.shape_1 = tf.shape(outputs)
 
         with tf.name_scope('conv1_1') as scope:
-            kernel = tf.Variable(tf.truncated_normal([1, 40, 64, 128], dtype=tf.float32, stddev = 1e-1))
-            outputs = tf.nn.conv2d(outputs, kernel, [1, 1, 1, 1], padding='SAME', use_cudnn_on_gpu=True, name="conv2")  # (B,T,F/2+     1,32) -> (B,T,F/2+1,32)
-            biases = tf.Variable(tf.constant(0.0, shape=[128], dtype=tf.float32), trainable = True, name = 'biases_conv2')
-            outputs = tf.nn.bias_add(outputs, biases)
-            outputs = tf.nn.relu(outputs, name="relu_conv2")
-            outputs = tf.nn.max_pool(outputs, ksize=[1, 1, 2, 1], strides=[1, 1, 2, 1], padding='SAME', name='pool2')  # (B,T,F,        32) -> (B,T,(F/2+1)/2+1,32)
+            kernel = tf.Variable(tf.truncated_normal([3, 10, 64, 64], dtype=tf.float32, stddev=1e-1))
+
+            outputs = tf.nn.conv2d(outputs, kernel, [1, 1, 1, 1], padding='SAME',  use_cudnn_on_gpu=True, name="conv1") # (B,T,F,1) -> (B,T,F,32)
+
+            biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32), trainable=True, name='biases_conv1')
+
+            outputs= tf.nn.bias_add(outputs, biases)
+
+            outputs = tf.nn.relu(outputs, name="relu_conv1")
+            # self.shape_1 = tf.shape(outputs)
+            # outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training, updates_collections=None)
+
+            outputs = tf.nn.max_pool(outputs, ksize=[1, 1, 2, 1],strides=[1, 1, 2, 1],padding='SAME',name='pool1') # (B,T,F,32)
+            # self.shape_2 = tf.shape(outputs)
 
         with tf.name_scope('conv1_2') as scope:
-            kernel = tf.Variable(tf.truncated_normal([20, 1, 128, 128], dtype=tf.float32, stddev = 1e-1))
-            outputs = tf.nn.conv2d(outputs, kernel, [1, 1, 1, 1], padding='SAME', use_cudnn_on_gpu=True, name="conv3")  # (B,T,F/2+     1,32) -> (B,T,F/2+1,32)
-            biases = tf.Variable(tf.constant(0.0, shape=[128], dtype=tf.float32), trainable = True, name = 'biases_conv3')
-            outputs = tf.nn.bias_add(outputs, biases)
+            kernel = tf.Variable(tf.truncated_normal([1, 40, 64, 128], dtype=tf.float32,
+                                                         stddev=1e-1))
+
+            outputs = tf.nn.conv2d(outputs, kernel, [1, 1, 1, 1], padding='SAME', use_cudnn_on_gpu=True, name="conv2") # (B,T,F/2+1,32) -> (B,T,F/2+1,32)
+
+            biases = tf.Variable(tf.constant(0.0, shape=[128], dtype=tf.float32),
+                                     trainable=True, name='biases_conv2')
+            # bias=tf.Variable(tf.random_normal([64]), name="bias_conv2")
+
+            outputs= tf.nn.bias_add(outputs, biases)
+
+            outputs = tf.nn.relu(outputs, name="relu_conv2")
+            # self.shape_3 = tf.shape(outputs)
+            # pool1
+            outputs = tf.nn.max_pool(outputs, ksize=[1, 1, 2, 1], strides=[1, 1, 2, 1], padding='SAME', name='pool2') # (B,T,F,32) -> (B,T,(F/2+1)/2+1,32)
+            # self.shape_4 = tf.shape(outputs)
+
+        with tf.name_scope('conv1_3') as scope:
+            kernel = tf.Variable(tf.truncated_normal([20, 1, 128, 128], dtype=tf.float32,
+                                                         stddev=1e-1))
+
+            outputs = tf.nn.conv2d(outputs, kernel, [1, 1, 1, 1], padding='SAME', use_cudnn_on_gpu=True, name="conv3") # (B,T,F/2+1,32) -> (B,T,F/2+1,32)
+
+            biases = tf.Variable(tf.constant(0.0, shape=[128], dtype=tf.float32),
+                                     trainable=True, name='biases_conv3')
+            # bias=tf.Variable(tf.random_normal([64]), name="bias_conv2")
+
+            outputs= tf.nn.bias_add(outputs, biases)
+
             outputs = tf.nn.relu(outputs, name="relu_conv3")
+
 
         outputs = tf.reshape(outputs, [tf.shape(outputs)[0], tf.shape(outputs)[1], (int((int(nfeat / 2) + 1) / 2) + 1) * 128])
         outputs = tf.transpose(outputs, (1, 0, 2), name="feat_transpose")
@@ -264,25 +193,16 @@ class DeepBidirRNN:
             with tf.variable_scope(constants.SCOPES.OUTPUT):
                 for target_id, num_targets in language_target_dict.items():
 
-                    outputs = tf.reshape(outputs, [tf.shape(outputs)[0], tf.shape(outputs)[1], (int((int(nfeat / 2) + 1) / 2) + 1) * 128])
-                    outputs = tf.transpose(outputs, (1, 0, 2), name="feat_transpose")
-
                     scope="output_fc_"+language_id+"_"+target_id
-                    logit = tf.contrib.layers.fully_connected(activation_fn =  tf.nn.relu, inputs = outputs,
-                                                              num_outputs=1000,
-                                                              scope = scope,
-                                                              biases_initializer = tf.contrib.layers.xavier_initializer(),
-                                                              trainable=self.is_trainable_sat)
 
                     outputs = tf.contrib.layers.fully_connected(
                     activation_fn = tf.nn.relu, inputs = outputs, num_outputs = 1000, scope = "input_fc0", biases_initializer = tf.contrib.layers.xavier_initializer())
-                    outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training, updates_collections=None)
-                    outputs = tf.nn.dropout(outputs, self.keep_prob)
+                    outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
+                    #outputs = tf.nn.dropout(outputs, self.keep_prob)
                     outputs = tf.contrib.layers.fully_connected( activation_fn = tf.nn.relu, inputs = outputs, num_outputs = 500, scope = "input_fc", biases_initializer = tf.contrib.layers.xavier_initializer())
                     outputs = tf.contrib.layers.fully_connected( activation_fn = tf.nn.relu, inputs = outputs, num_outputs = 500, scope = "input_fc_2", biases_initializer = tf.contrib.layers.xavier_initializer())
-                    outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9,
-                                                           is_training=self.is_training, updates_collections=None)
-                    outputs = tf.nn.dropout(outputs, self.keep_prob)
+                    outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
+                    #outputs = tf.nn.dropout(outputs, self.keep_prob)
 
                     logit = tf.contrib.layers.fully_connected(activation_fn=None, inputs=outputs, num_outputs=num_targets, scope=scope,
                                                               biases_initializer=tf.contrib.layers.xavier_initializer())

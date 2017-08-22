@@ -265,6 +265,7 @@ class Train():
         while True:
 
             #get batch
+
             data = data_queue.get()
 
             #if it is empty exit...
@@ -314,6 +315,7 @@ class Train():
         m_acum_samples[ybatch[1]] += batch_size
 
     def __restore_weights(self):
+
         alpha = 0
 
         if self.__config[constants.CONF_TAGS.CONTINUE_CKPT]:
@@ -337,8 +339,7 @@ class Train():
 
                 saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH], var_list=vars_to_load)
                 saver.restore(self.__sess, self.__config[constants.CONF_TAGS.CONTINUE_CKPT])
-
-                alpha = 0
+                alpha = int(re.match(".*epoch([-+]?\d+).ckpt", self.__config[constants.CONF_TAGS.CONTINUE_CKPT]).groups()[0])
 
             else:
 
@@ -346,6 +347,7 @@ class Train():
                 print("var list:")
                 for var in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES):
                     print(var.name)
+
                 saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH])
                 saver.restore(self.__sess, self.__config[constants.CONF_TAGS.CONTINUE_CKPT])
                 alpha = int(re.match(".*epoch([-+]?\d+).ckpt", self.__config[constants.CONF_TAGS.CONTINUE_CKPT]).groups()[0])

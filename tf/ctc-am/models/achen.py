@@ -70,7 +70,7 @@ class Achen:
                                 num_outputs = nproj, scope = "projection")
 
                             if(batch_norm):
-                                outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True,decay=0.9, is_training=self.is_training,  updates_collections=None)
+                                outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True,decay=0.9, is_training=self.is_training_ph,  updates_collections=None)
 
                             ninput = nproj
                 else:
@@ -87,7 +87,7 @@ class Achen:
                                                                 input_h=input_h, input_c=input_c,params=cudnn_params)
 
                     if(batch_norm):
-                        outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True,decay=0.9, is_training=self.is_training,  updates_collections=None)
+                        outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True,decay=0.9, is_training=self.is_training_ph,  updates_collections=None)
 
         return outputs
 

@@ -4,6 +4,7 @@ class MODEL_NAME:
     ACHEN_SUM="achen_sum"
     DEEP_BILSTM="deepbilstm"
     ARCNET="arc_net"
+    CONVNET="conv_net"
 
 class DEFAULT_FILENAMES:
     SAT="sat_local"

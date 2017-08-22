@@ -2,6 +2,7 @@
 class MODEL_NAME:
     ACHEN="achen"
     ACHEN_SUM="achen_sum"
+    ACHEN_CONV="achen_conv"
     DEEP_BILSTM="deepbilstm"
     ARCNET="arc_net"
     CONVNET="conv_net"

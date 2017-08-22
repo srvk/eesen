@@ -14,7 +14,7 @@
            ## This relates to the queue.
 . path.sh
 
-stage=4
+stage=5
 
 fisher_dirs="/path/to/LDC2004T19/fe_03_p1_tran/ /path/to/LDC2005T19/fe_03_p2_tran/" # Set to "" if you don't have the fisher corpus
 eval2000_dirs="/path/to/LDC2002S09/hub5e_00 /path/to/LDC2002T43"
@@ -95,7 +95,7 @@ if [ $stage -le 3 ]; then
   python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_dev/text --input_units ./data/local/dict_char/units.txt --output_labels $dir/labels.cv
 
   # Train the network with CTC. Refer to the script for details about the arguments
-  steps/train_ctc_tf.sh --num-sequence 16 --learn-rate 0.02 --halving-after-epoch 12 \
+  steps/train_ctc_tf.sh --num-sequence 16 --learn-rate 0.02 --half_after 6 \
     data/train_100k_nodup data/train_dev $dir || exit 1;
 fi
 
@@ -121,10 +121,31 @@ if [ $stage -le 4 ]; then
 
 fi
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 5 ]; then
   echo =====================================================================
-  echo "                		Decoding             		   "
+  echo "                Network Training with the Full Set                "
   echo =====================================================================
 
+  # Specify network structure and generate the network topology
+  input_feat_dim=120   # dimension of the input features; we will use 40-dimensional fbanks with deltas and double deltas
+  lstm_layer_num=4     # number of LSTM layers
+  lstm_cell_dim=320    # number of memory cells in every LSTM layer
+
+  dir=exp/train_char_l${lstm_layer_num}_c${lstm_cell_dim}
+
+  echo generating train labels...
+
+  python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_nodup/text --output_units ./data/local/dict_char/units.txt --output_labels $dir/labels.tr
+
+  echo generating cv labels...
+
+  python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_dev/text --input_units ./data/local/dict_char/units.txt --output_labels $dir/labels.cv
+
+  # Train the network with CTC. Refer to the script for details about the arguments
+  steps/train_ctc_tf.sh --num-sequence 16 --learn-rate 0.02 --half_after 6 \
+    data/train_nodup data/train_dev $dir || exit 1;
+
 fi
+
+
 

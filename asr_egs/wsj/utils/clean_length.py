@@ -46,13 +46,13 @@ with open(args.scp_out, "w") as f:
 
         if(key in labels_dict):
             if(labels_dict[key] < feat_len):
-                new_len += 1 
+                new_len += 1
                 f.write(str(key)+" "+str(dict_text[key])+"\n")
         else:
             labels_not_found += 1
             print(80 * "*")
             print(80 * "*")
-            print("WARNING!!!!")
+            print("Warning: " +key+ "has not been found in labels file: "+args.labels)
             print("key: "+key)
             print(80 * "*")
             print(80 * "*")

@@ -51,9 +51,16 @@ class Train():
 
             for epoch in range(alpha, self.__config[constants.CONF_TAGS.NEPOCH]):
 
+                #log start
                 print(80 * "-")
                 print("Epoch "+str(epoch)+" starting ...")
                 print(80 * "-")
+
+                #if not srat update
+                if(epoch > 0):
+                    #update lr_rate if needed
+                    lr_rate, best_avg_ters, best_epoch = self.__update_lr_rate(epoch, cv_ters, best_avg_ters, best_epoch, saver)
+
                 #start timer...
                 tic = time.time()
 
@@ -75,8 +82,6 @@ class Train():
                 #change set if needed (mix augmentation)
                 self.__update_sets(tr_x, tr_y, tr_sat)
 
-                #update lr_rate if needed
-                lr_rate, best_avg_ters, best_epoch = self.__update_lr_rate(epoch, cv_ters, best_avg_ters, best_epoch, saver)
 
     def __compute_avg_ters(self, ters):
 
@@ -365,7 +370,7 @@ class Train():
 
     def __generate_logs(self, cv_ters, cv_cost, ncv, train_ters, train_cost, ntrain, epoch, lr_rate, tic):
 
-        self.__info("Epoch %d finished in %.0f minutes, learning rate: %.4g" % (epoch + 1, (time.time() - tic)/60.0, lr_rate))
+        self.__info("Epoch %d finished in %.0f minutes, learning rate: %.4g" % (epoch, (time.time() - tic)/60.0, lr_rate))
 
         with open("%s/epoch%02d.log" % (self.__config["model_dir"], epoch + 1), 'w') as fp:
             fp.write("Time: %.0f minutes, lrate: %.4g\n" % ((time.time() - tic)/60.0, lr_rate))

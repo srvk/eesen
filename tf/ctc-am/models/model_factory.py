@@ -6,6 +6,7 @@ from models.deep_bilstm import *
 from models.achen import *
 from models.achen_sum import *
 from models.convnet import *
+from models.achen_conv import *
 
 
 #it returns an object reader that internaly will manage all the data
@@ -20,6 +21,8 @@ def create_model(config):
         return AchenSum(config)
     elif config[constants.CONF_TAGS.MODEL] == constants.MODEL_NAME.CONVNET:
         return ConvNet(config)
+    elif config[constants.CONF_TAGS.MODEL] == constants.MODEL_NAME.ACHEN_CONV:
+        return AchenConv(config)
     elif config[constants.CONF_TAGS.MODEL] == constants.MODEL_NAME.ARCNET:
         print("ARCNET underconstruction...")
         print(debug.get_debug_info())

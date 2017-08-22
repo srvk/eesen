@@ -50,6 +50,17 @@ class Augmenter(object):
             augmented_feats = np.concatenate((np.roll(feat,2,axis=0), np.roll(feat,1,axis=0), feat, np.roll(feat,-1,axis=0), np.roll(feat,-2,axis=0)), axis=1)[shift::stride,]
         elif win == 7:
             augmented_feats = np.concatenate((np.roll(feat,3,axis=0), np.roll(feat,2,axis=0), np.roll(feat,1,axis=0), feat, np.roll(feat,-1,axis=0), np.roll(feat,-2,axis=0), np.roll(feat,-3,axis=0)), axis=1)[shift::stride,]
+        elif win == 9:
+            augmented_feats = np.concatenate(
+                (np.roll(feat,4,axis=0),
+                 np.roll(feat,3,axis=0),
+                 np.roll(feat,2,axis=0),
+                 np.roll(feat,1,axis=0), feat,
+                 np.roll(feat,-1,axis=0),
+                 np.roll(feat,-2,axis=0),
+                 np.roll(feat,-3,axis=0),
+                 np.roll(feat,-4,axis=0)
+                 ), axis=1)[shift::stride,]
         else:
             print("win not supported", win)
             print(get_debug_info())

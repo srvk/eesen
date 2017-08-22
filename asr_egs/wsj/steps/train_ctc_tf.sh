@@ -32,11 +32,7 @@ max_iters=25             # max number of iterations
 min_iters=               # min number of iterations
 start_epoch_num=1        # start from which epoch, used for resuming training from a break point
 
-start_halving_inc=0.1    # start halving learning rates when the accuracy improvement falls below this amount
-end_training_inc=0.01    # terminate training when the accuracy improvement falls below this amount
-halving_factor=0.8       # learning rate decay factor
-halving_after_epoch=10   # halving becomes enabled after this many epochs
-force_halving_epoch=     # force halving after this epoch
+half_after=6
 
 # logging
 report_step=1000         # during training, the step (number of utterances) of reporting objective and accuracy
@@ -184,7 +180,8 @@ data_cv=$2
 dir=$3
 
 mkdir -p $dir/log
-for f in $data_tr/feats.scp $data_cv/feats.scp $dir/labels.tr.gz $dir/labels.cv.gz; do
+
+for f in $data_tr/feats.scp $data_cv/feats.scp $dir/labels.tr $dir/labels.cv; do
   [ ! -f $f ] && echo `basename "$0"`": no such file $f" && exit 1;
 done
 
@@ -201,16 +198,6 @@ fi
 [ -f $dir/.halving ] && halving=`cat $dir/.halving 2>/dev/null`
 [ -f $dir/.lrate ]   && learn_rate=`cat $dir/.lrate 2>/dev/null`
 
-
-# Compute the occurrence counts of labels in the label sequences. These counts will be used to
-# derive prior probabilities of the labels.
-gunzip -c $dir/labels.tr.gz | awk '{line=$0; gsub(" "," 0 ",line); print line " 0";}' | \
-  analyze-counts --verbose=1 --binary=false ark:- $dir/label.counts >& $dir/log/compute_label_counts.log || exit 1
-
-
-## Set up labels
-labels_tr="ark:gunzip -c $dir/labels.tr.gz|"
-labels_cv="ark:gunzip -c $dir/labels.cv.gz|"
 
 
 ## Setup features
@@ -262,7 +249,7 @@ echo "TRAINING STARTS [$cur_time]"
 #
 $train_tool $train_opts --lr_rate $learn_rate --batch_size $num_sequence --l2 $l2 \
     --nhidden $nhidden --nlayer $nlayer $nproj $feat_proj $ckpt $max_iters \
-    --train_dir $dir --data_dir $tmpdir || exit 1;
+    --train_dir $dir --data_dir $tmpdir --half_after $half_after|| exit 1;
 
 ## Done
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`

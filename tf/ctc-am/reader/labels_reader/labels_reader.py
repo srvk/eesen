@@ -102,10 +102,35 @@ class LabelsReader(object):
                     self.__language_scheme[constants.CONF_TAGS.LANGUAGE_SCHEME][language][target]=conf_value
 
     def __is_multiple_languages(self, data_dir):
+
+        is_labels = False
+        is_feats = False
+        is_folder = False
+
         for filename in os.listdir(data_dir):
             if (filename.startswith('labels')):
-                return False
-        return True
+                is_labels = True
+
+            if (filename.startswith('labels')):
+                is_labels =  True
+
+            if (os.path.isdir(os.path.join(data_dir,filename)) and not filename.startswith('augment_')):
+                is_folder = True
+
+        if(is_labels and is_feats and not is_folder):
+            return False
+        elif(is_folder):
+            if(is_labels or is_feats):
+                print("strange multilingual setup found in data_dir:")
+                print("(several languages but scp or labels in root data_dir (?))")
+                for filename in os.listdir(data_dir):
+                    print(filename)
+                print(debug.get_debug_info())
+                print("exiting...\n")
+                sys.exit()
+
+            else:
+                return True
 
     def __read_files_multiple_langues(self, data_dir, info_set):
 
@@ -119,6 +144,7 @@ class LabelsReader(object):
         file_find=False
 
         for filename in os.listdir(language_dir):
+
             if (filename.startswith('labels') and filename.endswith('.'+info_set)):
                 target_id=filename.replace("labels_","").replace("labels","").replace('.'+info_set,"")
                 if(target_id==""):

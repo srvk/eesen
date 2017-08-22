@@ -63,13 +63,7 @@ class Train():
                 if self.__config[constants.CONF_TAGS.STORE_MODEL]:
                     saver.save(self.__sess, "%s/epoch%02d.ckpt" % (self.__config[constants.CONF_TAGS.MODEL_DIR], epoch + 1))
 
-                print("done with training!!!!")
-                print("done with training!!!!")
-                print("done with training!!!!")
-                print("done with training!!!!")
-                print("done with training!!!!")
                 #evaluate on validation...
-
                 #TODO check eval
                 #TODO check results
                 cv_cost, cv_ters, ncv = self.__eval_epoch(cv_x, cv_y, cv_sat)
@@ -188,9 +182,9 @@ class Train():
 
         if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
                 != constants.SAT_SATGES.UNADAPTED:
-            p = Process(target = run_reader_queue, args = (data_queue, tr_x , tr_y, self.__config["do_shuf"], tr_sat))
+            p = Process(target = run_reader_queue, args = (data_queue, tr_x , tr_y, self.__config["do_shuf"], False, tr_sat))
         else:
-            p = Process(target = run_reader_queue, args = (data_queue, tr_x, tr_y, self.__config["do_shuf"]))
+            p = Process(target = run_reader_queue, args = (data_queue, tr_x, tr_y, self.__config["do_shuf"], False))
 
         #start queue ...
         p.start()
@@ -211,6 +205,7 @@ class Train():
                                                        self.__model.ters[index_correct_lan],
                                                        self.__model.opt[index_correct_lan]],
                                                       feed)
+
 
             #updating values...
             self.__update_counters(train_ters, train_cost, ntrain, ntr_labels, batch_ters, batch_cost, batch_size, data[1])
@@ -257,10 +252,10 @@ class Train():
         if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
                 != constants.SAT_SATGES.UNADAPTED:
             p = Process(target = run_reader_queue, args = (data_queue, cv_x , cv_y,
-                                                           self.__config[constants.CONF_TAGS.DO_SHUF], cv_sat))
+                                                           self.__config[constants.CONF_TAGS.DO_SHUF], False, cv_sat))
         else:
             p = Process(target = run_reader_queue, args = (data_queue, cv_x, cv_y,
-                                                           self.__config[constants.CONF_TAGS.DO_SHUF]))
+                                                           self.__config[constants.CONF_TAGS.DO_SHUF], False))
 
         #starting the queue...
         p.start()
@@ -429,9 +424,9 @@ class Train():
         #it is training
         if(lr_rate):
             feed[self.__model.lr_rate] = lr_rate
-            feed[self.__model.is_training] = True
+            feed[self.__model.is_training_ph] = True
         else:
-            feed[self.__model.is_training] = False
+            feed[self.__model.is_training_ph] = False
 
         if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
                 != constants.SAT_SATGES.UNADAPTED:

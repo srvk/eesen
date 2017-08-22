@@ -25,7 +25,8 @@ class Test():
         print(80 * "-")
         print(80 * "-")
         print("config: ")
-        print(config)
+        for key, value in config.items():
+            print(str(key)+" : "+str(value))
 
         self.__model = create_model(config)
 
@@ -42,7 +43,7 @@ class Test():
             print(80 * "-")
             print(80 * "-")
             print("start decoding...")
-            ters, soft_probs, log_soft_probs, log_likes, logits, batches_id = self.__create_result_containers(config)
+            soft_probs, log_soft_probs, log_likes, logits, batches_id = self.__create_result_containers(config)
 
             ntest, test_costs, test_ters, ntest_labels = self.__create_counter_containers(config)
 
@@ -76,15 +77,17 @@ class Test():
                         sess.run(request_list, feed)
 
                 elif(not config[constants.CONFIG_TAGS_TEST.COMPUTE_TER] and not config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
+
                     batch_soft_probs, batch_log_soft_probs, batch_seq_len, batch_logits = \
                         sess.run(request_list, feed)
 
                 #TODO the sum should be done online
                 self.__update_probs_containers(config, batch_id, batches_id, batch_seq_len, batch_soft_probs, soft_probs,
-                                  batch_log_soft_probs , log_soft_probs, batch_logits, logits, batch_log_likes, log_likes)
+                                  batch_log_soft_probs, log_soft_probs, batch_logits, logits, batch_log_likes, log_likes)
+
 
                 if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]):
-                    self.__update_counters(batch_size, ntest, y_batch, ntest_labels,batch_ters, ters, batch_cost, test_costs)
+                    self.__update_counters(config, batch_size, ntest, y_batch, ntest_labels, batch_ters, test_ters, batch_cost, test_costs)
 
             process.join()
             process.terminate()
@@ -92,12 +95,16 @@ class Test():
             print(80 * "-")
             print(80 * "-")
 
+
             if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]):
-                #averaging ters and costs
-                for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME]:
-                    for target_id, _ in config[constants.CONF_TAGS.LANGUAGE_SCHEME]:
-                        test_ters[language_id][target_id] = test_ters[language_id][target_id]/float(ntest_labels[language_id][target_id])
-                        test_costs[language_id][target_id] = test_ters[language_id][target_id]/float(ntest_labels[language_id][target_id])
+
+                for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
+                    for target_id, _ in target_scheme.items():
+                        test_costs[language_id][target_id] = test_costs[language_id][target_id] / float(ntest[language_id])
+
+                for language_id, target_scheme in test_ters.iteritems():
+                    for target_id, cv_ter in target_scheme.iteritems():
+                        test_ters[language_id][target_id] = cv_ter/float(ntest_labels[language_id][target_id])
 
                 self.__print_logs(config, test_costs, test_ters, ntest)
 
@@ -117,7 +124,7 @@ class Test():
 
                 if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]):
                     request_list.append(self.__model.ters)
-                    request_list.append(self.__model.cost)
+                    request_list.append(self.__model.debug_costs)
 
                 if(config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
                     request_list.append(self.__model.log_likelihoods)
@@ -175,6 +182,7 @@ class Test():
 
                 #iterate over all uttid again
                 for idx, (utt_id, _) in enumerate(S.items()):
+                    m_soft_probs[language_id][target_id] += [S[utt_id]]
                     m_log_soft_probs[language_id][target_id] += [P[utt_id]]
                     m_logits[language_id][target_id] += [O[utt_id]]
                     new_batch_id[language_id][target_id].append(utt_id)
@@ -241,24 +249,24 @@ class Test():
 
         ntest = {}
         test_cost = {}
-        test_ter = {}
+        test_ters = {}
         ntest_labels = {}
 
         for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
             ntest[language_id] = 0
-            test_cost[language_id] = 0
-            test_ter[language_id] = {}
+            test_cost[language_id] = {}
+            test_ters[language_id] = {}
             ntest_labels[language_id] = {}
             for target_id, _ in target_scheme.iteritems():
-                test_ter[language_id][target_id] = 0
+                test_ters[language_id][target_id] = 0
+                test_cost[language_id][target_id] = 0
                 ntest_labels[language_id][target_id] = 0
 
-        return ntest, test_cost, test_ter, ntest_labels
+        return ntest, test_cost, test_ters, ntest_labels
 
     def __create_result_containers(self, config):
 
         batches_id={}
-        ters={}
         soft_probs = {}
         log_soft_probs = {}
         log_likes = {}
@@ -266,20 +274,18 @@ class Test():
 
         for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
             batches_id[language_id] = []
-            ters[language_id] = {}
             soft_probs[language_id] = {}
             soft_probs[language_id] = {}
             log_soft_probs[language_id] = {}
             log_likes[language_id] = {}
             logits[language_id] = {}
             for target_id, _ in target_scheme.iteritems():
-                ters[language_id][target_id] = []
                 soft_probs[language_id][target_id] = []
                 log_soft_probs[language_id][target_id] = []
                 log_likes[language_id][target_id]=[]
                 logits[language_id][target_id]=[]
 
-        return ters, soft_probs, log_soft_probs, log_likes, logits, batches_id
+        return soft_probs, log_soft_probs, log_likes, logits, batches_id
 
     def __print_logs(self, config, test_cost, test_ters, ntest):
 
@@ -296,8 +302,8 @@ class Test():
                 if(len(target_scheme) > 1):
                     print("\tTarget: %s" % (target_id))
                     fp.write("\tTarget: %s" % (target_id))
-                print("\t\t Test cost: %.1f, ter: %.1f%%, #example: %d" % (test_cost[language_id], 100.0*test_ter, ntest[language_id]))
-                fp.write("\t\tTest cost: %.1f, ter: %.1f%%, #example: %d\n" % (test_cost[language_id], 100.0*test_ter, ntest[language_id]))
+                print("\t\t Test cost: %.1f, ter: %.1f%%, #example: %d" % (test_cost[language_id][target_id], 100.0*test_ter, ntest[language_id]))
+                fp.write("\t\tTest cost: %.1f, ter: %.1f%%, #example: %d\n" % (test_cost[language_id][target_id], 100.0*test_ter, ntest[language_id]))
         fp.close()
 
 
@@ -327,22 +333,24 @@ class Test():
                              writeArk(os.path.join(results_dir, "logit_"+target_id+".ark"), logits[language_id][target_id], uttids[language_id][target_id]))
 
 
-    def __update_counters(self, batch_size, m_acum_samples, ybatch, m_acum_labels, batch_ters, m_acum_ters, batch_cost, m_acum_cost):
+    def __update_counters(self, config, batch_size, m_acum_samples, ybatch, m_acum_labels, batch_ters, m_acum_ters, batch_cost, m_acum_cost):
 
 
         #https://stackoverflow.com/questions/835092/python-dictionary-are-keys-and-values-always-the-same-order
         #TODO although this should be changed for now is a workaround
 
-        for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
+        for idx_lan, (language_id, target_scheme) in enumerate(config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems()):
             if(ybatch[1] == language_id):
 
-                for idx, (target_id, _) in enumerate(target_scheme.iteritems()):
+                for idx_tar, (target_id, _) in enumerate(target_scheme.iteritems()):
                     #note that ybatch[0] contains targets and ybathc[1] contains language_id
-                    m_acum_ters[language_id][target_id] += batch_ters[idx]
+                    m_acum_ters[language_id][target_id] += batch_ters[idx_lan][idx_tar]
                     m_acum_labels[language_id][target_id] += self.__get_label_len(ybatch[0][language_id][target_id])
+                    m_acum_cost[language_id][target_id] += batch_cost[idx_lan][idx_tar] * batch_size
 
-        m_acum_cost[ybatch[1]] += batch_cost * batch_size
         m_acum_samples[ybatch[1]] += batch_size
+
+
 
     #important to note that shuf = False (to be able to reuse uttid)
     def __generate_queue (self, config, data):
@@ -354,17 +362,17 @@ class Test():
         if test_y:
             if test_sat:
                 #x, y, sat
-                process = Process(target= run_reader_queue, args= (data_queue, test_x, test_y, False, test_sat))
+                process = Process(target= run_reader_queue, args= (data_queue, test_x, test_y, False, False, test_sat))
             else:
                 #x, y
-                process = Process(target = run_reader_queue, args= (data_queue, test_x, test_y, False, None))
+                process = Process(target = run_reader_queue, args= (data_queue, test_x, test_y, False, False, None))
         else:
             if test_sat:
                 #x, sat
-                process = Process(target = run_reader_queue, args= (data_queue, test_x, None, False, test_sat))
+                process = Process(target = run_reader_queue, args= (data_queue, test_x, None, False, False, test_sat))
             else:
                 #x
-                process =  Process(target = run_reader_queue, args = (data_queue, test_x, None, False, None))
+                process =  Process(target = run_reader_queue, args = (data_queue, test_x, None, False, False, None))
 
         return process, data_queue, test_x
 
@@ -388,12 +396,13 @@ class Test():
 
         index_correct_lan = None
         if config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]:
+
             #we just convert from dict to a list
             y_batch_list = []
             # batch{language_1;{target_1: labels, target_2: labels},
             # language_2;{target_1: labels, target_2: labels}]
-            for language_id, batch_targets in y_batch[0].items:
-                for targets_id, batch_targets in batch_targets.iteritems():
+            for language_id, batch_targets in y_batch[0].items():
+                for targets_id, batch_targets in batch_targets.items():
                     y_batch_list.append(batch_targets)
 
             for language_id, language_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
@@ -411,7 +420,7 @@ class Test():
         #getting the actual x_batch that is in position 0
         feed[self.__model.feats] = x_batch[0]
         feed[self.__model.temperature] = float(config[constants.CONFIG_TAGS_TEST.TEMPERATURE])
-        feed[self.__model.is_training] = False
+        feed[self.__model.is_training_ph] = False
 
         if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
                 != constants.SAT_SATGES.UNADAPTED:

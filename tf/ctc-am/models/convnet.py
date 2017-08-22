@@ -3,7 +3,7 @@ import constants
 import tensorflow as tf
 from utils.fileutils import debug
 
-class Achen:
+class DeepBidirRNN:
 
     def length(self, sequence):
         with tf.variable_scope("seq_len"):
@@ -13,36 +13,9 @@ class Achen:
         return length
 
 
-    def my_dnn_layer(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope, batch_norm, is_training = True):
-        scope="DNN_test"
-        # with tf.variable_scope(scope):
-        #     i = 1
-        #     with tf.variable_scope("layer%d" % i):
-        outputs = tf.contrib.layers.fully_connected(
-        activation_fn = tf.nn.tanh , inputs = outputs , num_outputs= 400, biases_initializer = tf.contrib.layers.xavier_initializer(), scope='fully_connected_DNN1')
-        # Dropout to be added!
-        if(batch_norm):
-            outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True,decay=0.9, is_training=self.is_training_ph,  updates_collections=None)
+    #def my_cnn (self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope, batch_norm, is_training = True):
 
-        outputs = tf.contrib.layers.dropout(outputs,keep_prob=0.7,is_training=self.is_training_ph)
-
-
-        outputs = tf.contrib.layers.fully_connected(
-        activation_fn = tf.nn.tanh , inputs = outputs , num_outputs= 200, biases_initializer = tf.contrib.layers.xavier_initializer(), scope='fully_connected_DNN2')
-        # Dropout to be added!
-        if(batch_norm):
-            outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True,decay=0.9, is_training=self.is_training_ph,  updates_collections=None)
-        outputs = tf.contrib.layers.dropout(outputs,keep_prob=0.7,is_training=self.is_training_ph)
-
-        outputs = tf.contrib.layers.fully_connected(
-        activation_fn = tf.nn.tanh , inputs = outputs , num_outputs= 200, biases_initializer = tf.contrib.layers.xavier_initializer(), scope='fully_connected_DNN3')
-        # Dropout to be added!
-        if(batch_norm):
-            outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True,decay=0.9, is_training=self.is_training_ph,  updates_collections=None)
-        outputs = tf.contrib.layers.dropout(outputs,keep_prob=0.7,is_training=self.is_training_ph)
-        return outputs
-
-
+    #    if(nlayer > 0 ):
 
 
     def my_cudnn_lstm(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope, batch_norm, is_training = True):
@@ -63,14 +36,14 @@ class Achen:
                             cudnn_params = tf.Variable(tf.random_uniform([params_size_t], -bound, bound), validate_shape = False, name = "params", trainable=self.is_trainable_sat)
                             #TODO is_training=is_training should be changed!
                             outputs, _output_h, _output_c = cudnn_model(is_training=is_training,
-                                                                        input_data=outputs, input_h=input_h, input_c=input_c,
-                                                                        params=cudnn_params)
+                                input_data=outputs, input_h=input_h, input_c=input_c,
+                                params=cudnn_params)
                             outputs = tf.contrib.layers.fully_connected(
                                 activation_fn = None, inputs = outputs,
                                 num_outputs = nproj, scope = "projection")
 
                             if(batch_norm):
-                                outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True,decay=0.9, is_training=self.is_training,  updates_collections=None)
+                                outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
 
                             ninput = nproj
                 else:
@@ -81,13 +54,13 @@ class Achen:
                     bound = tf.sqrt(6. / (nhidden + nhidden))
 
                     cudnn_params = tf.Variable(tf.random_uniform([params_size_t], -bound, bound),
-                                               validate_shape = False, name = "params", trainable=self.is_trainable_sat)
+                        validate_shape = False, name = "params", trainable=self.is_trainable_sat)
 
                     outputs, _output_h, _output_c = cudnn_model(is_training=is_training,input_data=outputs,
-                                                                input_h=input_h, input_c=input_c,params=cudnn_params)
+                            input_h=input_h, input_c=input_c,params=cudnn_params)
 
                     if(batch_norm):
-                        outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True,decay=0.9, is_training=self.is_training,  updates_collections=None)
+                        outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
 
         return outputs
 
@@ -126,17 +99,17 @@ class Achen:
                     # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs,
                     # self.seq_len, swap_memory=True, time_major = True, dtype = tf.float32)
                     outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs,
-                                                                 self.seq_len, time_major = True, dtype = tf.float32)
+                        self.seq_len, time_major = True, dtype = tf.float32)
                     # also some API change
                     outputs = tf.concat_v2(values = outputs, axis = 2, name = "output")
                     # outputs = tf.concat(values = outputs, axis = 2, name = "output")
-                    # for i in range(nlayer):
-                    # with tf.variable_scope("layer%d" % i):
+            # for i in range(nlayer):
+                # with tf.variable_scope("layer%d" % i):
                     # cell = tf.contrib.rnn.LSTMBlockCell(nhidden)
                     # if nproj > 0:
-                    # cell = tf.contrib.rnn.OutputProjectionWrapper(cell, nproj)
+                        # cell = tf.contrib.rnn.OutputProjectionWrapper(cell, nproj)
                     # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell,
-                    # outputs, self.seq_len, swap_memory=True, dtype = tf.float32, time_major = True)
+                        # outputs, self.seq_len, swap_memory=True, dtype = tf.float32, time_major = True)
                     # # outputs = tf.concat_v2(outputs, 2, name = "output")
                     # outputs = tf.concat(outputs, 2, name = "output")
                     # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs, self.seq_len, dtype = tf.float32)
@@ -167,6 +140,11 @@ class Achen:
         lstm_type = config[constants.CONF_TAGS.LSTM_TYPE]
         grad_opt = config[constants.CONF_TAGS.GRAD_OPT]
 
+        if(constants.CONFIG_TAGS_TEST in config):
+            self.is_training = False
+        else:
+            self.is_training = True
+
         if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
                 != constants.SAT_SATGES.UNADAPTED:
             num_sat_layers = config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.NUM_SAT_LAYERS]
@@ -183,11 +161,10 @@ class Achen:
 
 
         # build the graph
-        self.is_training_ph = tf.placeholder(tf.bool, shape=(), name="is_training")
         self.lr_rate = tf.placeholder(tf.float32, name = "learning_rate")[0]
         self.feats = tf.placeholder(tf.float32, [None, None, nfeat], name = "feats")
         self.temperature = tf.placeholder(tf.float32, name = "temperature")
-        self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
+        self.is_training_ph = tf.placeholder(tf.bool, shape=(), name="is_training")
         self.opt = []
 
 
@@ -216,7 +193,7 @@ class Achen:
 
         output_size = 2 * nhidden if nproj == 0 else nproj
         batch_size = tf.shape(self.feats)[0]
-        outputs = tf.transpose(self.feats, (1, 0, 2), name = "feat_transpose")
+        #outputs = tf.transpose(self.feats, (1, 0, 2), name = "feat_transpose")
 
         if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
                 != constants.SAT_SATGES.UNADAPTED:
@@ -230,28 +207,37 @@ class Achen:
 
                 outputs=tf.add(outputs, learned_sat, name="shift")
 
+        with tf.variable_scope("input"):
+            outputs = tf.expand_dims(self.feats, -1)  # (B,T,F) -> (B,T,F,1)
+
+        with tf.name_scope('conv1_0') as scope:
+            kernel = tf.Variable(tf.truncated_normal([3, 3, 1, 64], dtype=tf.float32, stddev = 1e-1))
+            outputs = tf.nn.conv2d(outputs, kernel, [1, 1, 1, 1], padding='SAME', use_cudnn_on_gpu=True, name="conv0")  # (B,T,F,      1) -> (B,T,F,32)
+            biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32), trainable = True, name = 'biases_conv0')
+            outputs = tf.nn.bias_add(outputs, biases)
+            outputs = tf.nn.relu(outputs, name="relu_conv0")
+
+        with tf.name_scope('conv1_1') as scope:
+            kernel = tf.Variable(tf.truncated_normal([1, 40, 64, 128], dtype=tf.float32, stddev = 1e-1))
+            outputs = tf.nn.conv2d(outputs, kernel, [1, 1, 1, 1], padding='SAME', use_cudnn_on_gpu=True, name="conv2")  # (B,T,F/2+     1,32) -> (B,T,F/2+1,32)
+            biases = tf.Variable(tf.constant(0.0, shape=[128], dtype=tf.float32), trainable = True, name = 'biases_conv2')
+            outputs = tf.nn.bias_add(outputs, biases)
+            outputs = tf.nn.relu(outputs, name="relu_conv2")
+            outputs = tf.nn.max_pool(outputs, ksize=[1, 1, 2, 1], strides=[1, 1, 2, 1], padding='SAME', name='pool2')  # (B,T,F,        32) -> (B,T,(F/2+1)/2+1,32)
+
+        with tf.name_scope('conv1_2') as scope:
+            kernel = tf.Variable(tf.truncated_normal([20, 1, 128, 128], dtype=tf.float32, stddev = 1e-1))
+            outputs = tf.nn.conv2d(outputs, kernel, [1, 1, 1, 1], padding='SAME', use_cudnn_on_gpu=True, name="conv3")  # (B,T,F/2+     1,32) -> (B,T,F/2+1,32)
+            biases = tf.Variable(tf.constant(0.0, shape=[128], dtype=tf.float32), trainable = True, name = 'biases_conv3')
+            outputs = tf.nn.bias_add(outputs, biases)
+            outputs = tf.nn.relu(outputs, name="relu_conv3")
+
+        outputs = tf.reshape(outputs, [tf.shape(outputs)[0], tf.shape(outputs)[1], (int((int(nfeat / 2) + 1) / 2) + 1) * 128])
+        outputs = tf.transpose(outputs, (1, 0, 2), name="feat_transpose")
+
 
         if batch_norm:
             outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
-
-
-        if featproj > 0:
-            outputs = tf.contrib.layers.fully_connected(
-                activation_fn = None, inputs = outputs, num_outputs = featproj,
-                scope = "input_fc", biases_initializer = tf.contrib.layers.xavier_initializer())
-
-        if lstm_type == "cudnn":
-            outputs_lstm = self.my_cudnn_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj,  "cudnn_lstm", batch_norm)
-
-            outputs_dnn=tf.transpose(outputs, (1, 0, 2), name = "dnn_transpose")
-            outputs_dnn = self.my_dnn_layer(outputs_dnn, batch_size, nlayer, nhidden, nfeat, nproj,  "dnn_layer", batch_norm)
-            outputs_dnn=tf.transpose(outputs_dnn, (1, 0, 2), name = "final_dnn_transpose")
-            outputs = tf.concat([outputs_lstm, outputs_dnn], 2, name = "output")
-
-        elif lstm_type == "fuse":
-            outputs = self.my_fuse_block_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "fuse_lstm")
-        else:
-            outputs = self.my_native_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "native_lstm")
 
 
         with tf.variable_scope("optimizer"):
@@ -264,13 +250,13 @@ class Achen:
             elif grad_opt == "momentum":
                 optimizer = tf.train.MomentumOptimizer(self.lr_rate, 0.9)
 
-        count=0
 
         print(80 * "-")
         print("preparing model variables...")
         print(80 * "-")
 
 
+        count=0
         for language_id, language_target_dict in language_scheme.items():
 
             tmp_cost, tmp_debug_cost, tmp_ter, tmp_logits, tmp_softmax_probs, tmp_log_softmax_probs, tmp_log_likelihoods = [], [], [], [], [], [], []
@@ -278,14 +264,31 @@ class Achen:
             with tf.variable_scope(constants.SCOPES.OUTPUT):
                 for target_id, num_targets in language_target_dict.items():
 
+                    outputs = tf.reshape(outputs, [tf.shape(outputs)[0], tf.shape(outputs)[1], (int((int(nfeat / 2) + 1) / 2) + 1) * 128])
+                    outputs = tf.transpose(outputs, (1, 0, 2), name="feat_transpose")
+
                     scope="output_fc_"+language_id+"_"+target_id
-                    logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs,
-                                                              num_outputs=num_targets,
+                    logit = tf.contrib.layers.fully_connected(activation_fn =  tf.nn.relu, inputs = outputs,
+                                                              num_outputs=1000,
                                                               scope = scope,
                                                               biases_initializer = tf.contrib.layers.xavier_initializer(),
                                                               trainable=self.is_trainable_sat)
 
+                    outputs = tf.contrib.layers.fully_connected(
+                    activation_fn = tf.nn.relu, inputs = outputs, num_outputs = 1000, scope = "input_fc0", biases_initializer = tf.contrib.layers.xavier_initializer())
+                    outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training, updates_collections=None)
+                    outputs = tf.nn.dropout(outputs, self.keep_prob)
+                    outputs = tf.contrib.layers.fully_connected( activation_fn = tf.nn.relu, inputs = outputs, num_outputs = 500, scope = "input_fc", biases_initializer = tf.contrib.layers.xavier_initializer())
+                    outputs = tf.contrib.layers.fully_connected( activation_fn = tf.nn.relu, inputs = outputs, num_outputs = 500, scope = "input_fc_2", biases_initializer = tf.contrib.layers.xavier_initializer())
+                    outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9,
+                                                           is_training=self.is_training, updates_collections=None)
+                    outputs = tf.nn.dropout(outputs, self.keep_prob)
+
+                    logit = tf.contrib.layers.fully_connected(activation_fn=None, inputs=outputs, num_outputs=num_targets, scope=scope,
+                                                              biases_initializer=tf.contrib.layers.xavier_initializer())
+
                     loss = tf.nn.ctc_loss(labels=self.labels[count], inputs=logit, sequence_length=self.seq_len)
+
                     tmp_cost.append(loss)
                     tmp_debug_cost.append(tf.reduce_mean(loss))
 
@@ -311,24 +314,30 @@ class Achen:
 
             #preparing variables to optimize
             if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
-                    == constants.SAT_SATGES.TRAIN_SAT:
+                == constants.SAT_SATGES.TRAIN_SAT:
                 var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=constants.SCOPES.SPEAKER_ADAPTAION)
             else:
                 var_list = self.get_variables_by_lan(language_id)
 
-            print(80 * "-")
-            print("for language: "+language_id)
-            print("following variables will be optimized: ")
-            print(80 * "-")
-            for var in var_list:
-                print(var)
-            print(80 * "-")
+            if(self.is_training):
+                print(80 * "-")
+                print("for language: "+language_id)
+                print("following variables will be optimized: ")
+                print(80 * "-")
+                for var in var_list:
+                    print(var)
+                print(80 * "-")
+            else:
+                print(80 * "-")
+                print("testing... no variables will be optimized.")
+                print(80 * "-")
 
             with tf.variable_scope("loss"):
                 regularized_loss = tf.add_n([tf.nn.l2_loss(v) for v in var_list])
 
             #reduce the mean of all targets of current language(language_id)
             tmp_cost = tf.reduce_mean(tmp_cost) + l2 * regularized_loss
+
 
             self.debug_costs.append(tmp_debug_cost)
             self.costs.append(tmp_cost)
@@ -358,3 +367,4 @@ class Achen:
                 train_vars.append(var)
 
         return train_vars
+

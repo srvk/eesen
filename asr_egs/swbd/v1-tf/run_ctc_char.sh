@@ -4,16 +4,18 @@
            ## This relates to the queue.
 . path.sh
 
-stage=1
+stage=3
 
-# Set paths to various datasets
-swbd=/path/to/LDC97S62
 fisher_dirs="/path/to/LDC2004T19/fe_03_p1_tran/ /path/to/LDC2005T19/fe_03_p2_tran/" # Set to "" if you don't have the fisher corpus
 eval2000_dirs="/path/to/LDC2002S09/hub5e_00 /path/to/LDC2002T43"
 
 # CMU Rocks
+swbd=/data/ASR4/babel/ymiao/CTS/LDC97S62
 fisher_dirs="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/ /data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
 eval2000_dirs="/data/ASR4/babel/ymiao/CTS/LDC2002S09/hub5e_00 /data/ASR4/babel/ymiao/CTS/LDC2002T43"
+
+
+
 
 . parse_options.sh
 
@@ -21,6 +23,7 @@ if [ $stage -le 1 ]; then
   echo =====================================================================
   echo "                       Data Preparation                            "
   echo =====================================================================
+
   # Use the same datap prepatation script from Kaldi
   local/swbd1_data_prep.sh $swbd  || exit 1;
 
@@ -32,8 +35,6 @@ if [ $stage -le 1 ]; then
 fi
 
 
-echo done!!
-exit
 if [ $stage -le 2 ]; then
   echo =====================================================================
   echo "                    FBank Feature Generation                       "
@@ -76,10 +77,13 @@ if [ $stage -le 3 ]; then
 
   target_num=`cat data/lang_char/units.txt | wc -l`; target_num=$[$target_num+1]; #  #targets = #labels + 1 (the blank)
 
-  # Output the network topology
-  utils/model_topo.py --input-feat-dim $input_feat_dim --lstm-layer-num $lstm_layer_num \
-    --lstm-cell-dim $lstm_cell_dim --target-num $target_num \
-    --fgate-bias-init 1.0 > $dir/nnet.proto || exit 1;
+  #TODO generate labels from text
+  #utils/generate_labels.py --char data/train_100k_nodup/text ./local_dict_char/units.txt ./data/lang_char/units.txt
+
+  #TODO generate labesl_cv
+  #utils/generate_labels_file.py data/train_100k_nodup/text./data_lang_char/units.txt $dir/labels.cv
+
+  #utils/generate_labels.py ./data_lang_char/units.txt $dir/labels.tr
 
   # Label sequences; simply convert words into their label indices
   utils/prep_ctc_trans.py data/lang_char/lexicon_numbers.txt data/train_100k_nodup/text \
@@ -87,20 +91,32 @@ if [ $stage -le 3 ]; then
   utils/prep_ctc_trans.py data/lang_char/lexicon_numbers.txt data/train_dev/text \
     "<unk>" "<space>" | gzip -c - > $dir/labels.cv.gz
 
+  exit
+
+
   # Train the network with CTC. Refer to the script for details about the arguments
-  steps/train_ctc_parallel.sh --add-deltas true --num-sequence 10 --frame-num-limit 25000 \
+  steps/train_ctc_tf.sh --add-deltas true --num-sequence 10 --frame-num-limit 25000 \
     --learn-rate 0.00004 --report-step 1000 --halving-after-epoch 12 \
     data/train_100k_nodup data/train_dev $dir || exit 1;
-
-  echo =====================================================================
-  echo "                           Decoding                                "
-  echo =====================================================================
-  # decoding
-  for lm_suffix in sw1_tg sw1_fsh_tgpr; do
-    steps/decode_ctc_lat.sh --cmd "$decode_cmd" --nj 20 --beam 17.0 --lattice_beam 8.0 --max-active 5000 --acwt 0.9 \
-      data/lang_char_${lm_suffix} data/eval2000 $dir/decode_eval2000_${lm_suffix} || exit 1;
-  done
 fi
+
+
+if [ $stage -le 3 ]; then
+  echo =====================================================================
+  echo "                CharRNN Training with the 110-Hour Set             "
+  echo =====================================================================
+
+fi
+
+if [ $stage -le 3 ]; then
+  echo =====================================================================
+  echo "                		Decoding             		   "
+  echo =====================================================================
+
+fi
+
+
+
 
 if [ $stage -le 4 ]; then
   echo =====================================================================

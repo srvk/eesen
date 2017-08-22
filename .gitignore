@@ -41,8 +41,8 @@ log
 */tmp*
 
 #expriments
-*/exp/*
-*/exp_110h/*
-*/fbank/*
-*/data/*
+exp/
+exp_110h/
+fbank/
+data/
 

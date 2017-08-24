@@ -5,7 +5,7 @@ import os, re, time, random
 import tensorflow as tf
 import pdb
 import constants
-from reader.reader_queue import run_reader_queue
+from lm_reader.reader_queue import run_reader_queue
 from random import randint
 
 
@@ -24,7 +24,7 @@ class Train():
 
     def train_impl(self, data):
 
-            #set random seed so that models can be reproduced
+            #set random seed so that lm_models can be reproduced
             tf.set_random_seed(self.__config[constants.CONF_TAGS.RANDOM_SEED])
             random.seed(self.__config[constants.CONF_TAGS.RANDOM_SEED])
 
@@ -52,16 +52,6 @@ class Train():
 
             if(alpha > 0):
                 lr_rate = self.__compute_new_lr_rate(alpha)
-                print(lr_rate)
-                print(lr_rate)
-                print(lr_rate)
-                print(lr_rate)
-                print(lr_rate)
-                print(lr_rate)
-                print(lr_rate)
-                print(lr_rate)
-                print(lr_rate)
-                sys.exit()
 
             for epoch in range(alpha, self.__config[constants.CONF_TAGS.NEPOCH]):
 
@@ -111,6 +101,9 @@ class Train():
 
         if epoch > self.__config["half_after"]:
             return self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"]) // self.__config["half_period"]))
+        else:
+            return self.__config["lr_rate"]
+
 
 
     def __update_lr_rate(self, epoch, cv_ters, best_avg_ters, best_epoch, saver):
@@ -156,7 +149,7 @@ class Train():
             #get a random folder of all previously provided
             m_tr_x.change_source(new_src, language_id)
 
-            #reorganize sat reader (augmentation might change the order)
+            #reorganize sat lm_reader (augmentation might change the order)
             if m_tr_sat:
                 print(80 * "-")
                 print("updating tr_sat batch order...")
@@ -164,7 +157,7 @@ class Train():
 
             print(80 * "-")
             print("changing tr_y batch order... ")
-            #reorganize label reader (augmentation might change the order)
+            #reorganize label lm_reader (augmentation might change the order)
             m_tr_y.update_batches_id(m_tr_x.get_batches_id())
         else:
 
@@ -189,7 +182,7 @@ class Train():
         train_ters, ntr_labels, ntrain, train_cost = {}, {}, {}, {}
 
         #TODO change all iteritems for iter for python 3.0
-        #TODO try to do an utils for this kind of functions
+        #TODO try to do an lm_utils for this kind of functions
         for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
 
             ntr_labels[language_id] = {}

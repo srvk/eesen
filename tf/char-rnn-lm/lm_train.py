@@ -1,16 +1,16 @@
 import argparse
 import json
-import pdb
+import lm_constants
 
-from reader.labels_reader.labels_reader import LabelsReader
-#from reader.feats_reader.feats_reader import FeatsReaderKaldi
+from lm_reader.lm_labels_reader.labels_reader import LabelsReader
+from lm_tf.lm_tf_train import *
 
 
-
-from train_rnn_lm import *
+# from lm_reader.lm_feats_reader.lm_feats_reader import FeatsReaderKald
 
 def mainParser():
     parser = argparse.ArgumentParser(description='Train TF-RNN_LM')
+
     parser.add_argument('--batch_size', default = 16, type=int, help='batch size')
 
     parser.add_argument('--train_file', default = "./data/turkish_train_text", help = "train data loc")
@@ -37,32 +37,40 @@ def mainParser():
     parser.add_argument('--lr_rate', default=0, type=float,help='0 for default parameters')
 
     #TODO continute_pkt
-    parser.add_argument('--cont', default=0,type=int, help='continue_training with model number')
+    parser.add_argument('--continute_pkt', default=0,type=int, help='continue_training with model number')
 
     parser.add_argument('--noshuffle', default=True, dest='do_shuf', action='store_false', help='shuf batches before training')
     parser.add_argument('--lmweights', default="",type=str, help='Weight path. If used sat layers will be trained. If not used will not be charged')
-    parser.add_argument('--num_sat_layers', default=0, type=int, help='Number of layer for speaker adaptation part')
-    parser.add_argument('--adaptation_stage', default = "unadapted", help = "options: adaptat_sat, fine-tune")
-    parser.add_argument('--visual_path', default = "visual adaptation", help = "where visual vectors are")
+
+
+
+
+    #sat arguments
+    parser.add_argument('--apply_sat', default = False, help='apply and train a sat layer')
+    parser.add_argument('--concat_sat', default = False, help='apply and train a sat layer')
+    parser.add_argument('--num_sat_layers', default = 2, type=int, help='number of sat layers for sat module')
 
     return parser
 
 def createConfig(args):
 
     config = {
-        'embed_size' : args.embed_size ,
+        lm_constants.CONF_TAGS.NEMBEDS : args.nembed,
+        lm_constants.CONF_TAGS.NLAYERS : args.nlayer,
+        lm_constants.CONF_TAGS.NHIDDEN : args.nhidden,
+
+        lm_constants.CONF_TAGS.STORE_MODEL : args.store_model,
+
         'drop_emb' : args.drop_emb ,
-        'hidden_size' : args.hidden_size ,
-        'num_layers' : args.num_layers ,
         'nepoch' : args.nepoch ,
         'lexicon_file' : args.lexicon_file ,
         'units_file' : args.units_file ,
         'dev_file' : args.dev_file ,
         'train_file' : args.train_file ,
-        'proto' : args.proto ,
+
         'batch_size' : args.batch_size,
         'optimizer' : args.optimizer,
-        'lr' : args.lr,
+        'lr' : args.lr_rate,
         'cont' : args.cont,
 
         'do_shuf' : args.do_shuf,
@@ -71,6 +79,8 @@ def createConfig(args):
         'weight_path' : args.lmweights,
         'num_sat_layers' : args.num_sat_layers,
         'adaptation_stage' : args.adaptation_stage
+
+
     }
     config['random_seed']= 15213
 
@@ -86,7 +96,6 @@ def createConfig(args):
         fp.write(json.dumps(config, indent=4, sort_keys=True))
         fp.close()
 
-    print config
     return config
 
 def main():
@@ -96,8 +105,21 @@ def main():
     args = parser.parse_args()
     config = createConfig(args)
 
-    print("reading labels")
+    print("about to train with the following configuration:")
+    print(80 * "-")
+    for key, element in config.items():
+        print(str(key)+" "+str(element))
+
+    print(80 * "-")
+    print(80 * "-")
+    print("reading data")
+    print(80 * "-")
+    print("reading tr_x...")
+    print(80 * "-")
     tr_x = LabelsReader(config['train_file'], config['batch_size'])
+
+    print("reading cv_x...")
+    print(80 * "-")
     cv_x = LabelsReader(config['dev_file'], config['batch_size'])
 
     config['nwords'] = tr_x.get_num_diff_labels()
@@ -114,6 +136,9 @@ def main():
     else:
         data = (tr_x, cv_x, None, None)
 
+    print("data read.")
+    print(80 * "-")
+    print(80 * "-")
     train(data, config)
 
 

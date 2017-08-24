@@ -6,26 +6,17 @@ class RNN_Model:
         nwords = config['nwords']
         hidden_size = config['hidden_size']
         num_layers = config['num_layers']
-        dim_sat = config['dim_visual']
-        # grad_opt = config['grad_opt']
-        # gpu_id = config['gpu_id']
-        # drop_emb = config['drop_emb']
-
         lr_rate = config['lr']
-        print(lr_rate)
-        print(lr_rate)
-        print(lr_rate)
-        print(lr_rate)
-        print(lr_rate)
-        print(lr_rate)
-        print(lr_rate)
-        print(lr_rate)
-        print(lr_rate)
+
+        dim_sat = config['dim_visual']
+
         number_of_sat_layers=config['num_sat_layers']
 
         self.x_input = tf.placeholder(tf.int32, [None, None], name="x_input")
 
-        self.sat_input = tf.placeholder(tf.float32, [None, None, dim_sat], name="sat_input")
+
+        if(config["apply"]):
+            self.sat_input = tf.placeholder(tf.float32, [None, None, dim_sat], name="sat_input")
 
         self.x_lens = tf.placeholder(tf.int32, [None], name = 'x_lens')
         self.state = tf.placeholder(tf.float32, shape=[None,2*num_layers*hidden_size], name="state")

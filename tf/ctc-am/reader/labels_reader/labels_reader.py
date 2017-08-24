@@ -239,7 +239,7 @@ class LabelsReader(object):
 
     def _load_dict(self, target_path):
 
-        print("labels_reader is a virtual class can not be contructed by it self")
+        print("lm_labels_reader is a virtual class can not be contructed by it self")
         print(debug.get_debug_info())
         print("exiting...")
         sys.exit()

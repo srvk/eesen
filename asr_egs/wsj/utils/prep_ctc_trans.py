@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
     if len(sys.argv) < 4 or len(sys.argv) > 5:
         print "Usage: {0} <lexicon_file> <trans_file> <unk_word> [space_word]".format(sys.argv[0])
-        print "e.g., utils/prep_ctc_trans.py data/lang/lexicon_numbers.txt data/train/text <UNK>"
+        print "e.g., lm_utils/prep_ctc_trans.py data/lang/lexicon_numbers.txt data/train/text <UNK>"
         print "<lexicon_file> - the lexicon file in which entries have been represented by indices"
         print "<trans_file>   - the word-based transcript file"
         print "<unk_word>     - the word which represents OOVs in transcripts"

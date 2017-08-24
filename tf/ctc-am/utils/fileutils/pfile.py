@@ -1,6 +1,9 @@
-import numpy
 import struct
-from fileutils import smart_open
+
+import numpy
+
+from utils.fileutils import smart_open
+
 
 def readPfile(filename):
     """

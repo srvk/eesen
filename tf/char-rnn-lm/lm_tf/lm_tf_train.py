@@ -1,15 +1,16 @@
 from __future__ import print_function
-from RNN_Model import *
-import tensorflow as tf
-import os
-import time
-import random
-import numpy as np
-import sys
+
 import math
-from reader import labels_reader
+import os
+import random
+import time
 from multiprocessing import Process, Queue
-from reader.reader_queue import run_reader_queue
+
+import numpy as np
+import tensorflow as tf
+
+from lm_reader.reader_queue import run_reader_queue
+from lm_models.RNN_Model import *
 
 
 def train(all_readers,config):

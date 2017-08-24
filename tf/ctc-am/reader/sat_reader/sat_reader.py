@@ -4,6 +4,7 @@ import sys
 import constants
 from utils.fileutils import debug
 
+
 class SatReader(object):
 
     """This is a virtual class for reading input features (and also sat vectors altough is out TODO list to move this).

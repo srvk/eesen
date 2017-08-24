@@ -5,7 +5,8 @@ import tensorflow as tf
 from models.core import lstm_factory
 from models.core import cnn_factory
 
-from utils.fileutils import debug
+from lm_utils.lm_fileutils import debug
+
 
 class DeepBidirRNN:
 

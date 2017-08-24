@@ -233,14 +233,14 @@ def main():
     print(80 * "-")
     print("cv_x:")
     print(80 * "-")
-    #create reader for labels
+    #create lm_reader for labels
     cv_x = feats_reader_factory.create_reader('cv', 'kaldi', config)
 
 
     print(80 * "-")
     print("cv_y:")
     print(80 * "-")
-    #create reader for labels
+    #create lm_reader for labels
     cv_y = labels_reader_factory.create_reader('cv', 'txt', config, cv_x.get_batches_id())
 
     #set config (targets could change)

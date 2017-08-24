@@ -1,15 +1,11 @@
-import sys
-
-from utils.fileutils import debug
-
-from models.deep_bilstm import *
 from models.achen import *
+from models.achen_conv import *
 from models.achen_sum import *
 from models.convnet import *
-from models.achen_conv import *
+from models.deep_bilstm import *
 
 
-#it returns an object reader that internaly will manage all the data
+#it returns an object lm_reader that internaly will manage all the data
 #client will be agnostic for the internals
 def create_model(config):
 

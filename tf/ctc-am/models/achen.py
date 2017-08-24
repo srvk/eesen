@@ -1,7 +1,7 @@
-import sys
-import constants
 import tensorflow as tf
-from utils.fileutils import debug
+
+import constants
+
 
 class Achen:
 

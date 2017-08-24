@@ -44,6 +44,9 @@ class LabelsReader(object):
 
         return self.__num_diff_labels
 
+    def update_num_diff_labels(self, new_num_diff_labels):
+
+        self.__num_diff_labels = new_num_diff_labels
 
     def __read_batches(self, path, batch_size):
 

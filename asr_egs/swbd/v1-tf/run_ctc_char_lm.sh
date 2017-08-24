@@ -132,7 +132,7 @@ if [ $stage -le 5 ]; then
   echo =====================================================================
 
   embed_size=120   # dimension of the input features; we will use 40-dimensional fbanks with deltas and double deltas
-  lstm_layer_num=2     # number of LSTM layers
+  lstm_layer_num=1     # number of LSTM layers
   lstm_cell_dim=320    # number of memory cells in every LSTM layer
 
   dir=exp/train_lm_char_l${lstm_layer_num}_c${lstm_cell_dim}_e${embed_size}/
@@ -140,11 +140,16 @@ if [ $stage -le 5 ]; then
   mkdir -p $dir
   mkdir -p ./data/local/dict_char_lm/
 
-  python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_nodup/text --output_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.tr --lm
+  echo creating labels files from train...
+
+  python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_nodup/text --input_units ./data/local/dict_char/units.txt --output_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.tr --lm
+
+  echo creating labels files from cv...
+
+  python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_dev/text --input_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.cv --lm
 
 
-  #TODO this should be first
-  ./steps/train_char_lm.sh --train_dir $dir
+  ./steps/train_char_lm.sh --train_dir $dir --units_file data/local/dict_char_lm/units.txt --nembed $embed_size --nlayer $lstm_layer_num --nhidden $lstm_cell_dim --batch_size 16
 
   exit
 
@@ -155,10 +160,6 @@ if [ $stage -le 5 ]; then
   echo creating labels files from fisher...
 
   python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_nodup/text --input_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.fisher --lm
-
-  echo creating labels files from cv...
-
-  python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_dev/text --input_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.cv --lm
 
 fi
 

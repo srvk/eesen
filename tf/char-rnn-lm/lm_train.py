@@ -1,8 +1,13 @@
 import argparse
-import json
+import sys
+import os
 import lm_constants
+import pickle
 
 from lm_reader.lm_labels_reader.labels_reader import LabelsReader
+from lm_reader.lm_feats_reader.feats_reader import FeatsReaderKaldi
+
+from lm_utils.lm_fileutils import debug
 from lm_tf.lm_tf_train import *
 
 
@@ -13,14 +18,11 @@ def mainParser():
 
     parser.add_argument('--batch_size', default = 16, type=int, help='batch size')
 
-    parser.add_argument('--train_file', default = "./data/turkish_train_text", help = "train data loc")
-    parser.add_argument('--dev_file', default = "./data/turkish_dev_text", help = "dev data loc")
+    parser.add_argument('--data_dir', help = "train data loc")
     parser.add_argument('--train_dir', help = "directory where logs and weights will be stored")
 
-    parser.add_argument('--store_model', action='store_true', default=False)
+    parser.add_argument('--units_file', help = "units.txt file")
 
-
-    parser.add_argument('--units_file', default = "./data/units_char_system.txt", help = "units data loc")
     parser.add_argument('--lexicon_file', default = "./data/lexicon_char_system.txt", help = "lexicon data loc")
     parser.add_argument('--nepoch', default = 20, type=int, help='#epoch')
 
@@ -30,73 +32,91 @@ def mainParser():
     parser.add_argument('--nlayer', default = 1, type=int, help='#layer')
     parser.add_argument('--nhidden', default = 1000, type=int, help='dimension of hidden units in single direction')
     parser.add_argument('--nembed', default = 64, type=int, help='embedding size')
+    parser.add_argument('--drop_out', default = 1.0, type=float, help='dropout ((min)1.0 - (max)0) probability')
 
-    parser.add_argument('--drop_emb', default = 1.0, type=float, help='embedding (1.0-dropout) probability')
     parser.add_argument('--optimizer', default= 'Adam', help='Training Optimizer')
 
     parser.add_argument('--lr_rate', default=0, type=float,help='0 for default parameters')
 
     #TODO continute_pkt
-    parser.add_argument('--continute_pkt', default=0,type=int, help='continue_training with model number')
-
-    parser.add_argument('--noshuffle', default=True, dest='do_shuf', action='store_false', help='shuf batches before training')
-    parser.add_argument('--lmweights', default="",type=str, help='Weight path. If used sat layers will be trained. If not used will not be charged')
-
-
-
+    parser.add_argument('--continue_ckpt', default = "", help='continue this experiment')
+    parser.add_argument('--no_shuffle', default=True, dest='do_shuf', action='store_false', help='shuf batches before training')
 
     #sat arguments
-    parser.add_argument('--apply_sat', default = False, help='apply and train a sat layer')
+    parser.add_argument('--train_sat', default = False, help='apply and train a sat layer')
     parser.add_argument('--concat_sat', default = False, help='apply and train a sat layer')
+    parser.add_argument('--fuse_sat', default = False, help='apply and train a sat layer')
     parser.add_argument('--num_sat_layers', default = 2, type=int, help='number of sat layers for sat module')
+
+    parser.add_argument('--model', default = "rnn", help='number of sat layers for sat module')
 
     return parser
 
 def createConfig(args):
 
-    config = {
-        lm_constants.CONF_TAGS.NEMBEDS : args.nembed,
-        lm_constants.CONF_TAGS.NLAYERS : args.nlayer,
-        lm_constants.CONF_TAGS.NHIDDEN : args.nhidden,
 
-        lm_constants.CONF_TAGS.STORE_MODEL : args.store_model,
+    config ={
 
-        'drop_emb' : args.drop_emb ,
-        'nepoch' : args.nepoch ,
-        'lexicon_file' : args.lexicon_file ,
-        'units_file' : args.units_file ,
-        'dev_file' : args.dev_file ,
-        'train_file' : args.train_file ,
-
-        'batch_size' : args.batch_size,
-        'optimizer' : args.optimizer,
-        'lr' : args.lr_rate,
-        'cont' : args.cont,
-
-        'do_shuf' : args.do_shuf,
-
-        'sat_path': args.visual_path,
-        'weight_path' : args.lmweights,
-        'num_sat_layers' : args.num_sat_layers,
-        'adaptation_stage' : args.adaptation_stage
-
+    lm_constants.CONF_TAGS.EMBEDS_SIZE : args.nembed,
+    lm_constants.CONF_TAGS.NLAYERS : args.nlayer,
+    lm_constants.CONF_TAGS.NHIDDEN : args.nhidden,
+    lm_constants.CONF_TAGS.DROPOUT : args.drop_out,
+    lm_constants.CONF_TAGS.NEPOCH : args.nepoch,
+    lm_constants.CONF_TAGS.TRAIN_DIR : args.train_dir,
+    lm_constants.CONF_TAGS.BATCH_SIZE : args.batch_size,
+    lm_constants.CONF_TAGS.OPTIMIZER : args.optimizer,
+    lm_constants.CONF_TAGS.LR_RATE : args.lr_rate,
+    lm_constants.CONF_TAGS.CONTINUE_CKPT : args.continue_ckpt,
+    lm_constants.CONF_TAGS.DO_SHUF : args.do_shuf,
+    lm_constants.CONF_TAGS.NUM_SAT_LAYERS : args.num_sat_layers,
+    lm_constants.CONF_TAGS.DATA_DIR : args.data_dir,
+    lm_constants.CONF_TAGS.RANDOM_SEED : 15213,
+    lm_constants.CONF_TAGS.MODEL : args.model,
 
     }
-    config['random_seed']= 15213
 
-    model_name = 'train_l' + str(config['num_layers'])+ '_e' + str(config['embed_size']) + '_h' \
-                 + str(config['hidden_size']) + '_b' + str(config['batch_size']) + '_d' + str(config['drop_emb']) \
-                 + str(config['adaptation_stage'])
+    if(not args.train_sat and not args.concat_sat and not args.fuse_sat):
+        config[lm_constants.CONF_TAGS.SAT_SATGE] = lm_constants.SAT_SATGES.UNADAPTED
 
-    config['exp_path'] = './exp/' + model_name + '/'
-    if not os.path.exists(config["exp_path"]):
-        os.makedirs(config["exp_path"])
 
-    with open( config['exp_path']+ 'config', 'w') as fp:
-        fp.write(json.dumps(config, indent=4, sort_keys=True))
-        fp.close()
+    #creating and setting train dir (where model and logs are stored)
+    if(os.path.exists(config[lm_constants.CONF_TAGS.TRAIN_DIR])):
+        config[lm_constants.CONF_TAGS.TRAIN_DIR] = os.path.join(config[lm_constants.CONF_TAGS.TRAIN_DIR], lm_constants.DEFAULT_NAMES.MODEL_DIR_NAME)
+        if(not os.path.exists(config[lm_constants.CONF_TAGS.TRAIN_DIR])):
+            os.makedirs(config[lm_constants.CONF_TAGS.TRAIN_DIR])
+    else:
+        print("Error: window can not be even currently : "+config[lm_constants.CONF_TAGS.TRAIN_DIR])
+        print(debug.get_debug_info())
+        print("exiting...")
+        sys.exit()
 
     return config
+
+def check_and_gen_sat_config(args, config):
+
+    if(args.train_sat):
+        if(args.concat_sat or args.fuse_sat):
+            print("Error: only one sat method can be applied")
+            print(debug.get_debug_info())
+            print("exiting...")
+            sys.exit()
+        config[lm_constants.CONF_TAGS.SAT_SATGE] = lm_constants.SAT_SATGES.TRAIN_SAT
+
+    if(args.concat_sat):
+        if(args.train_sat or args.fuse_sat):
+            print("Error: only one sat method can be applied")
+            print(debug.get_debug_info())
+            print("exiting...")
+            sys.exit()
+        config[lm_constants.CONF_TAGS.SAT_SATGE] = lm_constants.SAT_SATGES.CONCAT
+
+    if(args.fuse_sat):
+        if(args.train_sat or args.concat_sat):
+            print("Error: only one sat method can be applied")
+            print(debug.get_debug_info())
+            print("exiting...")
+            sys.exit()
+        config[lm_constants.CONF_TAGS.SAT_SATGE] = lm_constants.SAT_SATGES.FUSE
 
 def main():
 
@@ -104,6 +124,10 @@ def main():
     parser = mainParser()
     args = parser.parse_args()
     config = createConfig(args)
+
+
+    pickle.dump(config, open(os.path.join(config[lm_constants.CONF_TAGS.TRAIN_DIR], lm_constants.FILE_NAMES.CONFIG_PKL), "wb"))
+
 
     print("about to train with the following configuration:")
     print(80 * "-")
@@ -116,20 +140,37 @@ def main():
     print(80 * "-")
     print("reading tr_x...")
     print(80 * "-")
-    tr_x = LabelsReader(config['train_file'], config['batch_size'])
+
+
+    tr_x_path_file = os.path.join(config[lm_constants.CONF_TAGS.DATA_DIR], lm_constants.FILE_NAMES.TR_X)
+    tr_x = LabelsReader(tr_x_path_file, config[lm_constants.CONF_TAGS.BATCH_SIZE])
 
     print("reading cv_x...")
     print(80 * "-")
-    cv_x = LabelsReader(config['dev_file'], config['batch_size'])
+    cv_x_path_file = os.path.join(config[lm_constants.CONF_TAGS.DATA_DIR], lm_constants.FILE_NAMES.CV_X)
 
-    config['nwords'] = tr_x.get_num_diff_labels()
+    cv_x = LabelsReader(cv_x_path_file, config[lm_constants.CONF_TAGS.BATCH_SIZE])
 
-    if config['adaptation_stage'] != "unadapted":
-        print("reading adaptation vectors")
-        tr_sat = FeatsReaderKaldi(config['sat_path'], tr_x.get_uttid())
-        cv_sat = FeatsReaderKaldi(config['sat_path'], cv_x.get_uttid())
+    if(cv_x.get_num_diff_labels() > tr_x.get_num_diff_labels()):
+        print("Warning: number of targets has changed between sets (e.g. train and validation)")
+        print("tr_x tarnget number will change from "+tr_x.get_num_diff_labels()+" to "+cv_x.get_num_diff_labels())
+        tr_x.update_num_diff_labels(cv_x.get_num_diff_labels())
+        print(debug.get_debug_info())
+        print(80 * "-")
 
-        config['dim_visual'] = int(tr_sat.get_feat_dim())
+    config[lm_constants.CONF_TAGS.NUM_TARGETS] = tr_x.get_num_diff_labels()
+
+    if config[lm_constants.CONF_TAGS.SAT_SATGE] != lm_constants.SAT_SATGES.UNADAPTED:
+        print("reading cv_x...")
+        print(80 * "-")
+
+        tr_sat_path_file = os.path.join(config[lm_constants.CONF_TAGS.DATA_DIR], lm_constants.FILE_NAMES.TR_SAT)
+        tr_sat = FeatsReaderKaldi(tr_sat_path_file, tr_x.get_uttid())
+
+        cv_sat_path_file = os.path.join(config[lm_constants.CONF_TAGS.DATA_DIR], lm_constants.FILE_NAMES.CV_SAT)
+        cv_sat = FeatsReaderKaldi(cv_sat_path_file, cv_x.get_uttid())
+
+        config[lm_constants.CONF_TAGS.SAT_FEAT_DIM] = int(tr_sat.get_feat_dim())
 
         data = (tr_x, cv_x, tr_sat, cv_sat)
 
@@ -143,4 +184,14 @@ def main():
 
 
 if __name__ == "__main__":
+
+    print(80 * "-")
+    print("Eesen TF (Char RNN) library:", os.path.realpath(__file__))
+    print("cwd:", os.getcwd(), "version:")
+    try:
+        print(sys.version)
+        print(tf.__version__)
+    except:
+        print("tf.py: could not get version information for logging")
+    print(80 * "-")
     main()

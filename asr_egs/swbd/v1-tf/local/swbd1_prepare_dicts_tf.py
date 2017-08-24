@@ -1,4 +1,5 @@
 import argparse
+import sys
 import operator
 
 
@@ -62,12 +63,12 @@ def generate_labels_lm(text_path, units_dict, output_labels_path):
                 else:
                     for letter in word:
                         if(letter in units_dict):
-                            new_line += " " + str(units_dict[letter]) 
+                            new_line += " " + str(units_dict[letter])
                     new_line +=  " " + str(units_dict[SPACE])
             new_line=new_line[:-len(str(units_dict[SPACE]))] + str(units_dict[EOS])
             output_labels.write(new_line+"\n")
 
-def generate_units(text_path, output_units_path, is_lm):
+def generate_units_am(text_path, output_units_path):
     dict_untisid={}
     count_id = 1
     with open(text_path,"r") as input_text, open(output_units_path,"w") as output_labels:
@@ -82,10 +83,6 @@ def generate_units(text_path, output_units_path, is_lm):
                         if(letter not in dict_untisid):
                             dict_untisid[letter]=count_id
                             count_id+=1
-        if(is_lm):
-            dict_untisid[SPACE] = count_id
-            count_id += 1
-            dict_untisid[EOS] = count_id
 
         sorted_dict = sorted(dict_untisid.items(), key=operator.itemgetter(1))
         for element in sorted_dict:
@@ -93,6 +90,27 @@ def generate_units(text_path, output_units_path, is_lm):
 
     return dict_untisid
 
+def generate_units_lm(input_units_path, output_units_path):
+
+    units_dict={}
+
+    max_count=1
+    with open(input_units_path) as f, open(output_units_path,"w") as output_units:
+        
+        for line in f:
+            units_dict[line.split()[0]]=line.split()[1]
+            max_count= max(max_count,int(line.split()[1]))
+            output_units.write(line)
+
+        space_idx = max_count + 1
+        units_dict[SPACE] = space_idx
+        output_units.write(SPACE+" "+str(space_idx)+"\n")
+
+        eos_idx = max_count + 2
+        units_dict[EOS] = eos_idx
+        output_units.write(EOS+" "+str(eos_idx)+"\n")
+
+    return units_dict
 
 gen_units = False
 parser = main_parser()
@@ -110,10 +128,15 @@ if(not config["input_units"]):
     else:
         print("generating units file....")
         gen_units = True
+#inputs provided
 else:
-    if(not config["output_units"]):
+    if(config["output_units"] and config["is_lm"]):
+        print("using: "+config["input_units"]+" as units reference and augmenting with <SPACE> and <EOS>")
+        gen_units=True
+    else:
         print("using: "+config["input_units"]+" as units reference")
         gen_units = False
+
 
 if(not config["output_labels"]):
     print("Error: output label files is needed in order to write labels somewhere")
@@ -122,8 +145,11 @@ if(not config["output_labels"]):
 if(not gen_units):
     dict_units = get_units(config["input_units"])
 else:
-    dict_units = generate_units(config["text_file"], config["output_units"], config["is_lm"])
-
+    if(config["is_lm"]):
+        dict_units = generate_units_lm(config["input_units"], config["output_units"])
+    else:
+        dict_units = generate_units_am(config["text_file"], config["output_units"])
+    
 
 if(config["is_lm"]):
     generate_labels_lm(config["text_file"], dict_units, config["output_labels"])

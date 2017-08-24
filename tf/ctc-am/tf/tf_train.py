@@ -5,7 +5,7 @@ import os, re, time, random
 import tensorflow as tf
 import pdb
 import constants
-from lm_reader.reader_queue import run_reader_queue
+from reader.reader_queue import run_reader_queue
 from random import randint
 
 
@@ -53,6 +53,7 @@ class Train():
             if(alpha > 0):
                 lr_rate = self.__compute_new_lr_rate(alpha)
 
+
             for epoch in range(alpha, self.__config[constants.CONF_TAGS.NEPOCH]):
 
                 #log start
@@ -99,8 +100,12 @@ class Train():
 
     def __compute_new_lr_rate(self, epoch):
 
+
         if epoch > self.__config["half_after"]:
-            return self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"]) // self.__config["half_period"]))
+            diff_epoch= epoch - self.__config[constants.CONF_TAGS.HALF_AFTER]
+            result = self.__config["lr_rate"] * (self.__config[constants.CONF_TAGS.HALF_RATE] ** ((diff_epoch) // self.__config[constants.CONF_TAGS.HALF_PERIOD]))
+            return result
+
         else:
             return self.__config["lr_rate"]
 
@@ -111,6 +116,7 @@ class Train():
         avg_ters = self.__compute_avg_ters(cv_ters)
 
         if epoch > self.__config["half_after"]:
+
 
             new_lr_rate = self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"]) // self.__config["half_period"]))
 
@@ -338,7 +344,7 @@ class Train():
         if self.__config[constants.CONF_TAGS.CONTINUE_CKPT]:
 
             print(80 * "-")
-            print(" restoring weights....")
+            print("restoring weights....")
             print(80 * "-")
             #restoring all variables that should be loaded during adaptation stage (all of them except adaptation layer)
             if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \

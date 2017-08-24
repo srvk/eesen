@@ -12,17 +12,18 @@ https://google.github.io/styleguide/pyguide.html#naming
 #   Main script
 # -----------------------------------------------------------------
 
-import os
-from utils.fileutils import debug
 import argparse
-import constants
-import sys
-from eesen import Eesen
+import os
 import pickle
+import sys
 
-from reader.sat_reader import sat_reader_factory
+import constants
+from eesen import Eesen
+from utils.fileutils import debug
 from reader.feats_reader import feats_reader_factory
 from reader.labels_reader import labels_reader_factory
+from reader.sat_reader import sat_reader_factory
+
 
 # -----------------------------------------------------------------
 #   Function definitions

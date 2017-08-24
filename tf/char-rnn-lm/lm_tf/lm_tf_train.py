@@ -1,136 +1,49 @@
 from __future__ import print_function
+from lm_reader.reader_queue import run_reader_queue
+from lm_models.rnn import *
+from lm_models.lm_model_factory import lm_create_model
 
 import math
-import os
+import re
 import random
 import time
 from multiprocessing import Process, Queue
-
+import lm_constants
 import numpy as np
-import tensorflow as tf
-
-from lm_reader.reader_queue import run_reader_queue
-from lm_models.RNN_Model import *
 
 
 def train(all_readers,config):
 
     start_ = time.time()
-    tf.set_random_seed(config["random_seed"])
-    random.seed(config["random_seed"])
+    tf.set_random_seed(config[lm_constants.CONF_TAGS.RANDOM_SEED])
+    random.seed(config[lm_constants.CONF_TAGS.RANDOM_SEED])
 
     #defining the model
-    model = RNN_Model(config)
-    nepoch = config["nepoch"]
-
-    model_dir = config["exp_path"]
-
-    if (model_dir.strip()[-1] == '/'):
-        model_dir=model_dir[:-1]
-
-    model_dir=model_dir+ "/saved_model/"
-
-    if not os.path.exists(model_dir):
-        os.makedirs(model_dir)
-
-    non_addapted_model_dir=config["exp_path"]+"/saved_model/"
-
-    hidden_size = config["hidden_size"]
-    num_layers = config["num_layers"]
+    model =lm_create_model(config)
 
 
+    #starting tf session...
     with tf.Session() as sess:
 
 
-        if(config['adaptation_stage'] == "adapt_sat"):
-
-            print("preparing to construct and train adaptation module")
-            var_list=[]
-            for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES):
-                if ("Shift" not in var.name):
-                    var_list.append(var)
-        else:
-            print("train/fine-tune the complete model")
-            var_list=[v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
-
-
-        print("arriving here!!!")
-        saver = tf.train.Saver(max_to_keep = nepoch, var_list=var_list)
-
-        for element in var_list:
-            print(element.name)
-
-        # writer = tf.summary.FileWriter(config["train_path"], sess.graph)
         tf.global_variables_initializer().run()
 
-        if config['weight_path'] != "":
-            saver.restore(sess, config['weight_path'])
-            #if adaptation start again the counts
-            config['cont']=0
-
-        elif config['cont'] > 0:
-            saver.restore(sess, non_addapted_model_dir + 'model' + str(config['cont'])+'.ckpt')
-
-
-        data_queue = Queue(config["batch_size"])
-
-        print('startup time: %r' % (time.time() - start_))
-
-        i = dev_time = 0
-        start_train = time.time()
+        data_queue = Queue(config[lm_constants.CONF_TAGS.BATCH_SIZE])
 
         tr_x, cv_x, tr_sat, cv_sat = all_readers
 
-        for ITER in range(nepoch):
+        saver, alpha = restore_weights(config, sess)
 
-            train_words = 0
+        for epoch in range(alpha, config[lm_constants.CONF_TAGS.NEPOCH]):
+
+            ntrain_w = 0
+            ntrain = 0
+
             train_losses = []
 
-            if(config['adaptation_stage'] == "unadapated"):
-                p = Process(target = run_reader_queue, args = (data_queue, tr_x, config["do_shuf"]))
-            else:
-                p = Process(target = run_reader_queue, args = (data_queue, tr_x, config["do_shuf"], tr_sat))
 
-            p.start()
+            train_cost, train_ters, ntrain = train_epoch(sess, model, data_queue, epoch,  lr_rate, tr_x, tr_y, tr_sat)
 
-            it = ITER+config['cont']+1
-
-            start = time.time()
-
-            while True:
-
-                data = data_queue.get()
-
-                if data is None:
-                    break
-
-                if(config['adaptation_stage'] == "unadapted"):
-
-                    batch_len, batch_x = data
-                    batch_sat=None
-
-                else:
-                    batch_len, batch_x, batch_sat = data
-
-                train_loss, _ = sess.run([model.loss, model.optimizer], feed_dict={model.x_input: batch_x,
-                                                                                   model.x_lens: batch_len,
-                                                                                   model.sat_input: batch_sat,
-                                                                                   model.state:np.zeros((len(batch_x), 2*num_layers*hidden_size)),
-                                                                                   model.keep_prob : config['drop_emb']})
-                print("single:")
-                print(train_loss)
-                #remove end of sentence for every sentence (or begining of sentence and interpret the las one as ".")
-                tot_words = sum(batch_len) - len(batch_len)
-                train_losses.append(train_loss * tot_words)
-                train_words += tot_words
-
-            print(train_words)
-            print(train_losses)
-            print(sum(train_losses))
-            print('ITER %d, Train Loss: %.4f wps: %.4f' % ( it, sum(train_losses) / train_words, train_words / (time.time() - start)))
-
-            p.join()
-            p.terminate()
 
             dev_start = time.time()
             test_losses = []
@@ -145,24 +58,6 @@ def train(all_readers,config):
 
             p.start()
 
-            while True:
-
-                data = data_queue.get()
-                if data is None:
-                    break
-
-                batch_len, batch_x, batch_sat = data
-
-                #third argument is to keep the state during training
-                test_loss = sess.run(model.loss, feed_dict={model.x_input: batch_x,
-                                                            model.x_lens: batch_len,
-                                                            model.sat_input: batch_sat,
-                                                            model.state:np.zeros((len(batch_len), 2*num_layers*hidden_size)),
-                                                            model.keep_prob : 1.0})
-                tot_words = sum(batch_len) - len(batch_len)
-                test_losses.append(test_loss * tot_words)
-                test_words += tot_words
-
             p.join()
             p.terminate()
 
@@ -172,3 +67,133 @@ def train(all_readers,config):
 
             save_path = saver.save(sess, model_dir + 'model' + str(it) + '.ckpt')
             print('Model SAVED for ITER - ' , ITER)
+
+
+def train_epoch(sess, model, epoch, data_queue, lr_rate, tr_x, tr_y, tr_sat):
+
+    if(config[lm_constants.CONF_TAGS.SAT_SATGE] == lm_constants.SAT_SATGES.UNADAPTED):
+        p = Process(target = run_reader_queue, args = (data_queue, tr_x, config[lm_constants.CONF_TAGS.DO_SHUF]))
+    else:
+        p = Process(target = run_reader_queue, args = (data_queue, tr_x, config[lm_constants.CONF_TAGS.DO_SHUF], tr_sat))
+
+    p.start()
+
+    while True:
+
+        data = data_queue.get()
+
+        if data is None:
+            break
+
+        if(config[lm_constants.CONF_TAGS.SAT_SATGE] == lm_constants.SAT_SATGES.UNADAPTED):
+
+            batch_len, batch_x = data
+            batch_sat=None
+
+        else:
+            batch_len, batch_x, batch_sat = data
+
+
+        feed_dict = prepare_feed_dict(model, config, batch_x, batch_len, batch_sat)
+
+        train_cost, _ = sess.run([model.loss, model.optimizer], feed_dict = feed_dict)
+
+        #train_cost, train_ters, ntrain = self.__train_epoch(epoch, lr_rate, tr_x, tr_y, tr_sat)
+
+        update_counters(train_cost, )
+
+        tot_words = sum(batch_len) - len(batch_len)
+
+        train_losses.append(train_loss * tot_words)
+        train_words += tot_words
+
+    p.join()
+    p.terminate()
+
+def eval_epoch(sess, model, config, data_queue):
+
+    while True:
+
+        data = data_queue.get()
+        if data is None:
+            break
+
+        if(config[lm_constants.CONF_TAGS.SAT_SATGE] == lm_constants.SAT_SATGES.UNADAPTED):
+
+            batch_len, batch_x = data
+            batch_sat=None
+
+        else:
+            batch_len, batch_x, batch_sat = data
+
+
+        prepare_feed_dict(model, config, batch_x, batch_len, batch_sat)
+
+        #third argument is to keep the state during training
+        test_loss = sess.run(model.loss, feed_dict={model.x_input: batch_x,
+                                                    model.x_lens: batch_len,
+                                                    model.sat_input: batch_sat,
+                                                    model.state:np.zeros((len(batch_len), 2*num_layers*hidden_size)),
+                                                    model.keep_prob : 1.0})
+        tot_words = sum(batch_len) - len(batch_len)
+        test_losses.append(test_loss * tot_words)
+        test_words += tot_words
+
+
+#self.__update_counters(train_ters, train_cost, ntrain, ntr_labels, batch_ters, batch_cost, batch_size, data[1])
+def update_counters(acum_ter, acum_cost, acum_utt, acum_words, batch_ter, batch_cost, batch_size):
+
+
+
+
+def restore_weights(config, sess):
+
+    if config[lm_constants.CONF_TAGS.CONTINUE_CKPT] != "":
+
+        print(80 * "-")
+        print("restoring weights....")
+        print(80 * "-")
+        if(config[lm_constants.CONF_TAGS.SAT_SATGE] != lm_constants.SAT_SATGES.UNADAPTED):
+            print("partial restoring....")
+            var_list=[]
+            for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES):
+                if ("Shift" not in var.name):
+                    var_list.append(var)
+        else:
+            print("total restoring....")
+            var_list=[v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
+
+        saver = tf.train.Saver(max_to_keep = config[lm_constants.CONF_TAGS.NEPOCH], var_list=var_list)
+        saver.restore(sess, config[lm_constants.CONF_TAGS.CONTINUE_CKPT])
+        alpha = int(re.match(".*epoch([-+]?\d+).ckpt", config[lm_constants.CONF_TAGS.CONTINUE_CKPT]).groups()[0])
+    else:
+        saver = tf.train.Saver(max_to_keep = config[lm_constants.CONF_TAGS.NEPOCH])
+        alpha=0
+
+    return saver, alpha
+
+
+def prepare_feed_dict(model, config, batch_x, batch_len, batch_sat = None):
+
+    feed_dict = {}
+
+    feed_dict[model.x_input] = batch_x
+    feed_dict[model.x_lens] = batch_len
+    feed_dict[model.state] = np.zeros((len(batch_x), 2*config[lm_constants.CONF_TAGS.NLAYERS]*config[lm_constants.CONF_TAGS.NHIDDEN]))
+    feed_dict[model.drop_out] = config[lm_constants.CONF_TAGS.DROPOUT]
+
+    if(batch_sat):
+        feed_dict[model.sat_input] = batch_sat
+
+    return feed_dict
+
+def generate_logs(self, config, cv_ters, cv_cost, ncv, train_ters, train_cost, ntrain, epoch, lr_rate, tic):
+
+
+    with open("%s/epoch%02d.log" % (config[lm_constants.CONF_TAGS.TRAIN_DIR], epoch + 1), 'w') as fp:
+
+        fp.write("Time: %.0f minutes, lrate: %.4g\n" % ((time.time() - tic)/60.0, lr_rate))
+        print("\t\t Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost, 100.0*train_ters, ntrain))
+        print("\t\t Validate cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost, 100.0*cv_ter, ncv))
+        fp.write("\t\tTrain    cost: %.1f, ter: %.1f%%, #example: %d\n" % (train_cost, 100.0*train_ters, ntrain))
+        fp.write("\t\tValidate cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost, 100.0*cv_ter, ncv))

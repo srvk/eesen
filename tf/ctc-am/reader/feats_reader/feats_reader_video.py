@@ -1,8 +1,10 @@
 import sys
-import constants
+
 import numpy as np
-from utils.fileutils import debug
 from reader.feats_reader.feats_reader import FeatsReader
+
+import constants
+from utils.fileutils import debug
 from utils.fileutils.kaldi import readMatrixByOffset
 from utils.fileutils.kaldi import read_scp_info
 

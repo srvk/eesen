@@ -3,6 +3,7 @@ import constants
 import tensorflow as tf
 from utils.fileutils import debug
 
+
 class AchenConv:
 
     def length(self, sequence):

@@ -111,7 +111,7 @@ class CnnFactory:
                 activation_fn=tf.nn.relu, inputs=outputs, num_outputs=300,
                 scope="input_fc", biases_initializer=tf.contrib.layers.xavier_initializer())
 
-            # outputs = tf.nn.dropout(outputs,self.keep_prob)
+            # outputs = tf.nn.dropout(outputs,self.drop_out)
 
 
             # outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training, updates_collections=None)

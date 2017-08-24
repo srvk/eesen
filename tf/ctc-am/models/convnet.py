@@ -1,7 +1,6 @@
-import sys
 import constants
 import tensorflow as tf
-from utils.fileutils import debug
+
 
 class ConvNet:
 
@@ -198,11 +197,11 @@ class ConvNet:
                     outputs = tf.contrib.layers.fully_connected(
                     activation_fn = tf.nn.relu, inputs = outputs, num_outputs = 1000, scope = "input_fc0", biases_initializer = tf.contrib.layers.xavier_initializer())
                     outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
-                    #outputs = tf.nn.dropout(outputs, self.keep_prob)
+                    #outputs = tf.nn.dropout(outputs, self.drop_out)
                     outputs = tf.contrib.layers.fully_connected( activation_fn = tf.nn.relu, inputs = outputs, num_outputs = 500, scope = "input_fc", biases_initializer = tf.contrib.layers.xavier_initializer())
                     outputs = tf.contrib.layers.fully_connected( activation_fn = tf.nn.relu, inputs = outputs, num_outputs = 500, scope = "input_fc_2", biases_initializer = tf.contrib.layers.xavier_initializer())
                     outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
-                    #outputs = tf.nn.dropout(outputs, self.keep_prob)
+                    #outputs = tf.nn.dropout(outputs, self.drop_out)
 
                     logit = tf.contrib.layers.fully_connected(activation_fn=None, inputs=outputs, num_outputs=num_targets, scope=scope,
                                                               biases_initializer=tf.contrib.layers.xavier_initializer())

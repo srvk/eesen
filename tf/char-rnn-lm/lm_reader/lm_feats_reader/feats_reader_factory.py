@@ -1,12 +1,12 @@
 import sys
 
 from feats_reader_kaldi import FeatsReaderKaldi
-from utils.fileutils import debug
+from lm_utils.lm_fileutils import debug
 
 
-#it returns an object reader that internaly will manage all the data
+#it returns an object lm_reader that internaly will manage all the data
 #client will be agnostic for the internals
-#TODO we need to create a separate sat reader
+#TODO we need to create a separate sat lm_reader
 def create_reader(info_set, info_format, config, batches_id = None):
 
     #TODO deduce file type

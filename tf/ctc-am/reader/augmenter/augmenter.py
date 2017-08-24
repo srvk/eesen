@@ -1,12 +1,9 @@
 import numpy as np
 import sys, random
-from utils.fileutils.debug import get_debug_info
 import random
 import sys
 import numpy as np
 import constants
-
-from utils.fileutils.debug import get_debug_info
 
 class Augmenter(object):
     def __init__(self, online_augment_config):

@@ -55,14 +55,16 @@ def generate_labels_lm(text_path, units_dict, output_labels_path):
     with open(text_path,"r") as input_text, open(output_labels_path,"w") as output_labels:
         for line in input_text:
             utt_id = line.split()[0]
-            new_line = utt_id + " " + units_dict[EOS]
-            for word in  line.split()[1:]:
+            new_line = utt_id + " " + str(units_dict[EOS])
+            for word in line.split()[1:]:
                 if(("[" in word) and ("]" in word)):
-                    new_line += " " + units_dict[word] + " " + units_dict[SPACE]
+                    new_line += " " + str(units_dict[word]) + " " + str(units_dict[SPACE])
                 else:
                     for letter in word:
-                        units_dict[letter] = " " + units_dict[letter] + " " + units_dict[SPACE]
-            new_line=new_line[:-len(units_dict[SPACE])] + units_dict[EOS]
+                        if(letter in units_dict):
+                            new_line += " " + str(units_dict[letter]) 
+                    new_line +=  " " + str(units_dict[SPACE])
+            new_line=new_line[:-len(str(units_dict[SPACE]))] + str(units_dict[EOS])
             output_labels.write(new_line+"\n")
 
 def generate_units(text_path, output_units_path, is_lm):

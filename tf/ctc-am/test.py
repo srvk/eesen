@@ -59,6 +59,7 @@ def generate_priors(data_dir, language_scheme):
 # -----------------------------------------------------------------
 
 def main_parser():
+    #TODO add option to not get .arks and only ter
     parser = argparse.ArgumentParser(description='Test TF-Eesen Model')
 
     #io options

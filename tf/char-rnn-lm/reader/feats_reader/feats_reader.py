@@ -1,5 +1,3 @@
-import sys
-import numpy as np
 from fileutils.kaldi import readMatrixByOffset
 from fileutils.kaldi import read_scp_info_dic
 

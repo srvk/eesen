@@ -117,8 +117,11 @@ if [ $stage -le 5 ]; then
   input_feat_dim=120   # dimension of the input features; we will use 40-dimensional fbanks with deltas and double deltas
   lstm_layer_num=4     # number of LSTM layers
   lstm_cell_dim=320    # number of memory cells in every LSTM layer
+  model=deepbilstm
+  window=3
+  norm=false
 
-  dir=exp/train_char_l${lstm_layer_num}_c${lstm_cell_dim}
+  dir=exp/train_char_l${lstm_layer_num}_c${lstm_cell_dim}_m${model}_w${window}_n${norm}
 
   mkdir -p $dir
 
@@ -131,7 +134,7 @@ if [ $stage -le 5 ]; then
   python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_dev/text --input_units ./data/local/dict_char/units.txt --output_labels $dir/labels.cv
 
   # Train the network with CTC. Refer to the script for details about the arguments
-  steps/train_ctc_tf.sh --num-sequence 16 --learn-rate 0.02 --half_after 6 \
+  steps/train_ctc_tf.sh --num-sequence 16 --learn-rate 0.02 --half_after 6 --model $model --window $window --norm $norm --continue_ckpt /data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/asr_egs/swbd/v1-tf/exp/train_char_l4_c320/model/epoch04.ckpt \
     data/train_nodup data/train_dev $dir || exit 1;
 
 fi

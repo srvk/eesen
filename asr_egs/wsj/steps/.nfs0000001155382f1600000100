@@ -7,9 +7,7 @@
 # This script trains acoustic models based on CTC and using SGD.
 
 ## Begin configuration section
-model="deepbilstm"
-continue_ckpt=""
-
+model=
 train_tool="python -m train" # the command for training; by default, we use the
                 # parallel version which processes multiple utterances at the same time
 train_opts="--store_model --lstm_type=cudnn --augment"
@@ -19,7 +17,6 @@ nlayer=5                 # number of layers
 nhidden=320              # cells in each layer and direction
 nproj=0                  # projection layers, 0 if none
 feat_proj=0              # project features, 0 if none
-norm=
 
 # configs for multiple sequences
 num_sequence=16          # during training, how many utterances to be processed in parallel
@@ -54,7 +51,6 @@ norm_vars=true           # whether to apply variance normalization when we do cm
 add_deltas=false         # whether to add deltas
 copy_feats=true          # whether to copy features into a local dir (on the GPU machine)
 context_window=1         # how many frames to stack
-window=
 augment_dirs=            # directories from which to read the augmented features
 
 # status of learning rate schedule; useful when training is resumed from a break point
@@ -168,7 +164,6 @@ function prepare_features() {
 ## End function section
 
 
-
 echo "$0 $@"  # Print the command line for logging
 
 [ -f path.sh ] && . ./path.sh;
@@ -180,15 +175,6 @@ if [ $# != 3 ]; then
    echo " e.g.: $0 data/train_tr data/train_cv exp/train_phn"
    exit 1;
 fi
-
-if [ $norm == true ]; then
-
-      norm="--batch_norm"
-else
-      norm=
-fi
-
-
 
 data_tr=$1
 data_cv=$2
@@ -230,16 +216,13 @@ feats_tr=`cat $tmpdir/.tr 2>/dev/null`
 feats_cv=`cat $tmpdir/.cv 2>/dev/null`
 
 
-
-
 ## Adjust parameter variables
-
-if [ $continue_ckpt != "" ]; then
-    continue_ckpt="--continue_ckpt $continue_ckpt"
+if [ $start_epoch_num -gt 1 ]; then
+    ckpt="$dir/dbr-run*/model/`printf 'epoch%02d.ckpt.index' $[start_epoch_num-1]`"
+    ckpt="--continue_ckpt `echo $ckpt|sed 's/.index//'`"
 else
-    continue_ckpt=""
+    ckpt=""
 fi
-
 if [ $nproj -gt 0 ]; then
     nproj="--nproj $nproj"
 else
@@ -267,7 +250,7 @@ echo "TRAINING STARTS [$cur_time]"
 #
 $train_tool $train_opts --lr_rate $learn_rate --batch_size $num_sequence --l2 $l2 \
     --nhidden $nhidden --nlayer $nlayer $nproj $feat_proj $ckpt $max_iters \
-    --train_dir $dir --data_dir $tmpdir --half_after $half_after --model $model --window $window $norm $continue_ckpt|| exit 1;
+    --train_dir $dir --data_dir $tmpdir --half_after $half_after --model $model|| exit 1;
 
 ## Done
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`

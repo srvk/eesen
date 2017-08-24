@@ -58,7 +58,8 @@ elif [[ `uname -n` =~ islpc* ]]; then
   export LD_LIBRARY_PATH=/usr/local/cuda-8.0/lib64:$LD_LIBRARY_PATH
   export BABEL_DATA=/data/MM3/babel-corpus
   #export PYTHONPATH=/data/ASR5/fmetze/asr-test/lorelei-audio/egs/asr/s5c/201-haitian-flp:
-  export PYTHONPATH=./eesen-tf/tf/ctc-train:./eesen-tf/tf/ctc-decode/code:./eesen-tf/tf/rnn-lm/code:/data/MM23/sdalmia/lorelei-audio/egs/asr/s5c/307-amharic-flp-tf-epitran
+  #export PYTHONPATH=./eesen-tf/tf/ctc-train:./eesen-tf/tf/ctc-decode/code:./eesen-tf/tf/rnn-lm/code:/data/MM23/sdalmia/lorelei-audio/egs/asr/s5c/307-amharic-flp-tf-epitran
+  export PYTHONPATH=/data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/tf/ctc-am:/data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/tf/char-rnn-lm/
   #export PYTHONPATH=/data/ASR5/fmetze/eesen-tf/tf/ctc-train:/data/ASR5/fmetze/eesen-tf/tf/rnn-lm/code:/data/ASR5/fmetze/eesen-tf/tf/ctc-decode/code
   #export EESEN_ROOT=/data/ASR5/fmetze/eesen-block-copy
   export EESEN_ROOT=/data/MM23/sdalmia/eesen
@@ -85,7 +86,7 @@ else
   export EESEN_ROOT=/data/MM23/sdalmia/eesen
   #export PYTHONPATH=/data/ASR5/fmetze/asr-test/lorelei-audio/egs/asr/s5c/201-haitian-flp:/data/ASR5/fmetze/eesen-tf/tf/tf1
   #export PYTHONPATH=./eesen-tf/tf/ctc-train:./eesen-tf/tf/ctc-decode/code:./eesen-tf/tf/rnn-lm/code
-  export PYTHONPATH=/data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/tf/ctc-am
+  export PYTHONPATH=/data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/tf/ctc-am:/data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/tf/char-rnn-lm/
 
   #. /export/babel/data/software/env.sh
   export PATH=$PWD/utils/:$EESEN_ROOT/src/netbin:$EESEN_ROOT/src/featbin:$EESEN_ROOT/src/decoderbin:$EESEN_ROOT/src/fstbin:$EESEN_ROOT/tools/openfst/bin:$EESEN_ROOT/tools/sph2pipe_v2.5:/home/fmetze/tools/kaldi/src/bin:/data/ASR5/fmetze/kaldi-latest/src/latbin:$PATH

@@ -4,7 +4,7 @@
 #PBS -j oe
 #PBS -o log
 #PBS -d .
-#PBS -N swbd_pipeline_am
+#PBS -N swbd_pipeline_lm110
 #PBS -V
 #PBS -l walltime=48:00:00
 #PBS -l nodes=1:ppn=1
@@ -21,7 +21,12 @@ eval2000_dirs="/path/to/LDC2002S09/hub5e_00 /path/to/LDC2002T43"
 
 # CMU Rocks
 swbd=/data/ASR4/babel/ymiao/CTS/LDC97S62
-fisher_dirs="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/ /data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
+
+#TODO fisher datat is currentlu hardcoded (need to deal with that)
+fisher_dir_a="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/"
+fisher_dir_b="/data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
+
+
 eval2000_dirs="/data/ASR4/babel/ymiao/CTS/LDC2002S09/hub5e_00 /data/ASR4/babel/ymiao/CTS/LDC2002T43"
 
 
@@ -123,27 +128,37 @@ fi
 
 if [ $stage -le 5 ]; then
   echo =====================================================================
-  echo "                Network Training with the Full Set                "
+  echo "             Char RNN LM Training with the Full Set                "
   echo =====================================================================
 
-  # Specify network structure and generate the network topology
-  input_feat_dim=120   # dimension of the input features; we will use 40-dimensional fbanks with deltas and double deltas
-  lstm_layer_num=4     # number of LSTM layers
+  embed_size=120   # dimension of the input features; we will use 40-dimensional fbanks with deltas and double deltas
+  lstm_layer_num=2     # number of LSTM layers
   lstm_cell_dim=320    # number of memory cells in every LSTM layer
 
-  dir=exp/train_char_l${lstm_layer_num}_c${lstm_cell_dim}
+  dir=exp/train_lm_char_l${lstm_layer_num}_c${lstm_cell_dim}_e${embed_size}/
 
-  echo generating train labels...
+  mkdir -p $dir
+  mkdir -p ./data/local/dict_char_lm/
 
-  python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_nodup/text --output_units ./data/local/dict_char/units.txt --output_labels $dir/labels.tr
+  python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_nodup/text --output_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.tr --lm
 
-  echo generating cv labels...
 
-  python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_dev/text --input_units ./data/local/dict_char/units.txt --output_labels $dir/labels.cv
+  #TODO this should be first
+  ./steps/train_char_lm.sh --train_dir $dir
 
-  # Train the network with CTC. Refer to the script for details about the arguments
-  steps/train_ctc_tf.sh --num-sequence 16 --learn-rate 0.02 --half_after 6 \
-    data/train_nodup data/train_dev $dir || exit 1;
+  exit
+
+  echo generating fisher_data...
+
+  ./local/swbd1_create_fisher_text.sh ./data/fisher/ $fisher_dir_a $fisher_dir_b data/local/dict_char_lm/units.txt
+
+  echo creating labels files from fisher...
+
+  python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_nodup/text --input_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.fisher --lm
+
+  echo creating labels files from cv...
+
+  python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_dev/text --input_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.cv --lm
 
 fi
 

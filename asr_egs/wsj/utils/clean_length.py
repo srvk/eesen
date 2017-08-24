@@ -4,6 +4,7 @@ from fileutils.kaldi import readScp
 import argparse
 import sys
 
+#python ./utils/clean_length.py --scp_in  $tmpdir/cv_local.scp --labels $tmpdir/labels.cv --subsampling 3 --scp_out $tmpdir/cv_local.scp
 
 
 def main_parser():

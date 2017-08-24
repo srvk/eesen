@@ -19,7 +19,7 @@ def train(all_readers,config):
     random.seed(config["random_seed"])
 
     #defining the model
-r   model = RNN_Model(config)
+    model = RNN_Model(config)
     nepoch = config["nepoch"]
 
     model_dir = config["exp_path"]
@@ -40,30 +40,24 @@ r   model = RNN_Model(config)
 
     with tf.Session() as sess:
 
-        if config['continue_ckpt'] != "":
 
-            if(config['adaptation_stage'] != "unadapted"):
-                if(config['adaptation_stage'] == "adapt_sat"):
+        if(config['adaptation_stage'] == "adapt_sat"):
 
-                    print("preparing to construct and train adaptation module")
-                    var_list=[]
-                    for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES):
-                        if ("Shift" not in var.name):
-                            var_list.append(var)
-                else:
-                    print("train/fine-tune the complete model")
-                    var_list=[v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
+            print("preparing to construct and train adaptation module")
+            var_list=[]
+            for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES):
+                if ("Shift" not in var.name):
+                    var_list.append(var)
+        else:
+            print("train/fine-tune the complete model")
+            var_list=[v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
 
-                print(80 * "-")
-                print("the following variables will be loaded")
-                print(80 * "-")
-                for element in var_list:
-                    print(element.name)
 
-                saver = tf.train.Saver(max_to_keep = nepoch, var_list=var_list)
-            else:
-                saver = tf.train.Saver(max_to_keep = nepoch)
-                saver.restore(sess, config['weight_path'])
+        print("arriving here!!!")
+        saver = tf.train.Saver(max_to_keep = nepoch, var_list=var_list)
+
+        for element in var_list:
+            print(element.name)
 
         # writer = tf.summary.FileWriter(config["train_path"], sess.graph)
         tf.global_variables_initializer().run()

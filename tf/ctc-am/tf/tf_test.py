@@ -47,6 +47,7 @@ class Test():
 
             ntest, test_costs, test_ters, ntest_labels = self.__create_counter_containers(config)
 
+
             process, data_queue, test_x = self.__generate_queue(config, data)
             process.start()
 
@@ -65,12 +66,16 @@ class Test():
                 batch_log_likes = None
 
                 if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER] and config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
-                    batch_soft_probs, batch_log_soft_probs, batch_seq_len, batch_logits, batch_cost, batch_ters, batch_log_likes= \
+                    batch_soft_probs, batch_log_soft_probs, batch_seq_len, batch_logits, batch_ters, batch_cost, batch_log_likes= \
                         sess.run(request_list, feed)
 
                 elif(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER] and not config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
-                    batch_soft_probs, batch_log_soft_probs, batch_seq_len, batch_logits, batch_cost, batch_ters = \
+                    batch_soft_probs, batch_log_soft_probs, batch_seq_len, batch_logits, batch_ters, batch_cost = \
                         sess.run(request_list, feed)
+                    print("")
+                    print(batch_id)
+                    print(batch_ters[0][0]/batch_seq_len[0])
+                    print("")
 
                 elif(not config[constants.CONFIG_TAGS_TEST.COMPUTE_TER] and config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
                     batch_soft_probs, batch_log_soft_probs, batch_seq_len, batch_logits, batch_log_likes= \
@@ -105,6 +110,7 @@ class Test():
                 for language_id, target_scheme in test_ters.iteritems():
                     for target_id, cv_ter in target_scheme.iteritems():
                         test_ters[language_id][target_id] = cv_ter/float(ntest_labels[language_id][target_id])
+
 
                 self.__print_logs(config, test_costs, test_ters, ntest)
 
@@ -304,7 +310,7 @@ class Test():
                     fp.write("\tTarget: %s" % (target_id))
                 print("\t\t Test cost: %.1f, ter: %.1f%%, #example: %d" % (test_cost[language_id][target_id], 100.0*test_ter, ntest[language_id]))
                 fp.write("\t\tTest cost: %.1f, ter: %.1f%%, #example: %d\n" % (test_cost[language_id][target_id], 100.0*test_ter, ntest[language_id]))
-        fp.close()
+            fp.close()
 
 
     def __store_results(self, config, uttids, soft_probs, log_soft_probs, log_likes, logits):
@@ -346,7 +352,9 @@ class Test():
                     #note that ybatch[0] contains targets and ybathc[1] contains language_id
                     m_acum_ters[language_id][target_id] += batch_ters[idx_lan][idx_tar]
                     m_acum_labels[language_id][target_id] += self.__get_label_len(ybatch[0][language_id][target_id])
-                    m_acum_cost[language_id][target_id] += batch_cost[idx_lan][idx_tar] * batch_size
+
+                    if(batch_cost[idx_lan][idx_tar] != float('Inf')):
+                        m_acum_cost[language_id][target_id] += batch_cost[idx_lan][idx_tar] * batch_size
 
         m_acum_samples[ybatch[1]] += batch_size
 

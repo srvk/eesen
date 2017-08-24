@@ -1,4 +1,5 @@
 from multiprocessing import Process, Queue
+import sys
 from models.model_factory import create_model
 import os, re, time, random
 import tensorflow as tf
@@ -49,17 +50,25 @@ class Train():
             best_epoch = 0
             lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
 
+            if(alpha > 0):
+                lr_rate = self.__compute_new_lr_rate(alpha)
+                print(lr_rate)
+                print(lr_rate)
+                print(lr_rate)
+                print(lr_rate)
+                print(lr_rate)
+                print(lr_rate)
+                print(lr_rate)
+                print(lr_rate)
+                print(lr_rate)
+                sys.exit()
+
             for epoch in range(alpha, self.__config[constants.CONF_TAGS.NEPOCH]):
 
                 #log start
                 print(80 * "-")
                 print("Epoch "+str(epoch)+" starting ...")
                 print(80 * "-")
-
-                #if not srat update
-                if(epoch > 0):
-                    #update lr_rate if needed
-                    lr_rate, best_avg_ters, best_epoch = self.__update_lr_rate(epoch, cv_ters, best_avg_ters, best_epoch, saver)
 
                 #start timer...
                 tic = time.time()
@@ -76,6 +85,9 @@ class Train():
                 cv_cost, cv_ters, ncv = self.__eval_epoch(cv_x, cv_y, cv_sat)
 
                 self.__generate_logs(cv_ters, cv_cost, ncv, train_ters, train_cost, ntrain, epoch, lr_rate, tic)
+
+                #update lr_rate if needed
+                lr_rate, best_avg_ters, best_epoch = self.__update_lr_rate(epoch, cv_ters, best_avg_ters, best_epoch, saver)
 
                 print("Epoch "+str(epoch)+" done.")
                 print(80 * "-")
@@ -94,6 +106,12 @@ class Train():
         avg_ters /= float(nters)
 
         return avg_ters
+
+    def __compute_new_lr_rate(self, epoch):
+
+        if epoch > self.__config["half_after"]:
+            return self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"]) // self.__config["half_period"]))
+
 
     def __update_lr_rate(self, epoch, cv_ters, best_avg_ters, best_epoch, saver):
 
@@ -315,7 +333,8 @@ class Train():
                     #note that ybatch[0] contains targets and ybathc[1] contains language_id
                     m_acum_ters[language_id][target_id] += batch_ters[idx_tar]
                     m_acum_labels[language_id][target_id] += self.__get_label_len(ybatch[0][language_id][target_id])
-                    m_acum_cost[language_id][target_id] += batch_cost[idx_tar] * batch_size
+                    if(batch_cost[idx_tar] != float('Inf')):
+                        m_acum_cost[language_id][target_id] += batch_cost[idx_tar] * batch_size
 
         m_acum_samples[ybatch[1]] += batch_size
 

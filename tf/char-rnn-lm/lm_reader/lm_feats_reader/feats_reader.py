@@ -1,5 +1,5 @@
-from utils.fileutils import readMatrixByOffset
-from utils.fileutils import read_scp_info_dic
+from lm_utils.lm_fileutils.kaldi import readMatrixByOffset
+from lm_utils.lm_fileutils.kaldi import read_scp_info_dic
 
 class FeatsReaderKaldi(object):
 

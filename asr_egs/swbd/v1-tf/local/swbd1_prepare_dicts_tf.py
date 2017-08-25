@@ -59,7 +59,8 @@ def generate_labels_lm(text_path, units_dict, output_labels_path):
             new_line = utt_id + " " + str(units_dict[EOS])
             for word in line.split()[1:]:
                 if(("[" in word) and ("]" in word)):
-                    new_line += " " + str(units_dict[word]) + " " + str(units_dict[SPACE])
+                    if(word in units_dict):
+                        new_line += " " + str(units_dict[word]) + " " + str(units_dict[SPACE])
                 else:
                     for letter in word:
                         if(letter in units_dict):
@@ -96,7 +97,7 @@ def generate_units_lm(input_units_path, output_units_path):
 
     max_count=1
     with open(input_units_path) as f, open(output_units_path,"w") as output_units:
-        
+
         for line in f:
             units_dict[line.split()[0]]=line.split()[1]
             max_count= max(max_count,int(line.split()[1]))
@@ -149,7 +150,7 @@ else:
         dict_units = generate_units_lm(config["input_units"], config["output_units"])
     else:
         dict_units = generate_units_am(config["text_file"], config["output_units"])
-    
+
 
 if(config["is_lm"]):
     generate_labels_lm(config["text_file"], dict_units, config["output_labels"])

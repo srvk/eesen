@@ -7,7 +7,6 @@ def run_reader_queue(queue, reader_x, do_shuf, reader_sat=None):
     if do_shuf:
         random.shuffle(idx_shuf)
 
-    count = 0
     for idx_batch in idx_shuf:
 
         _, len, x = reader_x.read(idx_batch)
@@ -17,9 +16,6 @@ def run_reader_queue(queue, reader_x, do_shuf, reader_sat=None):
             queue.put((len, x, sat))
         else:
             queue.put((len, x))
-        if(count > 10):
-            break
-        count += 1
 
     queue.put(None)
 

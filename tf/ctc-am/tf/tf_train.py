@@ -68,11 +68,9 @@ class Train():
                 train_cost, train_ters, ntrain = self.__train_epoch(epoch, lr_rate, tr_x, tr_y, tr_sat)
 
                 if self.__config[constants.CONF_TAGS.STORE_MODEL]:
-                    saver.save(self.__sess, "%s/epoch%02d.ckpt" % (self.__config[constants.CONF_TAGS.MODEL_DIR], epoch + 1))
+                    saver.save(self.__sess, "%s/epoch%02d.ckpt" % (self.__config[constants.CONF_TAGS.MODEL_DIR], epoch))
 
                 #evaluate on validation...
-                #TODO check eval
-                #TODO check results
                 cv_cost, cv_ters, ncv = self.__eval_epoch(cv_x, cv_y, cv_sat)
 
                 self.__generate_logs(cv_ters, cv_cost, ncv, train_ters, train_cost, ntrain, epoch, lr_rate, tic)

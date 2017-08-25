@@ -39,7 +39,9 @@ def mainParser():
     parser.add_argument('--lr_rate', default=0, type=float,help='0 for default parameters')
 
     #TODO continute_pkt
-    parser.add_argument('--continue_ckpt', default = "", help='continue this experiment')
+    parser.add_argument('--continue_ckpt', default = "", help='continue experiment with the weight path given')
+    parser.add_argument('--import_config', default = "", help='import configuration from a previous experiment. The configuation will be merged with the flags given.')
+
     parser.add_argument('--no_shuffle', default=True, dest='do_shuf', action='store_false', help='shuf batches before training')
 
     #sat arguments
@@ -48,12 +50,17 @@ def mainParser():
     parser.add_argument('--fuse_sat', default = False, help='apply and train a sat layer')
     parser.add_argument('--num_sat_layers', default = 2, type=int, help='number of sat layers for sat module')
 
+
     parser.add_argument('--model', default = "rnn", help='number of sat layers for sat module')
 
     return parser
 
-def createConfig(args):
+def merge_external_config(config):
 
+    imported_config = pickle.load(open(config[lm_constants.CONF_TAGS.IMPORTED_CONFIG], "rb"))
+    config[lm_constants.CONF_TAGS.NUM_TARGETS] = int(imported_config[lm_constants.CONF_TAGS.NUM_TARGETS])
+
+def createConfig(args):
 
     config ={
 
@@ -66,7 +73,10 @@ def createConfig(args):
     lm_constants.CONF_TAGS.BATCH_SIZE : args.batch_size,
     lm_constants.CONF_TAGS.OPTIMIZER : args.optimizer,
     lm_constants.CONF_TAGS.LR_RATE : args.lr_rate,
+
     lm_constants.CONF_TAGS.CONTINUE_CKPT : args.continue_ckpt,
+    lm_constants.CONF_TAGS.IMPORTED_CONFIG : args.import_config,
+
     lm_constants.CONF_TAGS.DO_SHUF : args.do_shuf,
     lm_constants.CONF_TAGS.NUM_SAT_LAYERS : args.num_sat_layers,
     lm_constants.CONF_TAGS.DATA_DIR : args.data_dir,
@@ -126,7 +136,6 @@ def main():
     config = createConfig(args)
 
 
-    pickle.dump(config, open(os.path.join(config[lm_constants.CONF_TAGS.TRAIN_DIR], lm_constants.FILE_NAMES.CONFIG_PKL), "wb"))
 
 
     print("about to train with the following configuration:")
@@ -177,6 +186,12 @@ def main():
     else:
         data = (tr_x, cv_x, None, None)
 
+    if(config[lm_constants.CONF_TAGS.IMPORTED_CONFIG] != ""):
+        print("merging some config from previous experiment...")
+        merge_external_config(config)
+
+    pickle.dump(config, open(os.path.join(config[lm_constants.CONF_TAGS.TRAIN_DIR], lm_constants.FILE_NAMES.CONFIG_PKL), "wb"))
+
     print("data read.")
     print(80 * "-")
     print(80 * "-")
@@ -194,4 +209,5 @@ if __name__ == "__main__":
     except:
         print("tf.py: could not get version information for logging")
     print(80 * "-")
+
     main()

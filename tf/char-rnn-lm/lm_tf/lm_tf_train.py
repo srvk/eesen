@@ -4,22 +4,27 @@ from lm_models.rnn import *
 from lm_models.lm_model_factory import lm_create_model
 
 import math
+import time
 import re
 import random
 import time
 from multiprocessing import Process, Queue
 import lm_constants
 import numpy as np
+import os
+
+#hide pool alocator warning
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
-def train(all_readers,config):
+def train(all_readers, config):
 
-    start_ = time.time()
     tf.set_random_seed(config[lm_constants.CONF_TAGS.RANDOM_SEED])
     random.seed(config[lm_constants.CONF_TAGS.RANDOM_SEED])
 
     #defining the model
-    model =lm_create_model(config)
+    model = lm_create_model(config)
+    lr_rate = config[lm_constants.CONF_TAGS.LR_RATE]
 
 
     #starting tf session...
@@ -36,45 +41,70 @@ def train(all_readers,config):
 
         for epoch in range(alpha, config[lm_constants.CONF_TAGS.NEPOCH]):
 
-            ntrain_w = 0
-            ntrain = 0
+            print(80 * "-")
+            print("Epoch "+str(epoch)+" starting ...")
+            print(80 * "-")
 
-            train_losses = []
+            train_cost, ntrain, ntrain_w = train_epoch(sess, model, config, data_queue, epoch, lr_rate, tr_x, tr_sat)
 
+            cv_cost, ncv, ncv_w = eval_epoch(sess, model, config, data_queue, cv_x, cv_sat)
 
-            train_cost, train_ters, ntrain = train_epoch(sess, model, data_queue, epoch,  lr_rate, tr_x, tr_y, tr_sat)
+            saver.save(sess, "%s/epoch%02d.ckpt" % (config[lm_constants.CONF_TAGS.TRAIN_DIR], epoch))
 
+            generate_logs(config, cv_cost, ncv, ncv_w, train_cost, ntrain, ntrain_w, epoch, lr_rate, time.time())
 
-            dev_start = time.time()
-            test_losses = []
-            test_words = 0
-            print('Testing on dev set...')
+            #TODO LM update LR
+            #lr_rate, best_avg_ters, best_epoch = self.__update_lr_rate(epoch, cv_ters, best_avg_ters, best_epoch, saver)
 
-            if(config['adaptation_stage'] == "unadapated"):
-                p = Process(target = run_reader_queue, args = (data_queue, cv_x, config["do_shuf"]))
-            else:
-                print("non addapted cv!!")
-                p = Process(target = run_reader_queue, args = (data_queue, cv_x, config["do_shuf"], cv_sat))
-
-            p.start()
-
-            p.join()
-            p.terminate()
-
-            nll = sum(test_losses) / test_words
-
-            print('ITER %d, Dev Loss: %.4f, ppl=%.4f wps: %.4f' % (it,nll, math.exp(nll), test_words/(time.time() - dev_start)))
-
-            save_path = saver.save(sess, model_dir + 'model' + str(it) + '.ckpt')
-            print('Model SAVED for ITER - ' , ITER)
+            print("Epoch "+str(epoch)+" done.")
+            print(80 * "-")
 
 
-def train_epoch(sess, model, epoch, data_queue, lr_rate, tr_x, tr_y, tr_sat):
+def train_epoch(sess, model, config, data_queue, epoch,  lr_rate, tr_x, tr_sat):
 
-    if(config[lm_constants.CONF_TAGS.SAT_SATGE] == lm_constants.SAT_SATGES.UNADAPTED):
+    if(tr_sat):
         p = Process(target = run_reader_queue, args = (data_queue, tr_x, config[lm_constants.CONF_TAGS.DO_SHUF]))
     else:
         p = Process(target = run_reader_queue, args = (data_queue, tr_x, config[lm_constants.CONF_TAGS.DO_SHUF], tr_sat))
+
+    p.start()
+
+    train_cost, ntrain, ntrain_w = 0.0, 0, 0
+
+    while True:
+
+        data = data_queue.get()
+        if data is None:
+            break
+
+        if(config[lm_constants.CONF_TAGS.SAT_SATGE] == lm_constants.SAT_SATGES.UNADAPTED):
+
+            batch_len, batch_x = data
+            batch_sat=None
+
+        else:
+            batch_len, batch_x, batch_sat = data
+
+
+        feed_dict = prepare_feed_dict(model, config, batch_x, batch_len, 1.0, batch_sat)
+
+        batch_cost, _ = sess.run([model.loss, model.optimizer], feed_dict = feed_dict)
+
+        train_cost, ntrain, ntrain_w = update_counters(train_cost, ntrain, ntrain_w, batch_cost, batch_len)
+
+    p.join()
+    p.terminate()
+
+    return train_cost, ntrain, ntrain_w
+
+def eval_epoch(sess, model, config, data_queue, cv_x, cv_sat):
+
+    cv_cost, ncv, ncv_w = 0.0, 0, 0
+
+    if(cv_sat):
+        p = Process(target = run_reader_queue, args = (data_queue, cv_x, config[lm_constants.CONF_TAGS.DO_SHUF]))
+    else:
+        p = Process(target = run_reader_queue, args = (data_queue, cv_x, config[lm_constants.CONF_TAGS.DO_SHUF], cv_sat))
 
     p.start()
 
@@ -89,62 +119,32 @@ def train_epoch(sess, model, epoch, data_queue, lr_rate, tr_x, tr_y, tr_sat):
 
             batch_len, batch_x = data
             batch_sat=None
-
         else:
             batch_len, batch_x, batch_sat = data
 
-
-        feed_dict = prepare_feed_dict(model, config, batch_x, batch_len, batch_sat)
-
-        train_cost, _ = sess.run([model.loss, model.optimizer], feed_dict = feed_dict)
-
-        #train_cost, train_ters, ntrain = self.__train_epoch(epoch, lr_rate, tr_x, tr_y, tr_sat)
-
-        update_counters(train_cost, )
-
-        tot_words = sum(batch_len) - len(batch_len)
-
-        train_losses.append(train_loss * tot_words)
-        train_words += tot_words
-
-    p.join()
-    p.terminate()
-
-def eval_epoch(sess, model, config, data_queue):
-
-    while True:
-
-        data = data_queue.get()
-        if data is None:
-            break
-
-        if(config[lm_constants.CONF_TAGS.SAT_SATGE] == lm_constants.SAT_SATGES.UNADAPTED):
-
-            batch_len, batch_x = data
-            batch_sat=None
-
-        else:
-            batch_len, batch_x, batch_sat = data
-
-
-        prepare_feed_dict(model, config, batch_x, batch_len, batch_sat)
+        feed_dict = prepare_feed_dict(model, config, batch_x, batch_len, 1.0, batch_sat)
 
         #third argument is to keep the state during training
-        test_loss = sess.run(model.loss, feed_dict={model.x_input: batch_x,
-                                                    model.x_lens: batch_len,
-                                                    model.sat_input: batch_sat,
-                                                    model.state:np.zeros((len(batch_len), 2*num_layers*hidden_size)),
-                                                    model.keep_prob : 1.0})
-        tot_words = sum(batch_len) - len(batch_len)
-        test_losses.append(test_loss * tot_words)
-        test_words += tot_words
+        batch_cost = sess.run(model.loss, feed_dict= feed_dict)
 
+        ncurrent_words = sum(batch_len) - len(batch_len)
+
+        cv_cost, ncv, ncv_w = update_counters(cv_cost, ncv, ncv_w, batch_cost, batch_len)
+
+    return cv_cost, ncv, ncv_w
 
 #self.__update_counters(train_ters, train_cost, ntrain, ntr_labels, batch_ters, batch_cost, batch_size, data[1])
-def update_counters(acum_ter, acum_cost, acum_utt, acum_words, batch_ter, batch_cost, batch_size):
+def update_counters(acum_cost, acum_utt, acum_words, batch_cost, batch_len):
 
+    batch_size = len(batch_len)
+    total_num_units = sum(batch_len) - batch_size
 
+    #update counters
+    acum_words += total_num_units
+    acum_cost += (batch_cost * total_num_units)
+    acum_utt += batch_size
 
+    return acum_cost, acum_utt, acum_words
 
 def restore_weights(config, sess):
 
@@ -173,27 +173,26 @@ def restore_weights(config, sess):
     return saver, alpha
 
 
-def prepare_feed_dict(model, config, batch_x, batch_len, batch_sat = None):
+def prepare_feed_dict(model, config, batch_x, batch_len, keep_prob, batch_sat = None):
 
     feed_dict = {}
 
     feed_dict[model.x_input] = batch_x
     feed_dict[model.x_lens] = batch_len
     feed_dict[model.state] = np.zeros((len(batch_x), 2*config[lm_constants.CONF_TAGS.NLAYERS]*config[lm_constants.CONF_TAGS.NHIDDEN]))
-    feed_dict[model.drop_out] = config[lm_constants.CONF_TAGS.DROPOUT]
+    feed_dict[model.drop_out] = keep_prob
 
     if(batch_sat):
         feed_dict[model.sat_input] = batch_sat
 
     return feed_dict
 
-def generate_logs(self, config, cv_ters, cv_cost, ncv, train_ters, train_cost, ntrain, epoch, lr_rate, tic):
-
+def generate_logs(config, cv_cost, ncv, ncv_w, train_cost, ntrain, ntrain_w, epoch, lr_rate, tic):
 
     with open("%s/epoch%02d.log" % (config[lm_constants.CONF_TAGS.TRAIN_DIR], epoch + 1), 'w') as fp:
-
+        print("Epoch %d finished in %.0f minutes, learning rate: %.4g" % (epoch, (time.time() - tic)/60.0, lr_rate))
         fp.write("Time: %.0f minutes, lrate: %.4g\n" % ((time.time() - tic)/60.0, lr_rate))
-        print("\t\t Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost, 100.0*train_ters, ntrain))
-        print("\t\t Validate cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost, 100.0*cv_ter, ncv))
-        fp.write("\t\tTrain    cost: %.1f, ter: %.1f%%, #example: %d\n" % (train_cost, 100.0*train_ters, ntrain))
-        fp.write("\t\tValidate cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost, 100.0*cv_ter, ncv))
+        print("\t\t Train    cost: %.1f, #examples: %d, #tokens: %d\n" % (train_cost/ntrain_w, ntrain, ntrain_w))
+        print("\t\t Validate cost: %.1f, #examples: %d, #tokens: %d\n" % (cv_cost/ntrain_w, ncv, ncv_w))
+        fp.write("\t\tTrain    cost: %.1f, #examples: %d, #tokens: %d\n" % (train_cost/ntrain_w, ntrain, ntrain_w))
+        fp.write("\t\tValidate cost: %.1f, #examples: %d #tokens: %d\n" % (cv_cost/ntrain_w, ncv, ncv_w))

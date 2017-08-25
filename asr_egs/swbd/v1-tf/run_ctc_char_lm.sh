@@ -140,26 +140,41 @@ if [ $stage -le 5 ]; then
   mkdir -p $dir
   mkdir -p ./data/local/dict_char_lm/
 
+  echo ""
   echo creating labels files from train...
+  echo ""
 
   python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_nodup/text --input_units ./data/local/dict_char/units.txt --output_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.tr --lm
 
+  echo ""
   echo creating labels files from cv...
+  echo ""
 
   python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_dev/text --input_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.cv --lm
 
+  echo ""
+  echo training with normal swbd text...
+  echo ""
 
-  ./steps/train_char_lm.sh --train_dir $dir --units_file data/local/dict_char_lm/units.txt --nembed $embed_size --nlayer $lstm_layer_num --nhidden $lstm_cell_dim --batch_size 16
+  ./steps/train_char_lm.sh --train_dir $dir --units_file data/local/dict_char_lm/units.txt --nembed $embed_size --nlayer $lstm_layer_num --nhidden $lstm_cell_dim --batch_size 32 --nepoch 10 --train_labels $dir/labels.tr --cv_labels $dir/labels.cv
 
-  exit
-
+  echo ""
   echo generating fisher_data...
+  echo ""
 
   ./local/swbd1_create_fisher_text.sh ./data/fisher/ $fisher_dir_a $fisher_dir_b data/local/dict_char_lm/units.txt
 
+  echo ""
   echo creating labels files from fisher...
+  echo ""
 
-  python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_nodup/text --input_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.fisher --lm
+  python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/fisher/text --input_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.fisher --lm
+
+  echo ""
+  echo fine tunning with fisher data...
+  echo ""
+
+  ./steps/train_char_lm.sh --train_dir $dir --units_file data/local/dict_char_lm/units.txt --nembed $embed_size --nlayer $lstm_layer_num --nhidden $lstm_cell_dim --batch_size 32 --nepoch 20 --train_labels $dir/labels.fisher --cv_labels $dir/labels.cv --continue_ckpt $dir/model/epoch22.ckpt --import_config $dir/model/config.pkl
 
 fi
 

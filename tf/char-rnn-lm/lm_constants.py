@@ -24,7 +24,10 @@ class CONF_TAGS:
     #io dir
     DATA_DIR = "data_dir"
     TRAIN_DIR = "train_dir"
+
     CONTINUE_CKPT = "continue_ckpt"
+    IMPORTED_CONFIG = "imported_config"
+
     DO_SHUF="do_shuf"
 
     #sat arguments

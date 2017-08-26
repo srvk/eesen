@@ -16,6 +16,8 @@ from lm_tf.lm_tf_train import *
 def mainParser():
     parser = argparse.ArgumentParser(description='Train TF-RNN_LM')
 
+    parser.add_argument('--debug', default = False, action='store_true', help='activate debug mode')
+
     parser.add_argument('--batch_size', default = 16, type=int, help='batch size')
 
     parser.add_argument('--data_dir', help = "train data loc")
@@ -82,6 +84,8 @@ def createConfig(args):
     lm_constants.CONF_TAGS.DATA_DIR : args.data_dir,
     lm_constants.CONF_TAGS.RANDOM_SEED : 15213,
     lm_constants.CONF_TAGS.MODEL : args.model,
+
+    lm_constants.CONF_TAGS.DEBUG : args.debug,
 
     }
 

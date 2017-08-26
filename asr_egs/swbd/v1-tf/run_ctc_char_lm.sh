@@ -4,7 +4,7 @@
 #PBS -j oe
 #PBS -o log
 #PBS -d .
-#PBS -N swbd_pipeline_lm110
+#PBS -N swbd_pipeline_lm
 #PBS -V
 #PBS -l walltime=48:00:00
 #PBS -l nodes=1:ppn=1
@@ -28,8 +28,6 @@ fisher_dir_b="/data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
 
 
 eval2000_dirs="/data/ASR4/babel/ymiao/CTS/LDC2002S09/hub5e_00 /data/ASR4/babel/ymiao/CTS/LDC2002T43"
-
-
 
 
 . parse_options.sh

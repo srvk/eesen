@@ -134,7 +134,7 @@ if [ $stage -le 5 ]; then
   python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_dev/text --input_units ./data/local/dict_char/units.txt --output_labels $dir/labels.cv
 
   # Train the network with CTC. Refer to the script for details about the arguments
-  steps/train_ctc_tf.sh --num-sequence 16 --learn-rate 0.01 --half_after 6 --model $model --window $window --norm $norm --continue_ckpt /data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/asr_egs/swbd/v1-tf/exp/train_char_l4_c320_mdeepbilstm_w3_nfalse/model/epoch09.ckpt \
+  steps/train_ctc_tf.sh --num-sequence 16 --learn-rate 0.0025 --half_after 6 --model $model --window $window --norm $norm --continue_ckpt /data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/asr_egs/swbd/v1-tf/exp/train_char_l4_c320_mdeepbilstm_w3_nfalse/model/epoch11.ckpt \
     data/train_nodup data/train_dev $dir || exit 1;
 
 fi

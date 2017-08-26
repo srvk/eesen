@@ -15,14 +15,12 @@ class LabelsReader(object):
 
     def read(self, idx):
 
-        utt_id, batch = zip(*self.batches[idx])
-        lengths = [len(utterance) for utterance in batch]
+        lengths, utt_id, batch = zip(*self.batches[idx])
 
         #TODO check this hardcoded 42
         batch_padded = [self.__pad(example, self.__num_diff_labels, max(lengths)) for example in batch]
 
-        return utt_id, lengths, batch_padded
-
+        return utt_id, batch_padded, lengths
 
 
     def get_uttid(self):
@@ -65,11 +63,15 @@ class LabelsReader(object):
                 if char not in dict_seen_char:
                     dict_seen_char[char]=""
                     self.__num_diff_labels += 1
+
             tmp=[int(i) for i in lst]
 
-            tmp_list.append((id_utt, tmp))
+            tmp_list.append((len(tmp), id_utt, tmp))
 
-        tmp_list.sort(key=lambda x: len(x[1]), reverse=True)
+        self.__num_diff_labels += 1
+
+        tmp_list.sort(key=lambda x: x[0], reverse=True)
+
 
         idx = 0
         while idx < len(tmp_list):
@@ -79,17 +81,20 @@ class LabelsReader(object):
                 j += 1
 
             batch = self.__make_batch(tmp_list, idx, j - idx)
+
             if(len(batch) == batch_size):
                 self.batches.append(batch)
 
             idx = j
 
+
     def __make_batch (self, all_batches, start, height):
 
         batch=[]
         for idx in range(height):
-            batch.append(all_batches[idx])
+            batch.append(all_batches[start+idx])
         return batch
+
 
     def __pad(self, seq, element, length):
 

@@ -4,6 +4,9 @@ class MODEL_NAME:
 
 class CONF_TAGS:
 
+    #developer arguments
+    DEBUG = "debug"
+
     #architecture arguments
     EMBEDS_SIZE = "embed_size"
     NHIDDEN="nhidden"

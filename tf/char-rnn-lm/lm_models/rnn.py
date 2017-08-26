@@ -51,6 +51,7 @@ class RNN:
         with tf.variable_scope("Loss"):
             self.losses = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits[:-1], labels=tf.reshape(self.x_input, [-1])[1:])
             self.loss = tf.reduce_mean(self.losses)
+            self.ppl = tf.exp(self.loss)
 
         if config[lm_constants.CONF_TAGS.SAT_SATGE] == lm_constants.SAT_SATGES.TRAIN_SAT:
             var_list=[]

@@ -31,13 +31,13 @@ cp $train_labels $tmpdir/labels.tr
 cp $cv_labels $tmpdir/labels.cv
 
 
-if [ $continue_ckpt != "" ]; then
+if [ "$continue_ckpt" != "" ]; then
     continue_ckpt="--continue_ckpt $continue_ckpt"
 else
     continue_ckpt=""
 fi
 
-if [ $import_config != "" ]; then
+if [ "$import_config" != "" ]; then
     import_config="--import_config $import_config"
 else
     import_config=""

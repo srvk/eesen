@@ -80,7 +80,11 @@ class RNN:
 
             with tf.variable_scope(lm_constants.SCOPES.SPEAKER_ADAPTAION):
                 if(config[lm_constants.CONF_TAGS.SAT_SATGE] == lm_constants.SAT_SATGES.CONCAT):
-                    return tf.concat(input_feats, sat_input)
+
+                    #sat_input.set_shape([None, input_feats.get_shape()[1], config[lm_constants.CONF_TAGS.SAT_FEAT_DIM]])
+                    sat_input = tf.tile(sat_input, tf.stack([1, tf.shape(input_feats)[1], 1]))
+
+                    return tf.concat([input_feats, sat_input], 2)
 
                 elif(config[lm_constants.CONF_TAGS.SAT_SATGE] == lm_constants.SAT_SATGES.FUSE):
                     with tf.variable_scope(lm_constants.SCOPES.SAT_FUSE):

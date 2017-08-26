@@ -104,6 +104,8 @@ def createConfig(args):
         print("exiting...")
         sys.exit()
 
+    check_and_gen_sat_config(args, config)
+
     return config
 
 def check_and_gen_sat_config(args, config):
@@ -140,8 +142,6 @@ def main():
     config = createConfig(args)
 
 
-
-
     print("about to train with the following configuration:")
     print(80 * "-")
     for key, element in config.items():
@@ -174,13 +174,13 @@ def main():
     config[lm_constants.CONF_TAGS.NUM_TARGETS] = tr_x.get_num_diff_labels()
 
     if config[lm_constants.CONF_TAGS.SAT_SATGE] != lm_constants.SAT_SATGES.UNADAPTED:
-        print("reading cv_x...")
+        print("reading sat...")
         print(80 * "-")
 
-        tr_sat_path_file = os.path.join(config[lm_constants.CONF_TAGS.DATA_DIR], lm_constants.FILE_NAMES.TR_SAT)
+        tr_sat_path_file = os.path.join(config[lm_constants.CONF_TAGS.DATA_DIR], lm_constants.FILE_NAMES.SAT)
         tr_sat = FeatsReaderKaldi(tr_sat_path_file, tr_x.get_uttid())
 
-        cv_sat_path_file = os.path.join(config[lm_constants.CONF_TAGS.DATA_DIR], lm_constants.FILE_NAMES.CV_SAT)
+        cv_sat_path_file = os.path.join(config[lm_constants.CONF_TAGS.DATA_DIR], lm_constants.FILE_NAMES.SAT)
         cv_sat = FeatsReaderKaldi(cv_sat_path_file, cv_x.get_uttid())
 
         config[lm_constants.CONF_TAGS.SAT_FEAT_DIM] = int(tr_sat.get_feat_dim())

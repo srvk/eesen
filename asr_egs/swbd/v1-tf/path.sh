@@ -68,7 +68,10 @@ elif [[ `uname -n` =~ islpc* ]]; then
 
   unset CUDA_VISIBLE_DEVICES
   unset GPU_DEVICE_ORDINAL
-  kill -9 $(lsof -n -w -t /dev/nvidia0)
+
+  if [ "$(lsof -n -w -t /dev/nvidia0)" != "" ]; then
+  	kill -9 $(lsof -n -w -t /dev/nvidia0)
+  fi
 
 else
   # CMU Rocks cluster
@@ -101,9 +104,10 @@ else
   #source activate tensorflow_gpu_1_0
   export PATH=/data/ASR5/ramons_2/tools/anaconda2/bin:$PATH
   source activate tensorflow_gpu_1_2
-  kill -9 $(lsof -n -w -t /dev/nvidia`qstat -n $PBS_JOBID|awk 'END {split ($NF, a, "/"); printf ("%s\n", a[2])}'`)
 
-
+  if [ "$(lsof -n -w -t /dev/nvidia`qstat -n $PBS_JOBID|awk 'END {split ($NF, a, "/"); printf ("%s\n", a[2])}'`)" != "" ]; then
+    kill -9 $(lsof -n -w -t /dev/nvidia`qstat -n $PBS_JOBID|awk 'END {split ($NF, a, "/"); printf ("%s\n", a[2])}'`)
+  fi
 
 fi
 

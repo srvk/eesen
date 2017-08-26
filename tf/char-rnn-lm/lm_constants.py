@@ -50,8 +50,7 @@ class FILE_NAMES:
     TR_X = "labels.tr"
     CV_X = "labels.cv"
 
-    TR_SAT = "train_local_sat.scp"
-    CV_SAT = "cv_local_sat.scp"
+    SAT = "sat_local.scp"
 
 class SAT_SATGES:
     UNADAPTED = "non_adapted"

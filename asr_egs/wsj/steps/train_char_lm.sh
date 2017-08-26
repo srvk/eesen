@@ -18,12 +18,15 @@ train_labels=
 cv_labels=
 continue_ckpt=
 
-learn_rate=0.02
-batch_size=16
+concat_sat=
+learn_rate=0
+batch_size=0
 
 max_iters=25
 
 do_shuf=true
+
+debug=
 
 . utils/parse_options.sh || exit 1;
 
@@ -43,7 +46,22 @@ else
     import_config=""
 fi
 
+if [ "$debug" != "" ]; then
+    debug=--debug
+else
+    debug=""
+fi
+
+if [ "$concat_sat" != "" ]; then
+    cat $concat_sat | /data/ASR5/ramons_2/sinbad_projects/eesen/src/featbin/copy-feats ark,t:- ark,scp:$tmpdir/sat_local.ark,$tmpdir/sat_local.scp
+
+    import_config="--concat_sat"
+else
+    import_config=""
+fi
+
+
 $train_tool --lr_rate $learn_rate --batch_size $batch_size \
     --nhidden $nhidden --nlayer $nlayer --nembed $nembed --nepoch $nepoch \
-    --data_dir $tmpdir --train_dir $train_dir --optimizer Adam \
-    --units_file $units_file $continue_ckpt $import_config || exit 1;
+    --data_dir $tmpdir $debug --train_dir $train_dir --optimizer Adam \
+    --units_file $units_file $continue_ckpt $import_config $concat_sat || exit 1;

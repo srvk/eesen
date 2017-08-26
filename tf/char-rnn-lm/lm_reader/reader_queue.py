@@ -19,7 +19,7 @@ def run_reader_queue(queue, reader_x, do_debug, do_shuf, reader_sat=None):
         else:
             queue.put((length, x))
 
-        if(count > 10 and do_debug):
+        if(count > 1000 and do_debug):
             break
         count += 1
 

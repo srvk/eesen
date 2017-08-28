@@ -37,7 +37,11 @@ class CONF_TAGS:
     SAT_CONF="sat_conf"
     SAT_SATGE="sat_stage"
     NUM_SAT_LAYERS="num_sat_layers"
-    SAT_FEAT_DIM="sat_feat_dim"
+    NUM_SAT_DIM="sat_feat_dim"
+
+class CONFIG_TAGS_TEST:
+    LM_CKPT = "lm_cpkt"
+
 
 #names
 class DEFAULT_NAMES:
@@ -65,6 +69,8 @@ class SCOPES:
     SAT_SHIFT = "sat_shift"
     OUTPUT = "output_layers"
 
-
+class OPTIMIZERS:
+    ADAM="adam"
+    SDG="sdg"
 
 

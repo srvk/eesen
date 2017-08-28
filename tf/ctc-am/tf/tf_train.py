@@ -151,7 +151,7 @@ class Train():
             print("changing tr_x sources...")
             print(80 * "-")
             #get a random folder of all previously provided
-            m_tr_x.change_source(new_src, language_id)
+            m_tr_x.change_source(dic_sources)
 
             #reorganize sat lm_reader (augmentation might change the order)
             if m_tr_sat:
@@ -164,8 +164,8 @@ class Train():
             #reorganize label lm_reader (augmentation might change the order)
             m_tr_y.update_batches_id(m_tr_x.get_batches_id())
         else:
-
             print("augmentation is not needed.")
+
     print(80 * "-")
 
     def __check_needed_mix_augmentation(self, tr_x):
@@ -225,7 +225,6 @@ class Train():
                                                        self.__model.ters[index_correct_lan],
                                                        self.__model.opt[index_correct_lan]],
                                                       feed)
-
 
             #updating values...
             self.__update_counters(train_ters, train_cost, ntrain, ntr_labels, batch_ters, batch_cost, batch_size, data[1])

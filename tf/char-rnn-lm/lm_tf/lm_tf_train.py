@@ -186,7 +186,7 @@ def generate_logs(config, cv_cost, ncv, ncv_w, train_cost, ntrain, ntrain_w, epo
 
         print("Epoch %d finished in %.0f minutes, learning rate: %.4g (%s)" % (epoch, (time.time() - tic)/60.0, lr_rate, config[lm_constants.CONF_TAGS.OPTIMIZER]))
         fp.write("Time: %.0f minutes, lrate: %.4g\n" % ((time.time() - tic)/60.0, lr_rate))
-        print("\t\t Train cost: %.1f, ppl: %.1f, #examples: %d, #tokens: %d\n" % (train_cost/ntrain_w, math.exp(train_cost/ntrain_w), ntrain, ntrain_w))
-        print("\t\t Validate cost: %.1f, ppl: %.1f, #examples: %d, #tokens: %d\n" % (cv_cost/ncv_w, math.exp(cv_cost/ncv_w), ncv, ncv_w))
-        fp.write("\t\tTrain cost: %.1f, ppl: %.1f, #examples: %d, #tokens: %d\n" % (train_cost/ntrain_w, math.exp(train_cost/ntrain_w), ntrain, ntrain_w))
-        fp.write("\t\tValidate cost: %.1f, ppl: %.1f, #examples: %d #tokens: %d\n" % (cv_cost/ncv_w, math.exp(cv_cost/ncv_w), ncv, ncv_w))
+        print("\t\t Train cost: %.3f, ppl: %.3f, #examples: %d, #tokens: %d\n" % (train_cost/ntrain_w, math.exp(train_cost/ntrain_w), ntrain, ntrain_w))
+        print("\t\t Validate cost: %.3f, ppl: %.3f, #examples: %d, #tokens: %d\n" % (cv_cost/ncv_w, math.exp(cv_cost/ncv_w), ncv, ncv_w))
+        fp.write("\t\tTrain cost: %.3f, ppl: %.3f, #examples: %d, #tokens: %d\n" % (train_cost/ntrain_w, math.exp(train_cost/ntrain_w), ntrain, ntrain_w))
+        fp.write("\t\tValidate cost: %.3f, ppl: %.3f, #examples: %d #tokens: %d\n" % (cv_cost/ncv_w, math.exp(cv_cost/ncv_w), ncv, ncv_w))

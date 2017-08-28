@@ -112,7 +112,7 @@ def check_paths(args):
         sys.exit()
 
     if not os.path.exists(args.trained_weights+".index"):
-        print("Error: eval_weights does not correspond to a valid path: "+args.eval_weights)
+        print("Error: eval_weights does not correspond to a valid path: "+args.trained_weights)
         print(debug.get_debug_info())
         print("exiting...")
         sys.exit()

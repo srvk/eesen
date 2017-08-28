@@ -23,8 +23,6 @@ def mainParser():
     parser.add_argument('--data_dir', help = "train data loc")
     parser.add_argument('--train_dir', help = "directory where logs and weights will be stored")
 
-    parser.add_argument('--units_file', help = "units.txt file")
-
     parser.add_argument('--lexicon_file', default = "./data/lexicon_char_system.txt", help = "lexicon data loc")
     parser.add_argument('--nepoch', default = 20, type=int, help='#epoch')
 
@@ -51,8 +49,9 @@ def mainParser():
     parser.add_argument('--concat_sat', default = False, help='apply and train a sat layer')
     parser.add_argument('--fuse_sat', default = False, help='apply and train a sat layer')
     parser.add_argument('--num_sat_layers', default = 2, type=int, help='number of sat layers for sat module')
+    parser.add_argument('--num_sat_dim', default = 100, type=int, help='number of sat layers for sat module')
 
-
+    #model
     parser.add_argument('--model', default = "rnn", help='number of sat layers for sat module')
 
     return parser
@@ -80,12 +79,14 @@ def createConfig(args):
     lm_constants.CONF_TAGS.IMPORTED_CONFIG : args.import_config,
 
     lm_constants.CONF_TAGS.DO_SHUF : args.do_shuf,
-    lm_constants.CONF_TAGS.NUM_SAT_LAYERS : args.num_sat_layers,
     lm_constants.CONF_TAGS.DATA_DIR : args.data_dir,
     lm_constants.CONF_TAGS.RANDOM_SEED : 15213,
     lm_constants.CONF_TAGS.MODEL : args.model,
 
     lm_constants.CONF_TAGS.DEBUG : args.debug,
+
+    lm_constants.CONF_TAGS.NUM_SAT_LAYERS : args.num_sat_layers,
+    lm_constants.CONF_TAGS.NUM_SAT_DIM : args.num_sat_dim,
 
     }
 

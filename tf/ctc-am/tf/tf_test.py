@@ -51,6 +51,8 @@ class Test():
             process, data_queue, test_x = self.__generate_queue(config, data)
             process.start()
 
+            start_time = time.time()
+
             while True:
 
                 data = data_queue.get()
@@ -72,10 +74,6 @@ class Test():
                 elif(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER] and not config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
                     batch_soft_probs, batch_log_soft_probs, batch_seq_len, batch_logits, batch_ters, batch_cost = \
                         sess.run(request_list, feed)
-                    print("")
-                    print(batch_id)
-                    print(batch_ters[0][0]/batch_seq_len[0])
-                    print("")
 
                 elif(not config[constants.CONFIG_TAGS_TEST.COMPUTE_TER] and config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
                     batch_soft_probs, batch_log_soft_probs, batch_seq_len, batch_logits, batch_log_likes= \
@@ -112,7 +110,7 @@ class Test():
                         test_ters[language_id][target_id] = cv_ter/float(ntest_labels[language_id][target_id])
 
 
-                self.__print_logs(config, test_costs, test_ters, ntest)
+                self.__print_logs(config, test_costs, test_ters, ntest, start_time)
 
             if(config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF][constants.AUGMENTATION.SUBSAMPLING] > 0):
 
@@ -293,11 +291,13 @@ class Test():
 
         return soft_probs, log_soft_probs, log_likes, logits, batches_id
 
-    def __print_logs(self, config, test_cost, test_ters, ntest):
+    def __print_logs(self, config, test_cost, test_ters, ntest, tic):
 
+        print("Test time: %.0f minutes\n" % ((time.time() - tic)/60.0))
         for language_id, target_scheme in test_ters.iteritems():
             if(len(test_ters) > 1):
                 fp = open(os.path.join(config[constants.CONFIG_TAGS_TEST.RESULTS_DIR],"test.log"), "w")
+                fp.write("Test time: %.0f minutes\n" % ((time.time() - tic)/60.0))
                 print("Language: "+language_id)
                 fp.write("Language: "+language_id)
 

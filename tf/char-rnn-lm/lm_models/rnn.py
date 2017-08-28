@@ -1,5 +1,7 @@
 import tensorflow as tf
 import lm_constants
+import sys
+from lm_utils.lm_fileutils import debug
 
 class RNN:
     def __init__(self,config):
@@ -62,18 +64,23 @@ class RNN:
             var_list=[v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
 
 
-        if config['optimizer'] == 'Adam':
+        if config[lm_constants.CONF_TAGS.OPTIMIZER] == lm_constants.OPTIMIZERS.ADAM:
 
             if(lr_rate==0):
                 self.optimizer = tf.train.AdamOptimizer().minimize(self.loss, var_list=var_list)
             else:
                 self.optimizer = tf.train.AdamOptimizer(epsilon=lr_rate).minimize(self.loss, var_list=var_list)
 
-        elif config['optimizer'] == 'SGD':
+        elif config[lm_constants.CONF_TAGS.OPTIMIZER] ==  lm_constants.OPTIMIZERS.SDG:
             if(lr_rate==0):
-                self.optimizer = tf.train.GradientDescentOptimizer().minimize(self.loss, var_list=var_list)
+                self.optimizer = tf.train.GradientDescentOptimizer(lr_rate).minimize(self.loss, var_list=var_list)
             else:
                 self.optimizer = tf.train.GradientDescentOptimizer(lr_rate).minimize(self.loss, var_list=var_list)
+        else:
+            print("invalid optimizer id: "+config[lm_constants.CONF_TAGS.OPTIMIZER])
+            print(debug.get_debug_info())
+            print("exiting...")
+            sys.exit()
 
 
     def my_sat_module(self, input_feats, sat_input, config):
@@ -88,7 +95,12 @@ class RNN:
 
                 elif(config[lm_constants.CONF_TAGS.SAT_SATGE] == lm_constants.SAT_SATGES.FUSE):
                     with tf.variable_scope(lm_constants.SCOPES.SAT_FUSE):
-                        print("not yet implemented")
+                        sat_input = tf.tile(sat_input, tf.stack([1, tf.shape(input_feats)[1], 1]))
+                        outputs = tf.concat([input_feats, sat_input], 2)
+                        for i in range(config[lm_constants.CONF_TAGS.NUM_SAT_LAYERS]-1):
+                            outputs = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = config[lm_constants.CONF_TAGS.SAT_FEAT_DIM])
+                        outputs = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = config[lm_constants.CONF_TAGS.EMBEDS_SIZE])
+                        return outputs
 
                 else:
                     outputs=sat_input

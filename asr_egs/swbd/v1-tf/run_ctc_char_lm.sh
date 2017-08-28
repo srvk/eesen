@@ -111,8 +111,10 @@ if [ $stage -le 4 ]; then
   embed_size=120   # dimension of the input features; we will use 40-dimensional fbanks with deltas and double deltas
   lstm_layer_num=2     # number of LSTM layers
   lstm_cell_dim=320    # number of memory cells in every LSTM layer
+  batch_size=32
+  optimizer="adam"
 
-  dir=exp_110h/tain_lm_char_l${lstm_layer_num}_c${lstm_cell_dim}_e${embed_size}/
+  dir=exp_110h/tain_lm_char_l${lstm_layer_num}_c${lstm_cell_dim}_e${embed_size}_o${optimizer}/
 
   mkdir -p $dir
   mkdir -p ./data/local/dict_char_lm/
@@ -129,11 +131,14 @@ if [ $stage -le 5 ]; then
   echo "             Char RNN LM Training with the Full Set                "
   echo =====================================================================
 
-  embed_size=120   # dimension of the input features; we will use 40-dimensional fbanks with deltas and double deltas
+  embed_size=64   # dimension of the input features; we will use 40-dimensional fbanks with deltas and double deltas
+  batch_size=32
+  drop_out=0.5
   lstm_layer_num=1     # number of LSTM layers
-  lstm_cell_dim=320    # number of memory cells in every LSTM layer
+  lstm_cell_dim=1024    # number of memory cells in every LSTM layer
+  optimizer="adam"    # number of memory cells in every LSTM layer
 
-  dir=exp/train_lm_char_l${lstm_layer_num}_c${lstm_cell_dim}_e${embed_size}/
+  dir=exp/train_lm_char_l${lstm_layer_num}_c${lstm_cell_dim}_e${embed_size}_d${drop_out}_o${optimizer}/
 
   mkdir -p $dir
   mkdir -p ./data/local/dict_char_lm/
@@ -154,25 +159,28 @@ if [ $stage -le 5 ]; then
   echo training with normal swbd text...
   echo ""
 
-  ./steps/train_char_lm.sh --train_dir $dir --units_file data/local/dict_char_lm/units.txt --nembed $embed_size --nlayer $lstm_layer_num --nhidden $lstm_cell_dim --batch_size 32 --nepoch 10 --train_labels $dir/labels.tr --cv_labels $dir/labels.cv
+  ./steps/train_char_lm.sh --train_dir $dir --nembed $embed_size --nlayer $lstm_layer_num --nhidden $lstm_cell_dim --batch_size $batch_size --nepoch 100 --train_labels $dir/labels.tr --cv_labels $dir/labels.cv --drop_out $drop_out --optimizer ${optimizer}
+
+
+  exit
 
   echo ""
   echo generating fisher_data...
   echo ""
 
-  ./local/swbd1_create_fisher_text.sh ./data/fisher/ $fisher_dir_a $fisher_dir_b data/local/dict_char_lm/units.txt
+  #./local/swbd1_create_fisher_text.sh ./data/fisher/ $fisher_dir_a $fisher_dir_b data/local/dict_char_lm/units.txt
 
   echo ""
   echo creating labels files from fisher...
   echo ""
 
-  python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/fisher/text --input_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.fisher --lm
+  #python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/fisher/text --input_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.fisher --lm
 
   echo ""
   echo fine tunning with fisher data...
   echo ""
 
-  ./steps/train_char_lm.sh --train_dir $dir --units_file data/local/dict_char_lm/units.txt --nembed $embed_size --nlayer $lstm_layer_num --nhidden $lstm_cell_dim --batch_size 32 --nepoch 20 --train_labels $dir/labels.fisher --cv_labels $dir/labels.cv --continue_ckpt $dir/model/epoch22.ckpt --import_config $dir/model/config.pkl
+  #./steps/train_char_lm.sh --train_dir $dir --units_file data/local/dict_char_lm/units.txt --nembed $embed_size --nlayer $lstm_layer_num --nhidden $lstm_cell_dim --batch_size 64 --nepoch 20 --train_labels $dir/labels.fisher --cv_labels $dir/labels.cv --continue_ckpt $dir/model/epoch22.ckpt --import_config $dir/model/config.pkl --drop_out 0.3
 
 fi
 

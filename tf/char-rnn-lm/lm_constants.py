@@ -2,6 +2,9 @@ class MODEL_NAME:
     RNN="rnn"
     CNN_RNN="cnn_rnn"
 
+class SPECIAL_CARACTERS:
+    SPACE=" "
+
 class CONF_TAGS:
 
     #developer arguments
@@ -40,8 +43,25 @@ class CONF_TAGS:
     NUM_SAT_DIM="sat_feat_dim"
 
 class CONFIG_TAGS_TEST:
-    LM_CKPT = "lm_cpkt"
+    #io options
+    RESULTS_FILENAME="results_filename"
+    DATA_DIR="data_dir"
 
+    #previous models options
+    LM_CKPT = "lm_cpkt"
+    TRAIN_CONFIG="train_config"
+
+    #output options
+    BEAM_SIZE = "beam_size"
+    INSERTION_BONUS = "insertion_bonus"
+    GEN_PRIORS = "gen_priors"
+    NBEST_OUTPUT = "nbest_output"
+
+    #decoding options
+    BATCH_SIZE="batch_size"
+    TEMPERATURE="temperature"
+    USE_PRIORS="use_priors"
+    COMPUTE_TER="compute_ter"
 
 #names
 class DEFAULT_NAMES:

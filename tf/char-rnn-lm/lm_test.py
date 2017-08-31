@@ -1,9 +1,12 @@
 #coding: utf-8
 from __future__ import print_function
+from lm_utils.lm_fileutils import debug
+import numpy as np
 import lm_constants
 import argparse
 import math
-import numpy as np
+import os
+import sys
 
 def main_parser():
     #TODO add option to not get .arks and only ter
@@ -12,6 +15,8 @@ def main_parser():
     #io options
     parser.add_argument('--data_dir', default = "", help = "like data_dir for training script")
     parser.add_argument('--results_filename', help="where the results (in CTM format will be written)")
+    parser.add_argument('--units_file', help = "like data_dir for training script")
+    parser.add_argument('--lexicon', default = "", help = "giving lexicon will add close vocabulary behaviour to the model")
 
     #previous models options
     parser.add_argument('--lm_cpkt', help="weight file for lm model")
@@ -34,35 +39,52 @@ def main_parser():
     return parser
 
 
+def create_test_config(args):
+
+    config = {
+
+        #io options
+        lm_constants.CONFIG_TAGS_TEST.DATA_DIR : args.data_dir,
+        lm_constants.CONFIG_TAGS_TEST.RESULTS_FILENAME : args.resuls_filename,
+
+        #computing options
+        lm_constants.CONFIG_TAGS_TEST.LM_CKPT : args.lm_cpkt,
+        lm_constants.CONFIG_TAGS_TEST.BEAM_SIZE : args.beam_size,
+        lm_constants.CONFIG_TAGS_TEST.INSERTION_BONUS: args.insertion_bonus,
+        lm_constants.CONFIG_TAGS_TEST.GEN_PRIORS: args.gen_priors,
+        lm_constants.CONFIG_TAGS_TEST.NBEST_OUTPUT: args.n_best_output,
+
+
+    }
+
+    return config
+
+def get_units(units_path):
+    units_dic={}
+
+    if(os.path.isfile(units_path)):
+        with open(units_path, 'r') as input:
+            for line in input:
+                units_dic[line.split()[0]]=line.split()[1]
+    else:
+        print("Path to units txt does not exist")
+        print(debug.get_debug_info())
+        print("exiting...")
+        sys.exit()
+
+    return units_dic
 
 
 
 if __name__ == "__main__":
+
     parser = main_parser()
     args = parser.parse_args()
-    config = createConfig(args)
-    config, lex_dict = prep_data(config)
+    config = create_test_config(args)
 
-    #print(config)
-    # pdb.set_trace()
-    # util_model = lm_util(config)
-    lm_function = lm_util(config).get_prob
-    w2i = config['w2i']
 
-    # hacky
 
-    expansion_characters = [u' ']
 
-    # create map from integer to char
-    id_to_char = {BLANK_ID: BLANK}
-    filename = pickle.load(open('data/units.pkl','rb'))
-    rev_filename = {j:k for k,j in filename.iteritems()}
-    for line in rev_filename:
-        # lin = line.decode('UTF-8')
-        if rev_filename[line] != ' ' and rev_filename[line] !='<s>' :
-            id_to_char[line] = rev_filename[line]
-        #id_to_char[int(l[1])] = l[0]
-    # invert dict
     char_to_id = {v: k for k, v in id_to_char.items()}
     print(id_to_char)
     #pdb.set_trace()
@@ -75,8 +97,12 @@ if __name__ == "__main__":
     candidates.sort()
     ch_to_id = {}
 
+
     for i in range(len(candidates)) :
         ch_to_id[id_to_char[candidates[i]]] = i
+
+    #######################################
+
     id_to_ch = {v: k for k, v in ch_to_id.items()}
     #pdb.set_trace()
     trie = Trie()
@@ -87,16 +113,6 @@ if __name__ == "__main__":
     # pdb.set_trace()
 
 
-    def decode(mat):
-        # sanity check
-        check_sum = 0.0
-        for x in mat[0]:
-            check_sum += math.exp(x)
-        # pdb.set_trace()
-        assert abs(1.0 - check_sum) < 0.01
-
-        beam = beam_search(mat, lm_function, ch_to_id, config['insertionBonus'], config['lmWeight'], config['beamSize'], trie, expansion_chars=expansion_characters)
-        return beam
 
     print("DECODING FOR: {}\n".format(config['arkFile']))
     arc_file = kaldi_io.read_mat_ark(config['arkFile'])

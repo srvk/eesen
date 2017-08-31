@@ -15,6 +15,9 @@ def main_parser():
     parser.add_argument('--output_units', default="", help = "path to out units (optional)")
     parser.add_argument('--lm', default = False, action='store_true', help='are we working for LM?')
 
+    parser.add_argument('--lower_case', default = False, action='store_true', help='change to lower case')
+    parser.add_argument('--upper_case', default = False, action='store_true', help='change to upper case')
+
     return parser
 
 def create_config(args):
@@ -23,7 +26,9 @@ def create_config(args):
         "input_units": args.input_units,
         "output_units": args.output_units,
         "output_labels": args.output_labels,
-        "is_lm": args.lm
+        "is_lm": args.lm,
+        "lower_case":args.lower_case,
+        "upper_case":args.upper_case,
     }
     return config
 
@@ -51,7 +56,17 @@ def generate_labels_am(text_path, units_dict, output_labels_path):
                         new_line += " " + str(units_dict[letter])
             output_labels.write(new_line+"\n")
 
-def generate_labels_lm(text_path, units_dict, output_labels_path):
+def process_string(config, string):
+
+        if(config["lower_case"] and not config["upper_case"]):
+            string = string.lower()
+
+        elif(config["upper_case"] and not config["lower_case"]):
+            string = string.upper()
+
+        return string
+
+def generate_labels_lm(config, text_path, units_dict, output_labels_path):
 
     with open(text_path,"r") as input_text, open(output_labels_path,"w") as output_labels:
         for line in input_text:
@@ -62,6 +77,8 @@ def generate_labels_lm(text_path, units_dict, output_labels_path):
                     if(word in units_dict):
                         new_line += " " + str(units_dict[word]) + " " + str(units_dict[SPACE])
                 else:
+                    if(config["upper_case"] or config["lower_case"]):
+                        word = process_string(config, word)
                     for letter in word:
                         if(letter in units_dict):
                             new_line += " " + str(units_dict[letter])
@@ -69,17 +86,20 @@ def generate_labels_lm(text_path, units_dict, output_labels_path):
             new_line=new_line[:-len(str(units_dict[SPACE]))] + str(units_dict[EOS])
             output_labels.write(new_line+"\n")
 
-def generate_units_am(text_path, output_units_path):
+def generate_units_am(config, text_path, output_units_path):
     dict_untisid={}
     count_id = 1
     with open(text_path,"r") as input_text, open(output_units_path,"w") as output_labels:
         for line in input_text:
+
             for word in  line.split()[1:]:
                 if(("[" in word) and ("]" in word)):
                     if(word not in dict_untisid):
                         dict_untisid[word]=count_id
                         count_id+=1
                 else:
+                    if (config["lower_case"] or config["upper case"]):
+                        word = process_string(config, word)
                     for letter in word:
                         if(letter not in dict_untisid):
                             dict_untisid[letter]=count_id
@@ -91,7 +111,7 @@ def generate_units_am(text_path, output_units_path):
 
     return dict_untisid
 
-def generate_units_lm(input_units_path, output_units_path):
+def generate_units_lm(config, input_units_path, output_units_path):
 
     units_dict={}
 
@@ -147,15 +167,15 @@ if(not gen_units):
     dict_units = get_units(config["input_units"])
 else:
     if(config["is_lm"]):
-        dict_units = generate_units_lm(config["input_units"], config["output_units"])
+        dict_units = generate_units_lm(config, config["input_units"], config["output_units"])
     else:
-        dict_units = generate_units_am(config["text_file"], config["output_units"])
+        dict_units = generate_units_am(config, config["text_file"], config["output_units"])
 
 
 if(config["is_lm"]):
-    generate_labels_lm(config["text_file"], dict_units, config["output_labels"])
+    generate_labels_lm(config, config["text_file"], dict_units, config["output_labels"])
 else:
-    generate_labels_am(config["text_file"], dict_units, config["output_labels"])
+    generate_labels_am(config, config["text_file"], dict_units, config["output_labels"])
 
 
 

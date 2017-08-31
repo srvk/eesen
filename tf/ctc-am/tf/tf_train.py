@@ -51,14 +51,17 @@ class Train():
             lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
 
             if(alpha > 0):
-                lr_rate = self.__compute_new_lr_rate(alpha)
-
+                if(self.__config[constants.CONF_TAGS.FORCE_LR_EPOCH_CKPT]):
+                    lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
+                    alpha=0
+                else:
+                    lr_rate = self.__compute_new_lr_rate(alpha)
 
             for epoch in range(alpha, self.__config[constants.CONF_TAGS.NEPOCH]):
 
                 #log start
                 print(80 * "-")
-                print("Epoch "+str(epoch)+" starting ...")
+                print("Epoch "+str(epoch)+" starting ... ( lr_rat: "+str(lr_rate)+")")
                 print(80 * "-")
 
                 #start timer...
@@ -101,7 +104,11 @@ class Train():
 
         if epoch > self.__config["half_after"]:
             diff_epoch= epoch - self.__config[constants.CONF_TAGS.HALF_AFTER]
-            result = self.__config["lr_rate"] * (self.__config[constants.CONF_TAGS.HALF_RATE] ** ((diff_epoch) // self.__config[constants.CONF_TAGS.HALF_PERIOD]))
+            print(diff_epoch)
+            result = self.__config["lr_rate"] * (self.__config[constants.CONF_TAGS.HALF_RATE] ** (diff_epoch))
+
+            #new_lr_rate = self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"]) // self.__config["half_period"]))
+
             return result
 
         else:
@@ -114,7 +121,6 @@ class Train():
         avg_ters = self.__compute_avg_ters(cv_ters)
 
         if epoch > self.__config["half_after"]:
-
 
             new_lr_rate = self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"]) // self.__config["half_period"]))
 
@@ -363,18 +369,31 @@ class Train():
                 #lets track all the variables again...
                 saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH])
                 alpha = int(re.match(".*epoch([-+]?\d+).ckpt", self.__config[constants.CONF_TAGS.CONTINUE_CKPT]).groups()[0])
+                alpha += 1
 
             else:
 
-                print("total restoring....")
-                print("var list:")
-                for var in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES):
-                    print(var.name)
+                vars_to_load=[]
+                if(self.__config[constants.CONF_TAGS.DIFF_NUM_TARGET_CKPT]):
+                    print("partial restoring....")
+                    print("var list:")
+                    for var in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES):
+                        if(constants.SCOPES.OUTPUT not in var.name):
+                            vars_to_load.append(var)
+                else:
+                    print("total restoring....")
+                    print("var list:")
+                    for var in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES):
+                        vars_to_load.append(var)
 
-                saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH])
+                for var in vars_to_load:
+                    print(var)
+
+                saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH], var_list=vars_to_load)
                 saver.restore(self.__sess, self.__config[constants.CONF_TAGS.CONTINUE_CKPT])
 
                 alpha = int(re.match(".*epoch([-+]?\d+).ckpt", self.__config[constants.CONF_TAGS.CONTINUE_CKPT]).groups()[0])
+                alpha += 1
 
             print(80 * "-")
         else:
@@ -387,7 +406,7 @@ class Train():
 
         self.__info("Epoch %d finished in %.0f minutes, learning rate: %.4g" % (epoch, (time.time() - tic)/60.0, lr_rate))
 
-        with open("%s/epoch%02d.log" % (self.__config["model_dir"], epoch + 1), 'w') as fp:
+        with open("%s/epoch%02d.log" % (self.__config["model_dir"], epoch), 'w') as fp:
             fp.write("Time: %.0f minutes, lrate: %.4g\n" % ((time.time() - tic)/60.0, lr_rate))
 
             for language_id, target_scheme in cv_ters.iteritems():

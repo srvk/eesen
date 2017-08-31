@@ -45,9 +45,9 @@ def mainParser():
     parser.add_argument('--no_shuffle', default=True, dest='do_shuf', action='store_false', help='shuf batches before training')
 
     #sat arguments
-    parser.add_argument('--train_sat', default = False, help='apply and train a sat layer')
-    parser.add_argument('--concat_sat', default = False, help='apply and train a sat layer')
-    parser.add_argument('--fuse_sat', default = False, help='apply and train a sat layer')
+    parser.add_argument('--train_sat', default = False, action='store_true', help='apply and train a sat layer')
+    parser.add_argument('--concat_sat', default=False, action='store_true', help='apply and train a sat layer')
+    parser.add_argument('--fuse_sat', default = False, action='store_true', help='apply and train a sat layer')
     parser.add_argument('--num_sat_layers', default = 2, type=int, help='number of sat layers for sat module')
     parser.add_argument('--num_sat_dim', default = 100, type=int, help='number of sat layers for sat module')
 
@@ -137,7 +137,6 @@ def check_and_gen_sat_config(args, config):
 
 def main():
 
-
     parser = mainParser()
     args = parser.parse_args()
     config = createConfig(args)
@@ -184,7 +183,7 @@ def main():
         cv_sat_path_file = os.path.join(config[lm_constants.CONF_TAGS.DATA_DIR], lm_constants.FILE_NAMES.SAT)
         cv_sat = FeatsReaderKaldi(cv_sat_path_file, cv_x.get_uttid())
 
-        config[lm_constants.CONF_TAGS.SAT_FEAT_DIM] = int(tr_sat.get_feat_dim())
+        config[lm_constants.CONF_TAGS.NUM_SAT_DIM] = int(tr_sat.get_feat_dim())
 
         data = (tr_x, cv_x, tr_sat, cv_sat)
 
@@ -200,6 +199,8 @@ def main():
     print("data read.")
     print(80 * "-")
     print(80 * "-")
+    print("about to start training with the following config:")
+    print(config)
     train(data, config)
 
 

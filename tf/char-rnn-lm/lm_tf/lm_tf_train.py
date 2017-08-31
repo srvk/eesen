@@ -16,7 +16,6 @@ import os
 #hide pool alocator warning
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-
 def train(all_readers, config):
 
     tf.set_random_seed(config[lm_constants.CONF_TAGS.RANDOM_SEED])

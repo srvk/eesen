@@ -30,6 +30,16 @@ from reader.sat_reader import sat_reader_factory
 # -----------------------------------------------------------------
 
 def load_prior(prior_path, nclass):
+    """Loads priors to
+
+    Args:
+        prior_path: parth where priors are stores.
+        nclass: number of targets for the priors that we are planing to read.
+
+    Returns:
+        The return value: list with the prior probability of each unit.
+
+    """
     priors = []
 
     print ("loading priors loaded for path: "+(prior_path))

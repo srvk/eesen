@@ -45,6 +45,9 @@ def main_parser():
 
     #io arguments
     parser.add_argument('--continue_ckpt', default = "", help='continue this experiment')
+    parser.add_argument('--diff_num_target_ckpt', default=False, action='store_true', help='change the number of targets after retaking training')
+    parser.add_argument('--force_lr_epoch_ckpt', default=False, action='store_true', help='force to start for epoch 0 with the learning rate specified in flags')
+
     parser.add_argument('--batch_size', default = 32, type=int, help='batch size')
     parser.add_argument('--noshuffle', default=True, dest='do_shuf', action='store_false', help='do not shuffle training samples')
 
@@ -79,6 +82,8 @@ def main_parser():
     #sat arguments
     parser.add_argument('--apply_sat', default = False, action='store_true', help='apply and train a sat layer')
     parser.add_argument('--num_sat_layers', default = 2, type=int, help='number of sat layers for sat module')
+    parser.add_argument('--concat_sat', default=False, action='store_true', help='apply and train a sat layer')
+    parser.add_argument('--fuse_sat', default = False, action='store_true', help='apply and train a sat layer')
 
     return parser
 
@@ -129,6 +134,9 @@ def create_global_config(args):
     config = {
         #general arguments
         constants.CONF_TAGS.CONTINUE_CKPT: args.continue_ckpt,
+        constants.CONF_TAGS.DIFF_NUM_TARGET_CKPT: args.diff_num_target_ckpt,
+        constants.CONF_TAGS.FORCE_LR_EPOCH_CKPT: args.force_lr_epoch_ckpt,
+
         constants.CONF_TAGS.DEBUG: False,
         constants.CONF_TAGS.STORE_MODEL: args.store_model,
         constants.CONF_TAGS.DATA_DIR: args.data_dir,
@@ -214,6 +222,7 @@ def main():
         config = import_config(args)
     else:
         config = create_global_config(args)
+
 
     print(80 * "-")
     print("reading training set")

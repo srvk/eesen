@@ -15,6 +15,9 @@ class SCOPES:
     SPEAKER_ADAPTAION="speaker_adaptation"
     OUTPUT="output_layers"
 
+    SAT_CONCAT="output_layers"
+    SAT_FUSE="output_layers"
+
 #names
 class DEFAULT_NAMES:
     NO_LANGUAGE_NAME = "no_name_language"
@@ -33,6 +36,9 @@ class CONF_TAGS:
 
     #io arguments
     CONTINUE_CKPT="continue_ckpt"
+    DIFF_NUM_TARGET_CKPT="diff_num_target_ckpt"
+    FORCE_LR_EPOCH_CKPT="force_lr_epoch"
+
     BATCH_SIZE="batch_size"
     DO_SHUF="do_shuf"
     ONLINE_AUGMENT_CONF = "online_augment_conf"
@@ -81,6 +87,9 @@ class SAT_SATGES:
     UNADAPTED = "non_adapted"
     TRAIN_SAT = "train_sat"
     FINE_TUNE = "fine_tune"
+
+    CONCAT = "concat"
+    FUSE = "fuse"
 
 class CONFIG_TAGS_TEST:
 

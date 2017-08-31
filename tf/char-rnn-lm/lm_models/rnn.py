@@ -27,7 +27,7 @@ class RNN:
             self.x_embs_drop = tf.nn.dropout(self.x_embs, self.drop_out)
 
         if(config[lm_constants.CONF_TAGS.SAT_SATGE] != lm_constants.SAT_SATGES.UNADAPTED):
-            self.sat_input = tf.placeholder(tf.float32, [None, None, config[lm_constants.CONF_TAGS.SAT_FEAT_DIM]], name="sat_input")
+            self.sat_input = tf.placeholder(tf.float32, [None, None, config[lm_constants.CONF_TAGS.NUM_SAT_DIM]], name="sat_input")
             sat_embs = self.my_sat_module(self.x_embs, self.sat_input, config)
             self.x_embs_drop = tf.nn.dropout(sat_embs, self.drop_out)
 

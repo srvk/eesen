@@ -114,21 +114,65 @@ class DeepBidirRNN:
                     # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs, self.seq_len, dtype = tf.float32)
         return outputs
 
-    def my_sat_layers(self, num_sat_layers, adapt_dim, nfeat, outputs, scope):
+    def my_sat_layers(self, num_sat_layers, adapt_dim, nfeat, outputs):
 
-        with tf.variable_scope(scope):
-            for i in range(num_sat_layers-1):
-                with tf.variable_scope("layer%d" % i):
-                    outputs = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = adapt_dim)
+        for i in range(num_sat_layers-1):
+            with tf.variable_scope("layer%d" % i):
+                outputs = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = adapt_dim)
 
-            with tf.variable_scope("last_sat_layer"):
-                outputs = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = nfeat)
+        with tf.variable_scope("last_sat_layer"):
+            outputs = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = nfeat)
 
         return outputs
+
+
+    def my_sat_module(self, config, input_feats, input_sat):
+
+
+        if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
+                == constants.SAT_SATGES.TRAIN_SAT:
+
+            self.is_trainable_sat=False
+
+        else:
+            self.is_trainable_sat=True
+
+        #SAT
+        with tf.variable_scope(constants.SCOPES.SPEAKER_ADAPTAION):
+
+            if(config[constants.CONF_TAGS.SAT_SATGE] == constants.SAT_SATGES.CONCAT):
+
+                with tf.variable_scope(constants.SCOPES.SAT_CONCAT):
+                    #sat_input.set_shape([None, input_feats.get_shape()[1], config[lm_constants.CONF_TAGS.SAT_FEAT_DIM]])
+                    sat_input = tf.tile(input_sat, tf.stack([1, tf.shape(input_feats)[1], 1]))
+                return tf.concat([input_feats, sat_input], 2)
+
+            elif(config[constants.CONF_TAGS.SAT_SATGE] == constants.SAT_SATGES.FUSE):
+
+                with tf.variable_scope(constants.SCOPES.SAT_FUSE) as scope:
+                    sat_input = tf.tile(input_sat, tf.stack([1, tf.shape(input_feats)[1], 1]))
+                    outputs = tf.concat([input_feats, sat_input], 2)
+
+                    return self.my_sat_layers(config[constants.CONF_TAGS.NUM_SAT_LAYERS],
+                                       config[constants.CONF_TAGS.SAT_FEAT_DIM],
+                                       config[constants.CONF_TAGS.INPUT_FEATS_DIM],
+                                       outputs)
+
+            elif(config[constants.CONF_TAGS.SAT_SATGE] == constants.SAT_SATGES.FINE_TUNE or
+                 config[constants.CONF_TAGS.SAT_SATGE] == constants.SAT_SATGES.TRAIN_SAT):
+
+                    learned_sat = self.my_sat_layers(config[constants.CONF_TAGS.NUM_SAT_LAYERS],
+                                                           config[constants.CONF_TAGS.SAT_FEAT_DIM],
+                                                           config[constants.CONF_TAGS.INPUT_FEATS_DIM],
+                                                           input_sat)
+
+                    return tf.add(input_feats, learned_sat, name="shift")
+
 
     def __init__(self, config):
 
         nfeat = config[constants.CONF_TAGS.INPUT_FEATS_DIM]
+
         nhidden = config[constants.CONF_TAGS.NHIDDEN]
         language_scheme = config[constants.CONF_TAGS.LANGUAGE_SCHEME]
         l2 = config[constants.CONF_TAGS.L2]
@@ -144,14 +188,6 @@ class DeepBidirRNN:
         else:
             self.is_training = True
 
-        if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
-                != constants.SAT_SATGES.UNADAPTED:
-            num_sat_layers = config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.NUM_SAT_LAYERS]
-            adapt_dim = config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_FEAT_DIM]
-            self.is_trainable_sat=False
-
-        else:
-            self.is_trainable_sat=True
 
         try:
             featproj = config["feat_proj"]
@@ -190,22 +226,16 @@ class DeepBidirRNN:
 
         self.seq_len = self.length(self.feats)
 
-        output_size = 2 * nhidden if nproj == 0 else nproj
         batch_size = tf.shape(self.feats)[0]
         outputs = tf.transpose(self.feats, (1, 0, 2), name = "feat_transpose")
 
         if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
                 != constants.SAT_SATGES.UNADAPTED:
-            #SAT
-            with tf.variable_scope(constants.SCOPES.SPEAKER_ADAPTAION):
-                self.sat = tf.placeholder(tf.float32, [None, 1, adapt_dim], name = "sat")
 
-                sat_t=tf.transpose(self.sat, (1, 0, 2), name = "sat_transpose")
+            self.sat = tf.placeholder(tf.float32, [None, 1, config[constants.CONF_TAGS.SAT_FEAT_DIM]], name="sat")
+            sat_t = tf.transpose(self.sat, (1, 0, 2), name="sat_transpose")
 
-                learned_sat = self.my_sat_layers(num_sat_layers, adapt_dim,  nfeat, sat_t, "sat_layers")
-
-                outputs=tf.add(outputs, learned_sat, name="shift")
-
+            outputs = self.my_sat_module(config, outputs, sat_t)
 
         if batch_norm:
             outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)

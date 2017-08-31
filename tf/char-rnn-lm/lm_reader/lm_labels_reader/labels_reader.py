@@ -59,16 +59,17 @@ class LabelsReader(object):
             id_utt=line.split()[0]
             lst=line.split()[1:]
 
-            for char in lst:
+            tmp=[int(i)-1 for i in lst]
+            for char in tmp:
                 if char not in dict_seen_char:
                     dict_seen_char[char]=""
                     self.__num_diff_labels += 1
 
-            tmp=[int(i) for i in lst]
 
             tmp_list.append((len(tmp), id_utt, tmp))
 
-        self.__num_diff_labels += 1
+        #TODO check this if correct
+        #self.__num_diff_labels += 1
 
         tmp_list.sort(key=lambda x: x[0], reverse=True)
 

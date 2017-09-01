@@ -70,6 +70,7 @@ class CONF_TAGS:
     #sat arguments
     SAT_CONF="sat_conf"
     SAT_SATGE="sat_stage"
+    SAT_TYPE = "sat_type"
     NUM_SAT_LAYERS="num_sat_layers"
     SAT_FEAT_DIM="sat_feat_dim"
 
@@ -84,18 +85,18 @@ class LSTM_TYPE:
     NATIVE= "native_lstm"
 
 class SAT_SATGES:
-    UNADAPTED = "non_adapted"
     TRAIN_SAT = "train_sat"
     FINE_TUNE = "fine_tune"
 
+class SAT_TYPE:
     CONCAT = "concat"
-    FUSE = "fuse"
+    SHIFT = "shift"
+    UNADAPTED = "non_adapted"
 
 class CONFIG_TAGS_TEST:
 
 
     TRAIN_CONFIG = "train_config"
-
     PRIORS_SCHEME = "priors_scheme"
 
     #io dir

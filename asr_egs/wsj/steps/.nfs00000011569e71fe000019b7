@@ -23,12 +23,11 @@ nproj=0                  # projection layers, 0 if none
 feat_proj=0              # project features, 0 if none
 norm=false
 
-sat_type=""
-sat_stage=""
-sat_path=""
+concat_sat=""
+fuse_sat=""
 
 # configs for multiple sequences
-batch_size=16          # during training, how many utterances to be processed in parallel
+num_sequence=16          # during training, how many utterances to be processed in parallel
 valid_num_sequence=60    # number of parallel sequences in validation
 
 # learning rate
@@ -269,20 +268,20 @@ if [ -n "$max_iters" ]; then
     max_iters="--nepoch $max_iters"
 fi
 
-if [ "$sat_type" != "" ]; then
-    cat $sat_path | /data/ASR5/ramons_2/sinbad_projects/eesen/src/featbin/copy-feats ark,t:- ark,scp:$tmpdir/sat_local.ark,$tmpdir/sat_local.scp
+if [ "$concat_sat" != "" ]; then
+    cat $concat_sat | /data/ASR5/ramons_2/sinbad_projects/eesen/src/featbin/copy-feats ark,t:- ark,scp:$tmpdir/sat_local.ark,$tmpdir/sat_local.scp
 
-    sat_type="--sat_type $sat_type"
+    concat_sat="--concat_sat"
 else
-    sat_type=""
+    concat_sat=""
 fi
 
-if [ "$sat_stage" != "" ]; then
-    cat $sat_path | /data/ASR5/ramons_2/sinbad_projects/eesen/src/featbin/copy-feats ark,t:- ark,scp:$tmpdir/sat_local.ark,$tmpdir/sat_local.scp
+if [ "$fuse_sat" != "" ]; then
+    cat $fuse_sat | /data/ASR5/ramons_2/sinbad_projects/eesen/src/featbin/copy-feats ark,t:- ark,scp:$tmpdir/sat_local.ark,$tmpdir/sat_local.scp
 
-    sat_stage="--sat_stage $sat_stage"
+    fuse_sat="--fuse_sat"
 else
-    sat_stage=""
+    fuse_sat=""
 fi
 
 
@@ -296,9 +295,9 @@ echo "TRAINING STARTS [$cur_time]"
 # - continuation of training
 # - data mixing in multiple directories
 #
-$train_tool $train_opts --lr_rate $learn_rate --batch_size $batch_size --l2 $l2 \
+$train_tool $train_opts --lr_rate $learn_rate --batch_size $num_sequence --l2 $l2 \
     --nhidden $nhidden --nlayer $nlayer $nproj $feat_proj $ckpt $max_iters \
-    --train_dir $dir --data_dir $tmpdir --half_after $half_after $sat_stage $sat_type --model $model --window $window $norm $continue_ckpt $diff_num_target_ckpt $force_lr_epoch  || exit 1;
+    --train_dir $dir --data_dir $tmpdir --half_after $half_after --model $model --window $window $norm $continue_ckpt $diff_num_target_ckpt $force_lr_epoch  $concat_sat $fuse_sat || exit 1;
 
 ## Done
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`

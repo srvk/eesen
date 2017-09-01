@@ -41,7 +41,7 @@ def get_units(units_path):
 
     return units_dict
 
-def generate_labels_am(text_path, units_dict, output_labels_path):
+def generate_labels_am(config, text_path, units_dict, output_labels_path):
 
     with open(text_path,"r") as input_text, open(output_labels_path,"w") as output_labels:
 
@@ -50,10 +50,14 @@ def generate_labels_am(text_path, units_dict, output_labels_path):
             new_line = utt_id
             for word in  line.split()[1:]:
                 if(("[" in word) and ("]" in word)):
-                    new_line += " " + str(units_dict[word])
+                    if(word in units_dict):
+                        new_line += " " + str(units_dict[word])
                 else:
+                    if(config["upper_case"] or config["lower_case"]):
+                        word = process_string(config, word)
                     for letter in word:
-                        new_line += " " + str(units_dict[letter])
+                        if(letter in units_dict):
+                            new_line += " " + str(units_dict[letter])
             output_labels.write(new_line+"\n")
 
 def process_string(config, string):

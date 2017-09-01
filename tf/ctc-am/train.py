@@ -80,10 +80,9 @@ def main_parser():
     parser.add_argument('--half_after', default = 0, type=int, help='halving becomes enabled after this many epochs')
 
     #sat arguments
-    parser.add_argument('--apply_sat', default = False, action='store_true', help='apply and train a sat layer')
+    parser.add_argument('--sat_type', default = constants.SAT_TYPE.UNADAPTED, help='apply and train a sat layer')
+    parser.add_argument('--sat_stage', default = constants.SAT_SATGES.FINE_TUNE, help='apply and train a sat layer')
     parser.add_argument('--num_sat_layers', default = 2, type=int, help='number of sat layers for sat module')
-    parser.add_argument('--concat_sat', default=False, action='store_true', help='apply and train a sat layer')
-    parser.add_argument('--fuse_sat', default = False, action='store_true', help='apply and train a sat layer')
 
     return parser
 
@@ -91,23 +90,50 @@ def create_sat_config(args, config_imported = None):
 
     sat={}
 
-    if(config_imported):
-        if(args.apply_sat):
-            #this is a inheritance workaround
-            if(constants.CONF_TAGS.SAT_CONF in config_imported):
-                if(config_imported[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] == constants.SAT_SATGES.UNADAPTED):
-                    sat[constants.CONF_TAGS.SAT_SATGE] = constants.SAT_SATGES.TRAIN_SAT
-                elif(config_imported[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] == constants.SAT_SATGES.TRAIN_SAT):
-                    sat[constants.CONF_TAGS.SAT_SATGE] = constants.SAT_SATGES.FINE_TUNE
-                elif(config_imported[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] == constants.SAT_SATGES.FINE_TUNE):
-                    sat[constants.CONF_TAGS.SAT_SATGE] = constants.SAT_SATGES.FINE_TUNE
-            else:
-                sat[constants.CONF_TAGS.SAT_SATGE] = constants.SAT_SATGES.TRAIN_SAT
-        #TODO this should be changed: it should keep the last one (the one given in config imported)
+    if(config_imported and config_imported[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] == constants.SAT_TYPE.UNADAPTED ):
+
+        if(config_imported[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] == constants.SAT_SATGES.UNADAPTED):
+            sat[constants.CONF_TAGS.SAT_SATGE] = constants.SAT_SATGES.TRAIN_SAT
+
+        elif(config_imported[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] == constants.SAT_SATGES.TRAIN_SAT):
+            sat[constants.CONF_TAGS.SAT_SATGE] = constants.SAT_SATGES.FINE_TUNE
+
         else:
-            sat[constants.CONF_TAGS.SAT_SATGE] = constants.SAT_SATGES.UNADAPTED
+            print("this sat stage ("+str(config_imported[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE])+") was not contemplates")
+            print(debug.get_debug_info())
+            print("exiting...")
+            sys.exit()
     else:
-        sat[constants.CONF_TAGS.SAT_SATGE] = constants.SAT_SATGES.UNADAPTED
+        #setting sat stage
+        if(args.sat_type == constants.SAT_TYPE.UNADAPTED):
+            sat[constants.CONF_TAGS.SAT_TYPE] = constants.SAT_TYPE.UNADAPTED
+
+        elif(args.sat_type == constants.SAT_TYPE.CONCAT):
+
+            sat[constants.CONF_TAGS.SAT_TYPE] = constants.SAT_TYPE.CONCAT
+
+        elif(args.sat_type == constants.SAT_TYPE.SHIFT):
+
+            sat[constants.CONF_TAGS.SAT_TYPE] = constants.SAT_TYPE.SHIFT
+
+        else:
+            print("this sat type  ("+str(args.sat_type)+") was not expected")
+            print(debug.get_debug_info())
+            print("exiting...")
+            sys.exit()
+
+
+        if(args.sat_stage == constants.SAT_SATGES.FINE_TUNE):
+            sat[constants.CONF_TAGS.SAT_SATGE] = constants.SAT_SATGES.FINE_TUNE
+
+        elif(args.sat_stage == constants.SAT_SATGES.TRAIN_SAT):
+            sat[constants.CONF_TAGS.SAT_SATGE] = constants.SAT_SATGES.TRAIN_SAT
+
+        else:
+            print("this sat type  ("+str(args.sat_stage)+") was not expected")
+            print(debug.get_debug_info())
+            print("exiting...")
+            sys.exit()
 
     sat[constants.CONF_TAGS.NUM_SAT_LAYERS] = int(args.num_sat_layers)
 
@@ -256,7 +282,7 @@ def main():
     config[constants.CONF_TAGS.INPUT_FEATS_DIM] = cv_x.get_num_dim()
     config[constants.CONF_TAGS.LANGUAGE_SCHEME] = cv_y.get_language_scheme()
 
-    if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] != constants.SAT_SATGES.UNADAPTED:
+    if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] != constants.SAT_TYPE.UNADAPTED:
 
         print(80 * "-")
         print(80 * "-")

@@ -35,8 +35,8 @@ debug=
 #sat
 num_sat_layers=
 num_sat_dim=
-concat_sat=
-fuse_sat=
+concat_sat=""
+fuse_sat=""
 
 . utils/parse_options.sh || exit 1;
 

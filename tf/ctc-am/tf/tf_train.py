@@ -18,6 +18,8 @@ class Train():
         self.__sess = tf.Session()
         self.max_targets_layers = 0
 
+        self.last_mult_lr_rate = 0
+
         for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
                 if(self.max_targets_layers < len(target_scheme)):
                     self.max_targets_layers = len(target_scheme)
@@ -29,7 +31,7 @@ class Train():
             random.seed(self.__config[constants.CONF_TAGS.RANDOM_SEED])
 
             #construct the __model acoring to __config
-            if(self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] != constants.SAT_SATGES.UNADAPTED):
+            if(self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] != constants.SAT_TYPE.UNADAPTED):
                 cv_x, tr_x, cv_y, tr_y, cv_sat, tr_sat = data
             else:
                 cv_x, tr_x, cv_y, tr_y = data
@@ -61,7 +63,7 @@ class Train():
 
                 #log start
                 print(80 * "-")
-                print("Epoch "+str(epoch)+" starting ... ( lr_rat: "+str(lr_rate)+")")
+                print("Epoch "+str(epoch)+" starting ... ( lr_ratee: "+str(lr_rate)+")")
                 print(80 * "-")
 
                 #start timer...
@@ -102,17 +104,18 @@ class Train():
     def __compute_new_lr_rate(self, epoch):
 
 
-        if epoch > self.__config["half_after"]:
-            diff_epoch= epoch - self.__config[constants.CONF_TAGS.HALF_AFTER]
-            print(diff_epoch)
-            result = self.__config["lr_rate"] * (self.__config[constants.CONF_TAGS.HALF_RATE] ** (diff_epoch))
+        if epoch > self.__config[constants.CONF_TAGS.HALF_AFTER]:
+
+            diff_epoch= int(float(epoch + 1) / float(self.__config[constants.CONF_TAGS.HALF_AFTER]))
+
+            result = self.__config[constants.CONF_TAGS.LR_RATE] * (self.__config[constants.CONF_TAGS.HALF_RATE] ** (diff_epoch))
 
             #new_lr_rate = self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"]) // self.__config["half_period"]))
 
             return result
 
         else:
-            return self.__config["lr_rate"]
+            return self.__config[constants.CONF_TAGS.LR_RATE]
 
 
 
@@ -120,19 +123,32 @@ class Train():
 
         avg_ters = self.__compute_avg_ters(cv_ters)
 
-        if epoch > self.__config["half_after"]:
+        if epoch > self.__config[constants.CONF_TAGS.HALF_AFTER]:
 
-            new_lr_rate = self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"]) // self.__config["half_period"]))
+            #new_lr_rate = self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"]) // self.__config["half_period"]))
+            #new_lr_rate = self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"])))
+            #lr_rate = new_lr_rate
 
-            if new_lr_rate != self.__config["lr_rate"] and avg_ters > best_avg_ters and self.__config["store_model"]:
+            #
+            #     print ("load_ckpt", best_epoch+1, 100.0*best_avg_ters, epoch+1, 100.0*avg_ters, new_lr_rate)
+            #     print ("load_ckpt", best_epoch+1, 100.0*best_avg_ters, epoch+1, 100.0*avg_ters, new_lr_rate)
+            #     saver.restore(self.__sess, "%s/epoch%02d.ckpt" % (self.__config["model_dir"], best_epoch+1))
 
-                print ("load_ckpt", best_epoch+1, 100.0*best_avg_ters, epoch+1, 100.0*avg_ters, new_lr_rate)
-                print ("load_ckpt", best_epoch+1, 100.0*best_avg_ters, epoch+1, 100.0*avg_ters, new_lr_rate)
-                saver.restore(self.__sess, "%s/epoch%02d.ckpt" % (self.__config["model_dir"], best_epoch+1))
+            diff_epoch= int(float(epoch+1) / float(self.__config[constants.CONF_TAGS.HALF_AFTER]))
 
-            lr_rate = new_lr_rate
+            lr_rate = self.__config[constants.CONF_TAGS.LR_RATE] * (self.__config[constants.CONF_TAGS.HALF_RATE] ** (diff_epoch))
+
+            if lr_rate != self.__config[constants.CONF_TAGS.LR_RATE]:
+
+                print("about to restore variables form "+str(best_epoch)+" epoch")
+                best_epoch_path = os.path.join(self.__config[constants.CONF_TAGS.MODEL_DIR], "/epoch%02d.ckpt" % (best_epoch))
+                if(os.path.isfile(best_epoch_path)):
+                    print("epoch "+str(best_epoch)+" found. ")
+                    saver.restore(self.__sess, "%s/epoch%02d.ckpt" % (self.__config["model_dir"], best_epoch+1))
+                else:
+                    print("epoch "+str(best_epoch)+" NOT found. restoring can not be done.")
         else:
-            lr_rate = self.__config["lr_rate"]
+            lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
 
         if(best_avg_ters > avg_ters):
             best_avg_ters = avg_ters
@@ -206,8 +222,8 @@ class Train():
                 train_ters[language_id][target_id] = 0
                 train_cost[language_id][target_id] = 0
 
-        if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
-                != constants.SAT_SATGES.UNADAPTED:
+        if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] \
+                != constants.SAT_TYPE.UNADAPTED:
             p = Process(target = run_reader_queue, args = (data_queue, tr_x , tr_y, self.__config["do_shuf"], False, tr_sat))
         else:
             p = Process(target = run_reader_queue, args = (data_queue, tr_x, tr_y, self.__config["do_shuf"], False))
@@ -227,10 +243,10 @@ class Train():
 
             feed, batch_size, index_correct_lan = self.__prepare_feed(data, lr_rate)
 
-            batch_cost, batch_ters, _ = self.__sess.run([self.__model.debug_costs[index_correct_lan],
+            batch_cost, batch_ters, _  = self.__sess.run([self.__model.debug_costs[index_correct_lan],
                                                        self.__model.ters[index_correct_lan],
                                                        self.__model.opt[index_correct_lan]],
-                                                      feed)
+                                                    feed)
 
             #updating values...
             self.__update_counters(train_ters, train_cost, ntrain, ntr_labels, batch_ters, batch_cost, batch_size, data[1])
@@ -350,8 +366,10 @@ class Train():
             print("restoring weights....")
             print(80 * "-")
             #restoring all variables that should be loaded during adaptation stage (all of them except adaptation layer)
-            if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
-                    == constants.SAT_SATGES.TRAIN_SAT:
+            if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] \
+                    != constants.SAT_TYPE.UNADAPTED and \
+                self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
+                            == constants.SAT_SATGES.TRAIN_SAT:
 
                 print("partial restoring....")
                 vars_to_load=[]
@@ -367,7 +385,6 @@ class Train():
                 saver.restore(self.__sess, self.__config[constants.CONF_TAGS.CONTINUE_CKPT])
 
                 #lets track all the variables again...
-                saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH])
                 alpha = int(re.match(".*epoch([-+]?\d+).ckpt", self.__config[constants.CONF_TAGS.CONTINUE_CKPT]).groups()[0])
                 alpha += 1
 
@@ -396,9 +413,9 @@ class Train():
                 alpha += 1
 
             print(80 * "-")
-        else:
 
-            saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH])
+        #we want to store everyhting
+        saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH])
 
         return saver, alpha
 
@@ -434,8 +451,8 @@ class Train():
 
     def __prepare_feed(self, data, lr_rate = None):
 
-        if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
-                != constants.SAT_SATGES.UNADAPTED:
+        if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] \
+                != constants.SAT_TYPE.UNADAPTED:
             x_batch, y_batch, sat_batch = data
         else:
             x_batch, y_batch = data
@@ -473,8 +490,8 @@ class Train():
         else:
             feed[self.__model.is_training_ph] = False
 
-        if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
-                != constants.SAT_SATGES.UNADAPTED:
+        if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] \
+                != constants.SAT_TYPE.UNADAPTED:
             feed[self.__model.sat] = sat_batch
 
         return feed, batch_size, index_correct_lan

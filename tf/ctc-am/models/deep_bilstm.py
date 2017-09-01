@@ -1,5 +1,7 @@
 import constants
 import tensorflow as tf
+from utils.fileutils import debug
+import sys
 
 
 class DeepBidirRNN:
@@ -134,40 +136,36 @@ class DeepBidirRNN:
 
             self.is_trainable_sat=False
 
-        else:
-            self.is_trainable_sat=True
-
-        #SAT
         with tf.variable_scope(constants.SCOPES.SPEAKER_ADAPTAION):
 
-            if(config[constants.CONF_TAGS.SAT_SATGE] == constants.SAT_SATGES.CONCAT):
 
-                with tf.variable_scope(constants.SCOPES.SAT_CONCAT):
-                    #sat_input.set_shape([None, input_feats.get_shape()[1], config[lm_constants.CONF_TAGS.SAT_FEAT_DIM]])
-                    sat_input = tf.tile(input_sat, tf.stack([1, tf.shape(input_feats)[1], 1]))
-                return tf.concat([input_feats, sat_input], 2)
+            if(config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] == constants.SAT_TYPE.CONCAT):
 
-            elif(config[constants.CONF_TAGS.SAT_SATGE] == constants.SAT_SATGES.FUSE):
-
-                with tf.variable_scope(constants.SCOPES.SAT_FUSE) as scope:
-                    sat_input = tf.tile(input_sat, tf.stack([1, tf.shape(input_feats)[1], 1]))
+                with tf.variable_scope(constants.SCOPES.SAT_FUSE):
+                    sat_input = tf.tile(input_sat, tf.stack([tf.shape(input_feats)[0], 1, 1]))
                     outputs = tf.concat([input_feats, sat_input], 2)
 
-                    return self.my_sat_layers(config[constants.CONF_TAGS.NUM_SAT_LAYERS],
-                                       config[constants.CONF_TAGS.SAT_FEAT_DIM],
-                                       config[constants.CONF_TAGS.INPUT_FEATS_DIM],
-                                       outputs)
+                    return self.my_sat_layers(
+                                    config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.NUM_SAT_LAYERS],
+                                    config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_FEAT_DIM],
+                                    config[constants.CONF_TAGS.INPUT_FEATS_DIM],
+                                           outputs)
 
-            elif(config[constants.CONF_TAGS.SAT_SATGE] == constants.SAT_SATGES.FINE_TUNE or
-                 config[constants.CONF_TAGS.SAT_SATGE] == constants.SAT_SATGES.TRAIN_SAT):
+            elif(config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] == constants.SAT_TYPE.SHIFT):
 
-                    learned_sat = self.my_sat_layers(config[constants.CONF_TAGS.NUM_SAT_LAYERS],
-                                                           config[constants.CONF_TAGS.SAT_FEAT_DIM],
-                                                           config[constants.CONF_TAGS.INPUT_FEATS_DIM],
-                                                           input_sat)
+                    learned_sat = self.my_sat_layers(
+                        config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.NUM_SAT_LAYERS],
+                                                     config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_FEAT_DIM],
+                                                     config[constants.CONF_TAGS.INPUT_FEATS_DIM],
+                                                    input_sat)
 
                     return tf.add(input_feats, learned_sat, name="shift")
+            else:
 
+                print("this sat type ("+str(config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE])+") was not contemplates")
+                print(debug.get_debug_info())
+                print("exiting...")
+                sys.exit()
 
     def __init__(self, config):
 
@@ -188,6 +186,7 @@ class DeepBidirRNN:
         else:
             self.is_training = True
 
+        self.is_trainable_sat=True
 
         try:
             featproj = config["feat_proj"]
@@ -229,10 +228,10 @@ class DeepBidirRNN:
         batch_size = tf.shape(self.feats)[0]
         outputs = tf.transpose(self.feats, (1, 0, 2), name = "feat_transpose")
 
-        if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
-                != constants.SAT_SATGES.UNADAPTED:
+        if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] \
+                != constants.SAT_TYPE.UNADAPTED:
 
-            self.sat = tf.placeholder(tf.float32, [None, 1, config[constants.CONF_TAGS.SAT_FEAT_DIM]], name="sat")
+            self.sat = tf.placeholder(tf.float32, [None, 1, config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_FEAT_DIM]], name="sat")
             sat_t = tf.transpose(self.sat, (1, 0, 2), name="sat_transpose")
 
             outputs = self.my_sat_module(config, outputs, sat_t)

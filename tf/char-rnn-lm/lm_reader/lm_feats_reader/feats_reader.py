@@ -1,7 +1,7 @@
 from lm_utils.lm_fileutils.kaldi import readMatrixByOffset
 from lm_utils.lm_fileutils.kaldi import read_scp_info_dic
 
-class FeatsReaderKaldi(object):
+class FeatsReader(object):
 
     def __init__ (self, path_to_scp, uttids):
 

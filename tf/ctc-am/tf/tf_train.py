@@ -63,7 +63,7 @@ class Train():
 
                 #log start
                 print(80 * "-")
-                print("Epoch "+str(epoch)+" starting ... ( lr_ratee: "+str(lr_rate)+")")
+                print("Epoch "+str(epoch)+" starting ... ( lr_rate: "+str(lr_rate)+")")
                 print(80 * "-")
 
                 #start timer...
@@ -290,8 +290,8 @@ class Train():
                 cv_ters[language_id][target_id]= 0
                 cv_cost[language_id][target_id] = 0
 
-        if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
-                != constants.SAT_SATGES.UNADAPTED:
+        if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] \
+                != constants.SAT_TYPE.UNADAPTED:
             p = Process(target = run_reader_queue, args = (data_queue, cv_x , cv_y,
                                                            self.__config[constants.CONF_TAGS.DO_SHUF], False, cv_sat))
         else:

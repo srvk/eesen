@@ -181,7 +181,7 @@ def prepare_feed_dict(model, config, batch_x, batch_len, keep_prob, batch_sat = 
 
 def generate_logs(config, cv_cost, ncv, ncv_w, train_cost, ntrain, ntrain_w, epoch, lr_rate, tic):
 
-    with open("%s/epoch%02d.log" % (config[lm_constants.CONF_TAGS.TRAIN_DIR], epoch + 1), 'w') as fp:
+    with open("%s/epoch%02d.log" % (config[lm_constants.CONF_TAGS.TRAIN_DIR], epoch ), 'w') as fp:
 
         print("Epoch %d finished in %.0f minutes, learning rate: %.4g (%s)" % (epoch, (time.time() - tic)/60.0, lr_rate, config[lm_constants.CONF_TAGS.OPTIMIZER]))
         fp.write("Time: %.0f minutes, lrate: %.4g\n" % ((time.time() - tic)/60.0, lr_rate))

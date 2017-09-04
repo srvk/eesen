@@ -55,7 +55,6 @@ with open(args.scp_out, "w") as f:
             print(80 * "*")
             print(80 * "*")
             print("Warning: " +key+ " has not been found in labels file: "+args.labels)
-            print("key: "+key)
             print(80 * "*")
             print(80 * "*")
             print("")

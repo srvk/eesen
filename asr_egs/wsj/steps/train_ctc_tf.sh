@@ -10,7 +10,7 @@
 model="deepbilstm"
 continue_ckpt=""
 diff_num_target_ckpt=false
-force_lr_epoch=false
+force_lr_epoch_ckpt=false
 
 train_tool="python -m train" # the command for training; by default, we use the
                 # parallel version which processes multiple utterances at the same time
@@ -237,10 +237,10 @@ feats_cv=`cat $tmpdir/.cv 2>/dev/null`
 
 
 ## Adjust parameter variables
-if $force_lr_epoch; then
-    force_lr_epoch="--force_lr_epoch"
+if $force_lr_epoch_ckpt; then
+    force_lr_epoch_ckpt="--force_lr_epoch_ckpt"
 else
-    force_lr_epoch=""
+    force_lr_epoch_ckpt=""
 fi
 
 if $diff_num_target_ckpt; then
@@ -298,7 +298,7 @@ echo "TRAINING STARTS [$cur_time]"
 #
 $train_tool $train_opts --lr_rate $learn_rate --batch_size $batch_size --l2 $l2 \
     --nhidden $nhidden --nlayer $nlayer $nproj $feat_proj $ckpt $max_iters \
-    --train_dir $dir --data_dir $tmpdir --half_after $half_after $sat_stage $sat_type --model $model --window $window $norm $continue_ckpt $diff_num_target_ckpt $force_lr_epoch  || exit 1;
+    --train_dir $dir --data_dir $tmpdir --half_after $half_after $sat_stage $sat_type --model $model --window $window $norm $continue_ckpt $diff_num_target_ckpt $force_lr_epoch_ckpt  || exit 1;
 
 ## Done
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`

@@ -2,7 +2,7 @@
 
 
 
-help_message="Usage: $0 <dest-dir> <fisher_a> <fisher_b> <units>
+help_message="Usage: $0 <dest-dir> <fisher_a> <fisher_b> 
 create cleaned (according to units.txt) with uttid text file from fisher data:
 options:
   --help          # print this message and exit
@@ -13,9 +13,8 @@ options:
 dir=$1
 fsh_a=$2
 fsh_b=$3
-units=$4
 
-if [ $# -ne 4 ]; then
+if [ $# -ne 3 ]; then
   printf "$help_message\n";
   exit 1;
 fi

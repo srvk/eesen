@@ -42,16 +42,23 @@ class CONF_TAGS:
     NUM_SAT_LAYERS="num_sat_layers"
     NUM_SAT_DIM="sat_feat_dim"
 
+class DECODING_TYPE:
+    BEAM_SEARCH = ""
+
 class CONFIG_TAGS_TEST:
+
     #io options
     RESULTS_FILENAME="results_filename"
     DATA_DIR="data_dir"
+    UNITS_FILE="units_file"
+    LEXICON_FILE="lexicon_file"
 
     #previous models options
     LM_CKPT = "lm_cpkt"
     TRAIN_CONFIG="train_config"
 
     #output options
+    TYPE_OF_DECODING = "type_of_decoding"
     BEAM_SIZE = "beam_size"
     INSERTION_BONUS = "insertion_bonus"
     GEN_PRIORS = "gen_priors"

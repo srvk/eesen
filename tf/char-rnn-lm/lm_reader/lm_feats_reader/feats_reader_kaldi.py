@@ -1,4 +1,4 @@
-from feats_reader import FeatsReader
+from lm_reader.lm_feats_reader.feats_reader import FeatsReader
 from utils.fileutils.kaldi import readMatrixByOffset
 from utils.fileutils.kaldi import read_scp_info_dic
 
@@ -10,7 +10,7 @@ class FeatsReaderKaldi(FeatsReader):
         self.feat_dict_info = read_scp_info_dic(self.list_files[0])
 
 
-    def read(uttids)
+    def read(self, uttids):
         """
         feat_info: uttid, arkfile, offset, feat_len, feat_dim
         """

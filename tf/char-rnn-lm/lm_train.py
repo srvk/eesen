@@ -38,7 +38,6 @@ def mainParser():
 
     parser.add_argument('--lr_rate', default=0, type=float,help='0 for default parameters')
 
-    #TODO continute_pkt
     parser.add_argument('--continue_ckpt', default = "", help='continue experiment with the weight path given')
     parser.add_argument('--import_config', default = "", help='import configuration from a previous experiment. The configuation will be merged with the flags given.')
 

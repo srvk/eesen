@@ -9,8 +9,8 @@ EOS="<eos>"
 def main_parser():
     parser = argparse.ArgumentParser(description='Create units.txt (if not give) and labels file for AM or LM (needs to be specified by --lm)')
 
-    parser.add_argument('--text_file', default="", help = "input text file that will be translated to labels")
-    parser.add_argument('--input_units', default="", help = "path to input units.txt (optional)")
+    parser.add_argument('--text_file', help = "input text file that will be translated to labels")
+    parser.add_argument('--input_units', help = "path of previous units.txt (most probably from an acoustic model)")
     parser.add_argument('--output_labels', default="", help = "path to output labels")
     parser.add_argument('--output_units', default="", help = "path to out units (optional)")
     parser.add_argument('--lm', default = False, action='store_true', help='are we working for LM?')
@@ -18,17 +18,20 @@ def main_parser():
     parser.add_argument('--lower_case', default = False, action='store_true', help='change to lower case')
     parser.add_argument('--upper_case', default = False, action='store_true', help='change to upper case')
 
+    parser.add_argument('--ignore_noises', default = False, action='store_true', help='ignore all noises e.g. [noise], [laughter], [vocalized-noise]')
     return parser
 
 def create_config(args):
     config = {
-        "text_file": args.text_file,
         "input_units": args.input_units,
         "output_units": args.output_units,
-        "output_labels": args.output_labels,
-        "is_lm": args.lm,
         "lower_case":args.lower_case,
         "upper_case":args.upper_case,
+        "text_file":args.text_file,
+        "output_labels":args.output_labels,
+        "output_units":args.output_units,
+        "ignore_noises": args.ignore_noises,
+        "is_lm": args.lm,
     }
     return config
 
@@ -43,22 +46,47 @@ def get_units(units_path):
 
 def generate_labels_am(config, text_path, units_dict, output_labels_path):
 
+    removed_utterances = 0
+    total_lines = 0
+    clean_lines = 0
+
     with open(text_path,"r") as input_text, open(output_labels_path,"w") as output_labels:
 
         for line in input_text:
+            total_lines += 1
             utt_id = line.split()[0]
             new_line = utt_id
             for word in  line.split()[1:]:
                 if(("[" in word) and ("]" in word)):
                     if(word in units_dict):
                         new_line += " " + str(units_dict[word])
+
                 else:
                     if(config["upper_case"] or config["lower_case"]):
                         word = process_string(config, word)
                     for letter in word:
                         if(letter in units_dict):
                             new_line += " " + str(units_dict[letter])
-            output_labels.write(new_line+"\n")
+
+            if(len(new_line.split()) > 1):
+                output_labels.write(new_line+"\n")
+                clean_lines += 1
+            else:
+                removed_utterances += 1
+
+        print(80 * "-")
+        print("Summary of the conversion to labels: ")
+        print(80 * "-")
+        print("file cleaned: "+str(text_path))
+        print("number total utterances: "+str(total_lines))
+        if(removed_utterances > 0):
+            print("number utt removed: "+str(removed_utterances))+ " (this is maybe due noises: [laughter], [noise], [vocalized-noise])"
+        else:
+            print("number utt removed: "+str(removed_utterances))
+        print("number remaining utt: "+str(clean_lines))
+        print(80 * "-")
+
+
 
 def process_string(config, string):
 
@@ -72,8 +100,13 @@ def process_string(config, string):
 
 def generate_labels_lm(config, text_path, units_dict, output_labels_path):
 
+    removed_utterances = 0
+    total_lines = 0
+    clean_lines = 0
+
     with open(text_path,"r") as input_text, open(output_labels_path,"w") as output_labels:
         for line in input_text:
+            total_lines += 1
             utt_id = line.split()[0]
             new_line = utt_id + " " + str(units_dict[EOS])
             for word in line.split()[1:]:
@@ -87,18 +120,34 @@ def generate_labels_lm(config, text_path, units_dict, output_labels_path):
                         if(letter in units_dict):
                             new_line += " " + str(units_dict[letter])
                     new_line +=  " " + str(units_dict[SPACE])
-            new_line=new_line[:-len(str(units_dict[SPACE]))] + str(units_dict[EOS])
-            output_labels.write(new_line+"\n")
+
+            if(len(new_line.split()) > 2):
+                new_line=new_line[:-len(str(units_dict[SPACE]))] + str(units_dict[EOS])
+                output_labels.write(new_line+"\n")
+                clean_lines += 1
+            else:
+                removed_utterances += 1
+
+        print(80 * "-")
+        print("Summary of the conversion to labels: ")
+        print(80 * "-")
+        print("file cleaned: "+str(text_path))
+        print("number total utterances: "+str(total_lines))
+        if(removed_utterances > 0):
+            print("number utt removed: "+str(removed_utterances))+ " (this is maybe due noises: [laughter], [noise], [vocalized-noise])"
+        else:
+            print("number utt removed: "+str(removed_utterances))
+        print("number remaining utt: "+str(clean_lines))
+        print(80 * "-")
 
 def generate_units_am(config, text_path, output_units_path):
     dict_untisid={}
     count_id = 1
     with open(text_path,"r") as input_text, open(output_units_path,"w") as output_labels:
         for line in input_text:
-
             for word in  line.split()[1:]:
                 if(("[" in word) and ("]" in word)):
-                    if(word not in dict_untisid):
+                    if(word not in dict_untisid and not config["ignore_noises"]):
                         dict_untisid[word]=count_id
                         count_id+=1
                 else:
@@ -109,9 +158,12 @@ def generate_units_am(config, text_path, output_units_path):
                             dict_untisid[letter]=count_id
                             count_id+=1
 
-        sorted_dict = sorted(dict_untisid.items(), key=operator.itemgetter(1))
+        sorted_dict = sorted(dict_untisid.items(), key=operator.itemgetter(0))
+        new_count = 1
         for element in sorted_dict:
-            output_labels.write(str(element[0])+" "+str(element[1]) + "\n")
+            dict_untisid[element[0]] = new_count
+            output_labels.write(str(element[0])+" "+str(new_count) + "\n")
+            new_count += 1
 
     return dict_untisid
 

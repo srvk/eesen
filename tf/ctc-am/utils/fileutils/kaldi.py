@@ -162,7 +162,8 @@ def writeArk(filename, features, uttids):
       which can be used to write a Kaldi script file.
     """
     pointers = []
-    with smart_open(filename, "wb") as f:
+#    with smart_open(filename, "wb") as f:
+    with open(filename, "ab") as f:
         for feature, uttid in zip(features, uttids):
             writeString(f, uttid)
             pointers.append("%s:%d" % (filename, f.tell()))

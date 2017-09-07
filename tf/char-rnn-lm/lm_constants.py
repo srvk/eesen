@@ -52,6 +52,7 @@ class CONFIG_TAGS_TEST:
     DATA_DIR="data_dir"
     UNITS_FILE="units_file"
     LEXICON_FILE="lexicon_file"
+    COMPUTE_WER="compute_wer"
 
     #previous models options
     LM_CKPT = "lm_cpkt"
@@ -81,7 +82,11 @@ class FILE_NAMES:
     TR_X = "labels.tr"
     CV_X = "labels.cv"
 
-    SAT = "sat_local.scp"
+    TRAIN_SAT = "sat_local.scp"
+
+    #TODO this should be logits
+    TEST_LOGPORBS_SCP = "test_local.scp"
+    TEST_SAT_SCP = "test_sat_local.scp"
 
 class SAT_SATGES:
     UNADAPTED = "non_adapted"

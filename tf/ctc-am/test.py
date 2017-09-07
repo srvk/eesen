@@ -18,6 +18,7 @@ import pickle
 import sys
 
 import constants
+import shutil
 from eesen import Eesen
 from utils.fileutils import debug
 from reader.feats_reader import feats_reader_factory
@@ -77,6 +78,7 @@ def main_parser():
     parser.add_argument('--data_dir', default = "", help = "like data_dir for training script")
     parser.add_argument('--results_dir', default = "log", help='log and results dir')
     parser.add_argument('--save_every_batch', default = -1, type=int, help='log and results dir')
+    parser.add_argument('--online_storage', default = False, action='store_true', help='online storage (for big datasets to not explode in memory)')
 
     #train configuration options
     parser.add_argument('--train_config', default = "", help = "model to load for evaluation")
@@ -107,6 +109,8 @@ def create_test_config(args, language_scheme):
     config_test[constants.CONFIG_TAGS_TEST.COMPUTE_TER] = args.compute_ter
     config_test[constants.CONFIG_TAGS_TEST.USE_PRIORS] = args.use_priors
     config_test[constants.CONFIG_TAGS_TEST.BATCH_SIZE] = args.batch_size
+    config_test[constants.CONFIG_TAGS_TEST.ONLINE_STORAGE] = args.online_storage
+
     if(config_test[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
         config_test[constants.CONFIG_TAGS_TEST.PRIORS_SCHEME] = generate_priors(config_test[constants.CONFIG_TAGS_TEST.DATA_DIR], language_scheme)
 
@@ -132,6 +136,34 @@ def check_paths(args):
         print(debug.get_debug_info())
         print("exiting...")
         sys.exit()
+
+
+    if(os.path.exists(args.results_dir)):
+        print("cleaning dir...")
+        for f in os.listdir(args.results_dir):
+            print("deleteting "+f+" ...")
+            if (os.path.isfile(os.path.join(args.results_dir, f))):
+                os.remove(os.path.join(args.results_dir, f))
+            else:
+                shutil.rmtree(os.path.join(args.results_dir, f))
+    else:
+        print("results_dir ("+str(args.result_dirs)+") does not exist")
+        print(debug.get_debug_info())
+        print("exiting...")
+        sys.exit()
+
+def count_number_augmented_occurences(batches_id):
+
+    dict_count ={}
+
+    for batch_id in batches_id:
+        for utt_id in batch_id[0]:
+            if(utt_id not in dict_count):
+                dict_count[utt_id] = 1
+            else:
+                dict_count[utt_id] += 1
+
+    return dict_count
 
 def main():
 
@@ -166,8 +198,8 @@ def main():
     else:
         test_y = None
 
-    if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
-            != constants.SAT_SATGES.UNADAPTED:
+    if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] \
+            != constants.SAT_TYPE.UNADAPTED:
 
         print("tr_sat:")
         print(80 * "-")
@@ -176,6 +208,9 @@ def main():
 
     else:
         tr_sat = None
+
+    if(config[constants.CONFIG_TAGS_TEST.ONLINE_STORAGE]):
+        config[constants.CONFIG_TAGS_TEST.COUNT_AUGMENT] = count_number_augmented_occurences(test_x.get_batches_id())
 
     data=(test_x, test_y, tr_sat)
 

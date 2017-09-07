@@ -24,9 +24,6 @@ swbd=/data/ASR4/babel/ymiao/CTS/LDC97S62
 fisher_dirs="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/ /data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
 eval2000_dirs="/data/ASR4/babel/ymiao/CTS/LDC2002S09/hub5e_00 /data/ASR4/babel/ymiao/CTS/LDC2002T43"
 
-
-
-
 . parse_options.sh
 
 if [ $stage -le 1 ]; then
@@ -79,7 +76,7 @@ if [ $stage -le 4 ]; then
   echo "                Training AM with the Full Set                      "
   echo =====================================================================
 
-  # Specify network structure and generate the network topology
+    # Specify network structure and generate the network topology
   input_feat_dim=120   # dimension of the input features; we will use 40-dimensional fbanks with deltas and double deltas
   lstm_layer_num=4     # number of LSTM layers
   lstm_cell_dim=320    # number of memory cells in every LSTM layer
@@ -101,8 +98,23 @@ if [ $stage -le 4 ]; then
   exit
 
   # Train the network with CTC. Refer to the script for details about the arguments
-  steps/train_ctc_tf.sh --num-sequence 16 --learn-rate 0.01 --half_after 6 --model $model --window $window --norm $norm --continue_ckpt /data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/asr_egs/swbd/v1-tf/exp/train_char_l4_c320_mdeepbilstm_w3_nfalse/model/epoch11.ckpt \
-    data/train_nodup data/train_dev $dir || exit 1;
+  steps/train_ctc_tf.sh --num-sequence 16 --learn-rate 0.01 --half_after 6 --model $model --window $window --norm $norm data/train_nodup data/train_dev $dir || exit 1;
+
+
+  echo =====================================================================
+  echo "                   Decoding eval200 using AM                      "
+  echo =====================================================================
+
+  epoch=epoch14.ckpt
+  filename=$(basename "$epoch")
+  name_exp="${filename%.*}"
+
+  data=./data/eval2000/
+  weights=$dir/model/$epoch
+  config=$dir/model/config.pkl
+  results=$dir/results/$name_exp
+
+  ./steps/decode_ctc_am_tf.sh --config $config --data $data --weights $weights --results $results
 
 fi
 

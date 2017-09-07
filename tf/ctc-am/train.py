@@ -39,17 +39,14 @@ def main_parser():
     parser.add_argument('--store_model', default=False, dest='store_model', action='store_true', help='store model')
     parser.add_argument('--data_dir', default = "", help = "data dir")
     parser.add_argument('--train_dir', default = "", help='log and model (output) dir')
+    parser.add_argument('--batch_size', default = 32, type=int, help='batch size')
+    parser.add_argument('--noshuffle', default=True, dest='do_shuf', action='store_false', help='do not shuffle training samples')
 
-    #TODO check name of config.pkl
+    #ckpt arguments
     parser.add_argument('--import_config', default = "", help='load an old configuration file (config.pkl) extra labels will be added to old configuration')
-
-    #io arguments
     parser.add_argument('--continue_ckpt', default = "", help='continue this experiment')
     parser.add_argument('--diff_num_target_ckpt', default=False, action='store_true', help='change the number of targets after retaking training')
     parser.add_argument('--force_lr_epoch_ckpt', default=False, action='store_true', help='force to start for epoch 0 with the learning rate specified in flags')
-
-    parser.add_argument('--batch_size', default = 32, type=int, help='batch size')
-    parser.add_argument('--noshuffle', default=True, dest='do_shuf', action='store_false', help='do not shuffle training samples')
 
 
     #augment arugments

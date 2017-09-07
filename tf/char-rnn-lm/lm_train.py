@@ -5,7 +5,7 @@ import lm_constants
 import pickle
 
 from lm_reader.lm_labels_reader.labels_reader import LabelsReader
-from lm_reader.lm_feats_reader.feats_reader import FeatsReaderKaldi
+from lm_reader.lm_feats_reader.feats_reader import FeatsReader
 
 from lm_utils.lm_fileutils import debug
 from lm_tf.lm_tf_train import *

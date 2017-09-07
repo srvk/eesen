@@ -2,6 +2,7 @@
 from __future__ import print_function
 from lm_utils.lm_fileutils import debug
 from lm_utils.lm_data_structures.trie import Trie
+from lm_utils.lm_fileutils.kaldi import read_scp_info_dic
 import numpy as np
 import lm_constants
 import argparse
@@ -16,7 +17,7 @@ def main_parser():
     #io options
     parser.add_argument('--data_dir', default = "", help = "like data_dir for training script")
     parser.add_argument('--results_filename', help="where the results (in CTM format will be written)")
-    parser.add_argument('--units_file', help = "like data_dir for training script")
+    parser.add_argument('--units_file', help = "units.txt to perfrom the conversion form int to char")
     parser.add_argument('--lexicon_file', default = "", help = "giving lexicon will add close vocabulary behaviour to the model")
 
     #previous models options
@@ -29,14 +30,12 @@ def main_parser():
 
     #decoding options
     parser.add_argument('--decoding_strategy', default = "beam_search", help = "type of decoding to apply to data")
-    parser.add_argument('--train_config', default = "", help = "model to load for evaluation")
-    parser.add_argument('--trained_weights', default = "", help = "model to load for evaluation")
+    parser.add_argument('--config_ckpt', default = "", help = "model to load for evaluation")
+    parser.add_argument('--weights_ckpt', default = "", help = "model to load for evaluation")
 
     #computing options
-    parser.add_argument('--batch_size', default = 32, type=int, help='batch size')
     parser.add_argument('--temperature', default = 1, type=float, help='temperature used in softmax')
-    parser.add_argument('--use_priors', default = False, action='store_true', help='if --use_priors it will take ')
-    parser.add_argument('--compute_ter', default = False, action='store_true', help='if --compute_ter the labels will be taken from data_dir (label_phn.test)and ter will be computed')
+    parser.add_argument('--compute_wer', default = False, action='store_true', help='if --compute_ter the labels will be taken from data_dir (label_phn.test)and ter will be computed')
 
     return parser
 
@@ -125,29 +124,48 @@ if __name__ == "__main__":
             print("Decoding will be performed without a lexicon (trie) ...")
 
 
-    print("DECODING FOR: {}\n".format(config['arkFile']))
-    arc_file = kaldi_io.read_mat_ark(config['arkFile'])
+    if(config[lm_constants.CONFIG_TAGS_TEST.COMPUTE_WER]):
+        print("Computing wer.")
+        print("reading labels file form data_dir...")
+    else:
+        print("Not computing wer.")
 
-    with open(config['ctmOut'], mode="w", buffering=1) as f:
-        for key, mat in arc_file:
-            #pdb.set_trace()
+
+    print(80 * "-")
+    print("Reading sat...")
+    print(80 * "-")
+
+    test_logprobs_path = os.path.join(config[lm_constants.CONF_TAGS.DATA_DIR], lm_constants.FILE_NAMES.TEST_LOGPORBS_SCP)
+
+    test_logprobs = read_scp_info_dic(test_logprobs_path)
+
+    print("data read.")
+    print(80 * "-")
+    print(80 * "-")
+    print("about to start testing with the following config:")
+    print(config)
+
+
+    #only one line will be stored in memory
+    with open(config[lm_constants.CONFIG_TAGS_TEST.RESULTS_FILENAME], mode="w", buffering=1) as f:
+        for key, mat in test_logprobs:
+
             temp  = mat[:,candidates]
             temp[:,0] = temp[:,0]*config['bs']
-            # pdb.set_trace()
             row_sums = temp.sum(axis=1)
             new_mat = temp / row_sums[:, np.newaxis]
             new_mat = np.log(new_mat)
-            # pdb.set_trace()
 
             if config['show'] == 1:
                 a= greedy_search(new_mat, id_to_ch)
                 f.write("greedy-bs-0.5 {}: {}\n".format(key,a))
+
                 # a= greedy_search(mat[:,1:], temp_d)
                 # f.write("greedy-2 {}: {}\n".format(key,a))
             beam = decode(new_mat)
 
             for i, utterance in enumerate(beam):
-                if i >= config['nBestOutput']:
+                if (i >= config['nBestOutput']) :
                     break
                 if(len(utterance)>0 and utterance[-1] == ' '):
                     utterance = utterance[:-1]

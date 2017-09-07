@@ -98,6 +98,7 @@ class CONFIG_TAGS_TEST:
 
     TRAIN_CONFIG = "train_config"
     PRIORS_SCHEME = "priors_scheme"
+    ONLINE_STORAGE = "online_store"
 
     #io dir
     DATA_DIR = "data_dir"
@@ -112,5 +113,6 @@ class CONFIG_TAGS_TEST:
     TEMPERATURE = "temperature"
     USE_PRIORS = "use_priors"
     COMPUTE_TER = "compute_ter"
+    COUNT_AUGMENT = "count_augment"
 
 

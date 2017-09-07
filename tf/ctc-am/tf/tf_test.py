@@ -1,6 +1,9 @@
 import os
 import constants
 import sys
+import shutil
+import h5py
+
 import time
 from itertools import islice
 from multiprocessing import Process, Queue
@@ -26,7 +29,8 @@ class Test():
         print(80 * "-")
         print("config: ")
         for key, value in config.items():
-            print(str(key)+" : "+str(value))
+            if(key != constants.CONFIG_TAGS_TEST.COUNT_AUGMENT):
+                print(str(key)+" : "+str(value))
 
         self.__model = create_model(config)
 
@@ -52,6 +56,9 @@ class Test():
             process.start()
 
             start_time = time.time()
+
+            batch_counter = 0
+            total_number_batches = len(test_x.get_batches_id())
 
             while True:
 
@@ -80,17 +87,25 @@ class Test():
                         sess.run(request_list, feed)
 
                 elif(not config[constants.CONFIG_TAGS_TEST.COMPUTE_TER] and not config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
-
                     batch_soft_probs, batch_log_soft_probs, batch_seq_len, batch_logits = \
                         sess.run(request_list, feed)
 
-                #TODO the sum should be done online
-                self.__update_probs_containers(config, batch_id, batches_id, batch_seq_len, batch_soft_probs, soft_probs,
+                if(not config[constants.CONFIG_TAGS_TEST.ONLINE_STORAGE]):
+
+                    self.__update_probs_containers(config, batch_id, batches_id, batch_seq_len, batch_soft_probs, soft_probs,
                                   batch_log_soft_probs, log_soft_probs, batch_logits, logits, batch_log_likes, log_likes)
 
+                else:
+                    self.__store_online(config, batch_id, batch_soft_probs, batch_log_soft_probs, batch_logits, batch_log_likes)
 
                 if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]):
                     self.__update_counters(config, batch_size, ntest, y_batch, ntest_labels, batch_ters, test_ters, batch_cost, test_costs)
+
+                if(batch_counter % 100 == 0 and batch_counter > 0):
+                    complete= (float(batch_counter)/float(total_number_batches))*100
+                    print("Test done: %.1f (batch %d of %d)" % (complete, batch_counter, total_number_batches))
+
+                batch_counter += 1
 
             process.join()
             process.terminate()
@@ -112,11 +127,13 @@ class Test():
 
                 self.__print_logs(config, test_costs, test_ters, ntest, start_time)
 
-            if(config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF][constants.AUGMENTATION.SUBSAMPLING] > 0):
+            if(not config[constants.CONFIG_TAGS_TEST.ONLINE_STORAGE]):
+                if(config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF][constants.AUGMENTATION.SUBSAMPLING] > 0):
 
-                batches_id = self.__average_over_augmented_data(config, batches_id, soft_probs, log_soft_probs, log_likes, logits)
+                    batches_id = self.__average_over_augmented_data(config, batches_id, soft_probs, log_soft_probs, log_likes, logits)
 
-            self.__store_results(config, batches_id, soft_probs, log_soft_probs, log_likes, logits)
+                self.__store_results(config, batches_id, soft_probs, log_soft_probs, log_likes, logits)
+
 
     def __prepare_request_list(self, config):
 
@@ -134,6 +151,84 @@ class Test():
                     request_list.append(self.__model.log_likelihoods)
 
                 return request_list
+
+    def  __store_online(self, config, batch_id, batch_soft_probs, batch_log_soft_probs, batch_logits, batch_log_likes):
+
+        language_idx = 0
+        for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
+
+            target_idx=0
+            for target_id, num_targets in target_scheme.items():
+
+
+                if(len(config[constants.CONF_TAGS.LANGUAGE_SCHEME].keys()) > 1):
+                    root_store_path = os.path.join(config[constants.CONFIG_TAGS_TEST.RESULTS_DIR], language_id)
+
+                    if not os.path.exists(root_store_path):
+                        os.makedirs(root_store_path)
+                else:
+                    root_store_path = config[constants.CONFIG_TAGS_TEST.RESULTS_DIR]
+
+                #log likes
+                if(config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
+
+                    if(len(target_scheme.keys()) > 1):
+                        log_like_store_path = os.path.join(root_store_path, "log_like_"+target_id+".hdf5")
+                    else:
+                        log_like_store_path = os.path.join(root_store_path, "log_like.hdf5")
+
+                    self.__partial_store_hdf5(log_like_store_path, batch_log_likes[language_idx][target_idx], config[constants.CONFIG_TAGS_TEST.COUNT_AUGMENT], batch_id)
+
+
+                #soft probs
+                if(len(target_scheme.keys()) > 1):
+                    soft_prob_path = os.path.join(root_store_path, "soft_prob_"+target_id+".hdf5")
+                else:
+                    soft_prob_path = os.path.join(root_store_path, "soft_prob.hdf5")
+                self.__partial_store_hdf5(soft_prob_path, batch_soft_probs[language_idx][target_idx], config[constants.CONFIG_TAGS_TEST.COUNT_AUGMENT], batch_id)
+
+                #log_soft probs
+                if(len(target_scheme.keys()) > 1):
+                    log_soft_prob_path = os.path.join(root_store_path, "log_soft_prob_"+target_id+".hdf5")
+                else:
+                    log_soft_prob_path = os.path.join(root_store_path, "log_soft_prob.hdf5")
+                self.__partial_store_hdf5(log_soft_prob_path, batch_log_soft_probs[language_idx][target_idx], config[constants.CONFIG_TAGS_TEST.COUNT_AUGMENT], batch_id)
+
+                #logits
+                if(len(target_scheme.keys()) > 1):
+                    logit_path = os.path.join(root_store_path, "logits_"+target_id+".hdf5")
+                else:
+                    logit_path = os.path.join(root_store_path, "logits.hdf5")
+                self.__partial_store_hdf5(logit_path, batch_logits[language_idx][target_idx], config[constants.CONFIG_TAGS_TEST.COUNT_AUGMENT], batch_id)
+
+                target_idx += 1
+
+            language_idx += 1
+
+    def __partial_store_hdf5(self, path, data, batch_id_counts, batch_id):
+
+
+        with h5py.File(path) as h5file:
+            for idx, element in enumerate(data):
+
+                if(batch_id[idx] in h5file):
+
+                    #get stored sample
+                    stored_sample = h5file[batch_id[idx]]
+
+                    #check minimum length
+                    if(stored_sample.shape[0] < element.shape[0]):
+                        final_length = stored_sample.shape[0]
+                    else:
+                        final_length = element.shape[0]
+
+                    del h5file[batch_id[idx]]
+
+                    h5file[batch_id[idx]] = stored_sample[0:final_length][:]//float(batch_id_counts[batch_id[idx]]) + \
+                                            element[0:final_length][:]//float(batch_id_counts[batch_id[idx]])
+
+                else:
+                    h5file[batch_id[idx]] = element
 
     def __average_over_augmented_data(self, config, m_batches_id, m_soft_probs, m_log_soft_probs, m_log_likes, m_logits):
 
@@ -233,13 +328,15 @@ class Test():
                                   batch_soft_probs, m_soft_probs,
                                   batch_log_soft_probs , m_log_soft_probs,
                                   batch_logits, m_logits,
-                                  batch_log_likes, m_log_likes):
+                                  batch_log_likes,
+                                  m_log_likes):
 
         language_idx=0
         for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
             m_batches_id[language_id] += batch_id
             target_idx=0
             for target_id, num_targets in target_scheme.items():
+
                 m_soft_probs[language_id][target_id] += self.__mat2list(batch_soft_probs[language_idx][target_idx], batch_seq_len)
                 m_log_soft_probs[language_id][target_id] += self.__mat2list(batch_log_soft_probs[language_idx][target_idx], batch_seq_len)
                 m_logits[language_id][target_id] += self.__mat2list(batch_logits[language_idx][target_idx], batch_seq_len)
@@ -389,8 +486,8 @@ class Test():
 
         #TODO solve this
         y_batch = None
-        if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
-                != constants.SAT_SATGES.UNADAPTED:
+        if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] \
+                != constants.SAT_TYPE.UNADAPTED:
             x_batch, y_batch, sat_batch = data
         elif config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]:
             x_batch, y_batch = data
@@ -430,8 +527,8 @@ class Test():
         feed[self.__model.temperature] = float(config[constants.CONFIG_TAGS_TEST.TEMPERATURE])
         feed[self.__model.is_training_ph] = False
 
-        if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
-                != constants.SAT_SATGES.UNADAPTED:
+        if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] \
+                != constants.SAT_TYPE.UNADAPTED:
             feed[self.__model.sat] = sat_batch
 
 

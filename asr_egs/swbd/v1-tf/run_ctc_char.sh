@@ -4,7 +4,7 @@
 #PBS -j oe
 #PBS -o log
 #PBS -d .
-#PBS -N lm_swbd_full
+#PBS -N eesen_tf_swbd_pipeline
 #PBS -V
 #PBS -l walltime=48:00:00
 #PBS -l nodes=1:ppn=1
@@ -14,17 +14,40 @@
            ## This relates to the queue.
 . path.sh
 
-stage=5
+stage=6
 
 fisher_dirs="/path/to/LDC2004T19/fe_03_p1_tran/ /path/to/LDC2005T19/fe_03_p2_tran/" # Set to "" if you don't have the fisher corpus
 eval2000_dirs="/path/to/LDC2002S09/hub5e_00 /path/to/LDC2002T43"
 
 # CMU Rocks
-swbd=/data/ASR4/babel/ymiao/CTS/LDC97S62
-fisher_dirs="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/ /data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
-eval2000_dirs="/data/ASR4/babel/ymiao/CTS/LDC2002S09/hub5e_00 /data/ASR4/babel/ymiao/CTS/LDC2002T43"
+#swbd=/data/ASR4/babel/ymiao/CTS/LDC97S62
+#fisher_dirs="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/ /data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
+#eval2000_dirs="/data/ASR4/babel/ymiao/CTS/LDC2002S09/hub5e_00 /data/ASR4/babel/ymiao/CTS/LDC2002T43"
 
 . parse_options.sh
+
+
+#acoustic model parameters
+am_nlayer=4   
+am_ncell_dim=320  
+am_model=deepbilstm
+am_window=3
+am_norm=false
+
+
+#language model parameters
+fisher_dir_a="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/"
+fisher_dir_b="/data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
+
+lm_embed_size=64  
+lm_batch_size=32
+lm_nlayer=1
+lm_ncell_dim=320  
+lm_drop_out=0.5
+lm_optimizer="adam"    
+
+fisher_text_dir="./data/fisher/"
+
 
 if [ $stage -le 1 ]; then
   echo =====================================================================
@@ -76,21 +99,14 @@ if [ $stage -le 4 ]; then
   echo "                Training AM with the Full Set                      "
   echo =====================================================================
 
-    # Specify network structure and generate the network topology
-  input_feat_dim=120   # dimension of the input features; we will use 40-dimensional fbanks with deltas and double deltas
-  lstm_layer_num=4     # number of LSTM layers
-  lstm_cell_dim=320    # number of memory cells in every LSTM layer
-  model=deepbilstm
-  window=3
-  norm=false
 
-  dir=exp/train_char_l${lstm_layer_num}_c${lstm_cell_dim}_m${model}_w${window}_n${norm}
+  dir=exp/train_char_l${am_nlayer}_c${am_ncell_dim}_m${am_model}_w${am_window}_n${am_norm}
 
   mkdir -p $dir
 
   echo generating train labels...
 
-  python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_nodup/text --output_units ./data/local/dict_char/units.txt --output_labels $dir/labels.tr --lower_case --ignore_noises
+  python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_nodup/text --output_units ./data/local/dict_char/units.txt --output_labels $dir/labels.tr --lower_case --ignore_noises 
 
   echo generating cv labels...
 
@@ -98,7 +114,7 @@ if [ $stage -le 4 ]; then
   exit
 
   # Train the network with CTC. Refer to the script for details about the arguments
-  steps/train_ctc_tf.sh --num-sequence 16 --learn-rate 0.01 --half_after 6 --model $model --window $window --norm $norm data/train_nodup data/train_dev $dir || exit 1;
+  steps/train_ctc_tf.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size 16 --learn_rate 0.02 --half_after 6 --model $am_model --window $am_window --norm $am_norm data/train_nodup data/train_dev $dir || exit 1;
 
 
   echo =====================================================================
@@ -122,19 +138,8 @@ if [ $stage -le 5 ]; then
   echo =====================================================================
   echo "             Char RNN LM Training with the Full Set                "
   echo =====================================================================
-  fisher_dir_a="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/"
-  fisher_dir_b="/data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
 
-  embed_size=64   # dimension of the input features; we will use 40-dimensional fbanks with deltas and double deltas
-  batch_size=32
-  drop_out=0.5
-  lstm_layer_num=1     # number of LSTM layers
-  lstm_cell_dim=1024    # number of memory cells in every LSTM layer
-  optimizer="adam"    # number of memory cells in every LSTM layer
-
-  fisher_text_dir="./data/fisher/"
-
-  dir=exp/train_lm_char_l${lstm_layer_num}_c${lstm_cell_dim}_e${embed_size}_d${drop_out}_o${optimizer}/
+  dir=exp/train_lm_char_l${lstm_layer_num}_c${lstm_cell_dim}_e${lm_embed_size}_d${drop_out}_o${optimizer}/
 
   mkdir -p $dir
   mkdir -p ./data/local/dict_char_lm/
@@ -146,10 +151,23 @@ if [ $stage -le 5 ]; then
   python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_nodup/text --input_units ./data/local/dict_char/units.txt --output_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.tr --lm
 
   echo ""
+  echo creating word list from train...
+  echo ""
+
+  python ./local/swbd1_prepare_word_list_tf.py --text_file ./data/train_nodup/text --output_word_list $dir/words.tr --ignore_noises
+
+
+  echo ""
   echo creating labels files from cv...
   echo ""
 
   python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_dev/text --input_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.cv --lm
+
+  echo ""
+  echo creating word list from cv...
+  echo ""
+
+  python ./local/swbd1_prepare_word_list_tf.py --text_file ./data/train_dev/text --output_word_list $dir/words.cv --ignore_noises
 
   echo ""
   echo generating fisher_data...
@@ -157,9 +175,6 @@ if [ $stage -le 5 ]; then
 
   ./local/swbd1_create_fisher_text.sh ./data/fisher/ $fisher_dir_a $fisher_dir_b
 
-  echo ""
-  echo fisher data generated in $fisher_text_dir...
-  echo ""
 
   echo ""
   echo creating labels files from fisher...
@@ -168,8 +183,11 @@ if [ $stage -le 5 ]; then
   python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/fisher/text --input_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.fisher --lm
 
   echo ""
-  echo fisher labels generated in $dir/labels.fisher
+  echo creating word list from fisher...
   echo ""
+
+  python ./local/swbd1_prepare_word_list_tf.py --text_file ./data/fisher/text --output_word_list $dir/words.fisher --ignore_noises
+
 
   echo ""
   echo fusing swbd data with fisher data...
@@ -178,11 +196,27 @@ if [ $stage -le 5 ]; then
   cat $dir/labels.fisher >> $dir/labels.tr
 
   echo ""
+  echo fusing words files...
+  echo ""
+
+  cat $dir/words.fisher > $dir/words
+  cat $dir/words.cv >> $dir/words
+  cat $dir/words.tr >> $dir/words
+
+  echo ""
   echo training with full swbd text...
   echo ""
 
-  ./steps/train_char_lm.sh --train_dir $dir --nembed $embed_size --nlayer $lstm_layer_num --nhidden $lstm_cell_dim --batch_size $batch_size --nepoch 100 --train_labels $dir/labels.tr --cv_labels $dir/labels.cv --drop_out $drop_out --optimizer ${optimizer}
-
+  #./steps/train_char_lm.sh --train_dir $dir --nembed $lm_embed_size --nlayer $lm_nlayer --nhidden $lm_ncell_dim --batch_size $lm_batch_size --nepoch 100 --train_labels $dir/labels.tr --cv_labels $dir/labels.cv --drop_out $lm_drop_out --optimizer ${lm_optimizer}
 
 fi
 
+if [ $stage -le 6 ]; then
+  echo =====================================================================
+  echo "             	Decode Eval 2000 (AM + (char) LM)                  "
+  echo =====================================================================
+
+
+  ./steps/decode_ctc_am_tf.sh --config /data/ASR5/sdalmia_1/fall2017/swbd/v1-tf/exp/train_char_l4_c320_mdeepbilstm_w3_nfalse/model/config.pkl --data ./data/eval2000/ --weights /data/ASR5/sdalmia_1/fall2017/swbd/v1-tf/exp/train_char_l4_c320_mdeepbilstm_w3_nfalse/model/epoch04.ckpt --results ./results/am/
+
+fi

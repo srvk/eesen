@@ -66,7 +66,6 @@ def main_parser():
     parser.add_argument('--nhidden', default = 320, type=int, help='dimension of hidden units in single direction')
     parser.add_argument('--clip', default = 0.1, type=float, help='gradient clipping')
     parser.add_argument('--batch_norm', default = False, dest='batch_norm', action='store_true', help='add batch normalization to FC layers')
-    parser.add_argument('--feat_proj', default = 0, type=int, help='dimension of feature projection units, set to 0 if no projection needed')
     parser.add_argument('--grad_opt', default = "grad", help='optimizer: grad, adam, momentum, cuddnn only work with grad')
 
     #runtime arguments
@@ -187,7 +186,6 @@ def create_global_config(args):
         constants.CONF_TAGS.NHIDDEN: args.nhidden,
         constants.CONF_TAGS.CLIP: args.clip,
         constants.CONF_TAGS.BATCH_NORM: args.batch_norm,
-        constants.CONF_TAGS.FEAT_PROJ: args.feat_proj,
         constants.CONF_TAGS.GRAD_OPT: args.grad_opt,
 
     }

@@ -31,8 +31,10 @@ elif [[ `uname -n` =~ bridges ]]; then
   # PSC Bridges cluster
   module load atlas
   module load cuda
+  module load gcc/6.3.0
 
-  export EESEN_ROOT=/pylon2/ir3l68p/metze/eesen
+
+  export EESEN_ROOT=$SCRATCH
   export PATH=$PWD/utils/:$EESEN_ROOT/src/netbin:$EESEN_ROOT/src/featbin:$EESEN_ROOT/src/decoderbin:$EESEN_ROOT/src/fstbin:$EESEN_ROOT/tools/openfst/bin:$EESEN_ROOT/tools/sph2pipe_v2.5:$EESEN_ROOT/../kaldi/src/featbin:$EESEN_ROOT/../sox-14.4.2/src:$PWD:$PATH
 
   export TMPDIR=/pylon1/ir3l68p/metze

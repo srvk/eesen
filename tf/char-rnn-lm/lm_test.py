@@ -3,6 +3,7 @@ from __future__ import print_function
 from lm_utils.lm_fileutils import debug
 from lm_utils.lm_data_structures.trie import Trie
 from lm_utils.lm_fileutils.kaldi import read_scp_info_dic
+from lm_decoder.decoder_factory import create_decoder
 import numpy as np
 import lm_constants
 import argparse
@@ -25,13 +26,13 @@ def main_parser():
     parser.add_argument('--beam_size', type=int, default=40, help="weight file for lm model")
     parser.add_argument('--insertion_bonus', type=float, default=0.6, help="inserion bonus")
     parser.add_argument('--gen_priors', default = False, action='store_true', help="preview priors during decoding")
-    parser.add_argument('--blank_scaling', type=float, default=1.0, help="blank_scaling")
     parser.add_argument('--n_best_output', default = False, action='store_true', help="output N best utterances")
 
     #decoding options
     parser.add_argument('--decoding_strategy', default = "beam_search", help = "type of decoding to apply to data")
     parser.add_argument('--config_ckpt', default = "", help = "model to load for evaluation")
     parser.add_argument('--weights_ckpt', default = "", help = "model to load for evaluation")
+    parser.add_argument('--blank_scaling', type=float, default=1.0, help="blank_scaling")
 
     #computing options
     parser.add_argument('--temperature', default = 1, type=float, help='temperature used in softmax')
@@ -56,7 +57,9 @@ def create_test_config(args):
         lm_constants.CONFIG_TAGS_TEST.INSERTION_BONUS: args.insertion_bonus,
         lm_constants.CONFIG_TAGS_TEST.GEN_PRIORS: args.gen_priors,
         lm_constants.CONFIG_TAGS_TEST.NBEST_OUTPUT: args.n_best_output,
+        lm_constants.CONFIG_TAGS_TEST.BLANK_SCALING: args.blank_scaling,
 
+        parser.add_argument('--blank_scaling', type=float, default=1.0, help="blank_scaling")
 
     }
 
@@ -97,6 +100,15 @@ def get_words(lexicon_path):
         sys.exit()
 
     return words
+
+def translate_sentence_id_to_char (dict_id_to_char, sentence):
+
+    translated_sentence=[]
+
+    for element in sentence:
+        translated_sentence.append(dict_id_to_char[element])
+
+    return translated_sentence
 
 if __name__ == "__main__":
 
@@ -145,31 +157,31 @@ if __name__ == "__main__":
     print("about to start testing with the following config:")
     print(config)
 
+    print("creating decoder...")
+    decoder = create_decoder(config)
 
     #only one line will be stored in memory
-    with open(config[lm_constants.CONFIG_TAGS_TEST.RESULTS_FILENAME], mode="w", buffering=1) as f:
+    with open(config[lm_constants.CONFIG_TAGS_TEST.RESULTS_FILENAME], mode="w", buffering=1) as output_file:
         for key, mat in test_logprobs:
 
-            temp  = mat[:,candidates]
-            temp[:,0] = temp[:,0]*config['bs']
-            row_sums = temp.sum(axis=1)
-            new_mat = temp / row_sums[:, np.newaxis]
+            #copying mat
+            m_mat = mat
+            #reescaling blank
+            m_mat[:,0] = m_mat[:,0]*config['bs']
+
+            row_sums = m_mat.sum(axis=1)
+
+            #normalitzation + log?
+            new_mat = m_mat / row_sums[:, np.newaxis]
             new_mat = np.log(new_mat)
 
-            if config['show'] == 1:
-                a= greedy_search(new_mat, id_to_ch)
-                f.write("greedy-bs-0.5 {}: {}\n".format(key,a))
+            #TODO return a list of decoded sequences
+            decoded_sequences = decoder(new_mat)
 
-                # a= greedy_search(mat[:,1:], temp_d)
-                # f.write("greedy-2 {}: {}\n".format(key,a))
-            beam = decode(new_mat)
+            for decoded_sequence in decoded_sequences:
+                final_utt = translate_sentence_id_to_char(decoded_sequence)
+                s = "{} {}\n".format(key, final_utt)
 
-            for i, utterance in enumerate(beam):
-                if (i >= config['nBestOutput']) :
-                    break
-                if(len(utterance)>0 and utterance[-1] == ' '):
-                    utterance = utterance[:-1]
-                s = "{} {}\n".format(key, utterance)
                 f.write(s)
             print('done ',key)
     print("finished decoding")

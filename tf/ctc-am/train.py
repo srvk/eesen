@@ -78,7 +78,8 @@ def main_parser():
     #sat arguments
     parser.add_argument('--sat_type', default = constants.SAT_TYPE.UNADAPTED, help='apply and train a sat layer')
     parser.add_argument('--sat_stage', default = constants.SAT_SATGES.FINE_TUNE, help='apply and train a sat layer')
-    parser.add_argument('--num_sat_layers', default = 2, type=int, help='number of sat layers for sat module')
+    parser.add_argument('--sat_nlayer', default = 2, type=int, help='number of sat layers for sat module')
+    parser.add_argument('--continue_ckpt_sat', default = False, action='store_true', help='number of sat layers for sat module')
 
     return parser
 
@@ -131,7 +132,9 @@ def create_sat_config(args, config_imported = None):
             print("exiting...")
             sys.exit()
 
-    sat[constants.CONF_TAGS.NUM_SAT_LAYERS] = int(args.num_sat_layers)
+    sat[constants.CONF_TAGS.NUM_SAT_LAYERS] = int(args.sat_nlayer)
+    sat[constants.CONF_TAGS.CONTINUE_CKPT_SAT] = args.continue_ckpt_sat
+    print(sat[constants.CONF_TAGS.CONTINUE_CKPT_SAT])
 
     return sat
 
@@ -187,7 +190,6 @@ def create_global_config(args):
         constants.CONF_TAGS.CLIP: args.clip,
         constants.CONF_TAGS.BATCH_NORM: args.batch_norm,
         constants.CONF_TAGS.GRAD_OPT: args.grad_opt,
-
     }
 
     config[constants.CONF_TAGS.SAT_CONF] = create_sat_config(args)
@@ -300,7 +302,9 @@ def main():
         config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_FEAT_DIM] = int(tr_sat.get_num_dim())
         config[constants.CONF_TAGS.MODEL_DIR] = os.path.join(config[constants.CONF_TAGS.TRAIN_DIR],
                                                              constants.DEFAULT_NAMES.MODEL_DIR_NAME,
-                                                             constants.DEFAULT_NAMES.SAT_DIR_NAME)
+                                                             constants.DEFAULT_NAMES.SAT_DIR_NAME+"_"+
+                                                             config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE]+
+                                                             "_l"+str(config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.NUM_SAT_LAYERS]))
 
         #checking that all sets are consitent
         set_checkers.check_sets_training(cv_x, cv_y, tr_x, tr_y, tr_sat, cv_sat)

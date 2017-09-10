@@ -243,6 +243,12 @@ else
     force_lr_epoch_ckpt=""
 fi
 
+if $debug; then
+    debug="--debug"
+else
+    debug=""
+fi
+
 if $diff_num_target_ckpt; then
     diff_num_target_ckpt="--diff_num_target_ckpt"
 else
@@ -270,7 +276,7 @@ if [ -n "$max_iters" ]; then
 fi
 
 if [ "$sat_type" != "" ]; then
-    cat $sat_path | /data/ASR5/ramons_2/sinbad_projects/eesen/src/featbin/copy-feats ark,t:- ark,scp:$tmpdir/sat_local.ark,$tmpdir/sat_local.scp
+    cat $sat_path | copy-feats ark,t:- ark,scp:$tmpdir/sat_local.ark,$tmpdir/sat_local.scp
 
     sat_type="--sat_type $sat_type"
 else
@@ -278,7 +284,7 @@ else
 fi
 
 if [ "$sat_stage" != "" ]; then
-    cat $sat_path | /data/ASR5/ramons_2/sinbad_projects/eesen/src/featbin/copy-feats ark,t:- ark,scp:$tmpdir/sat_local.ark,$tmpdir/sat_local.scp
+    cat $sat_path | copy-feats ark,t:- ark,scp:$tmpdir/sat_local.ark,$tmpdir/sat_local.scp
 
     sat_stage="--sat_stage $sat_stage"
 else

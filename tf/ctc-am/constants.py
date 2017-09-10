@@ -73,6 +73,7 @@ class CONF_TAGS:
     SAT_TYPE = "sat_type"
     NUM_SAT_LAYERS="num_sat_layers"
     SAT_FEAT_DIM="sat_feat_dim"
+    CONTINUE_CKPT_SAT = "continue_ckpt_sat"
 
 class AUGMENTATION:
     WINDOW="window"
@@ -94,7 +95,6 @@ class SAT_TYPE:
     UNADAPTED = "non_adapted"
 
 class CONFIG_TAGS_TEST:
-
 
     TRAIN_CONFIG = "train_config"
     PRIORS_SCHEME = "priors_scheme"

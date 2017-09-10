@@ -28,8 +28,8 @@ eval2000_dirs="/path/to/LDC2002S09/hub5e_00 /path/to/LDC2002T43"
 
 
 #acoustic model parameters
-am_nlayer=4   
-am_ncell_dim=320  
+am_nlayer=4
+am_ncell_dim=320
 am_model=deepbilstm
 am_window=3
 am_norm=false
@@ -39,12 +39,12 @@ am_norm=false
 fisher_dir_a="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/"
 fisher_dir_b="/data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
 
-lm_embed_size=64  
+lm_embed_size=64
 lm_batch_size=32
 lm_nlayer=1
-lm_ncell_dim=320  
+lm_ncell_dim=320
 lm_drop_out=0.5
-lm_optimizer="adam"    
+lm_optimizer="adam"
 
 fisher_text_dir="./data/fisher/"
 
@@ -106,7 +106,7 @@ if [ $stage -le 4 ]; then
 
   echo generating train labels...
 
-  python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_nodup/text --output_units ./data/local/dict_char/units.txt --output_labels $dir/labels.tr --lower_case --ignore_noises 
+  python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_nodup/text --output_units ./data/local/dict_char/units.txt --output_labels $dir/labels.tr --lower_case --ignore_noises
 
   echo generating cv labels...
 
@@ -114,7 +114,7 @@ if [ $stage -le 4 ]; then
   exit
 
   # Train the network with CTC. Refer to the script for details about the arguments
-  steps/train_ctc_tf.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size 16 --learn_rate 0.02 --half_after 6 --model $am_model --window $am_window --norm $am_norm data/train_nodup data/train_dev $dir || exit 1;
+  steps/train_ctc_tf.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size 16 --learn_rate 0.02 --half_after 6 --model $am_model --window $am_window --debug --norm $am_norm data/train_nodup data/train_dev $dir || exit 1;
 
 
   echo =====================================================================
@@ -217,6 +217,6 @@ if [ $stage -le 6 ]; then
   echo =====================================================================
 
 
-  ./steps/decode_ctc_am_tf.sh --config /data/ASR5/sdalmia_1/fall2017/swbd/v1-tf/exp/train_char_l4_c320_mdeepbilstm_w3_nfalse/model/config.pkl --data ./data/eval2000/ --weights /data/ASR5/sdalmia_1/fall2017/swbd/v1-tf/exp/train_char_l4_c320_mdeepbilstm_w3_nfalse/model/epoch04.ckpt --results ./results/am/
+  #./steps/decode_ctc_am_tf.sh --config /data/ASR5/sdalmia_1/fall2017/swbd/v1-tf/exp/train_char_l4_c320_mdeepbilstm_w3_nfalse/model/config.pkl --data ./data/eval2000/ --weights /data/ASR5/sdalmia_1/fall2017/swbd/v1-tf/exp/train_char_l4_c320_mdeepbilstm_w3_nfalse/model/epoch04.ckpt --results ./results/am/
 
 fi

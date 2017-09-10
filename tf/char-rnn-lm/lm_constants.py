@@ -43,7 +43,8 @@ class CONF_TAGS:
     NUM_SAT_DIM="sat_feat_dim"
 
 class DECODING_TYPE:
-    BEAM_SEARCH = ""
+    BEAM_SEARCH = "beam"
+    GREEDY_SEARCH = "greedy_search"
 
 class CONFIG_TAGS_TEST:
 
@@ -70,6 +71,7 @@ class CONFIG_TAGS_TEST:
     TEMPERATURE="temperature"
     USE_PRIORS="use_priors"
     COMPUTE_TER="compute_ter"
+    BLANK_SCALING="blank_scaling"
 
 #names
 class DEFAULT_NAMES:

@@ -134,6 +134,8 @@ class Train():
             #     print ("load_ckpt", best_epoch+1, 100.0*best_avg_ters, epoch+1, 100.0*avg_ters, new_lr_rate)
             #     saver.restore(self.__sess, "%s/epoch%02d.ckpt" % (self.__config["model_dir"], best_epoch+1))
 
+            #new_lr_rate = init_lr_rate * (half_rate ** ((epoch - half_after) // half_period))
+
             diff_epoch= int(float(epoch+1) / float(self.__config[constants.CONF_TAGS.HALF_AFTER]))
 
             lr_rate = self.__config[constants.CONF_TAGS.LR_RATE] * (self.__config[constants.CONF_TAGS.HALF_RATE] ** (diff_epoch))
@@ -142,11 +144,13 @@ class Train():
 
                 print("about to restore variables form "+str(best_epoch)+" epoch")
                 best_epoch_path = os.path.join(self.__config[constants.CONF_TAGS.MODEL_DIR], "/epoch%02d.ckpt" % (best_epoch))
+
                 if(os.path.isfile(best_epoch_path)):
                     print("epoch "+str(best_epoch)+" found. ")
                     saver.restore(self.__sess, "%s/epoch%02d.ckpt" % (self.__config["model_dir"], best_epoch+1))
                 else:
-                    print("epoch "+str(best_epoch)+" NOT found. restoring can not be done.")
+                    print("epoch "+str(best_epoch)+" NOT found. restoring can not be done. ("+best_epoch_path+")")
+
         else:
             lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
 
@@ -369,7 +373,8 @@ class Train():
             if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] \
                     != constants.SAT_TYPE.UNADAPTED and \
                 self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
-                            == constants.SAT_SATGES.TRAIN_SAT:
+                            == constants.SAT_SATGES.TRAIN_SAT and not \
+                    self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.CONTINUE_CKPT_SAT]:
 
                 print("partial restoring....")
                 vars_to_load=[]

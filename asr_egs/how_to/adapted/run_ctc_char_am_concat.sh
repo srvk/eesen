@@ -55,8 +55,8 @@ echo generating cv labels...
 python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_cv05/text --input_units ./data/local/dict_char/units.txt --output_labels $dir/labels.cv --lower_case
 
 # Train the network with CTC. Refer to the script for details about the arguments
-steps/train_ctc_tf.sh --learn-rate 0.00125 --half_after 6  --nlayer $nlayer --nproj $nproj --nhidden $nhidden --batch_size 16 --sat_type concat --sat_stage train_sat --continue_ckpt ./exp/train_am_char_l5_c200_p100/model/epoch08.ckpt --sat_path /data/ASR5/abhinav5/PlacesAlexNet_480h/final_feats  --max_iters 25 --sat_nlayer 2 --force_lr_epoch_ckpt ./data/train_tr95_fbank/ ./data/train_cv05_fbank/ $dir || exit 1;
-#/data/ASR5/abhinav5/PlacesAlexNet_480h/final_feats
+steps/train_ctc_tf.sh --learn-rate 0.0125 --half_after 6  --nlayer $nlayer --nproj $nproj --nhidden $nhidden --batch_size 16 --sat_type concat --sat_stage train_sat --continue_ckpt ./exp/train_am_char_l5_c200_p100/model/epoch08.ckpt --sat_path /data/ASR5/abhinav5/PlacesAlexNet_480h/final_feats  --max_iters 25 --sat_nlayer 2 --force_lr_epoch_ckpt ./data/train_tr95_fbank/ ./data/train_cv05_fbank/ $dir || exit 1;
+
 
 
 

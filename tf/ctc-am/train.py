@@ -162,7 +162,7 @@ def create_global_config(args):
         constants.CONF_TAGS.DIFF_NUM_TARGET_CKPT: args.diff_num_target_ckpt,
         constants.CONF_TAGS.FORCE_LR_EPOCH_CKPT: args.force_lr_epoch_ckpt,
 
-        constants.CONF_TAGS.DEBUG: False,
+        constants.CONF_TAGS.DEBUG: args.debug,
         constants.CONF_TAGS.STORE_MODEL: args.store_model,
         constants.CONF_TAGS.DATA_DIR: args.data_dir,
         constants.CONF_TAGS.TRAIN_DIR: args.train_dir,

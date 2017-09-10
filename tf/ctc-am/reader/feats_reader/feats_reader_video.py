@@ -1,4 +1,5 @@
 import sys
+import imageio
 
 import numpy as np
 from reader.feats_reader.feats_reader import FeatsReader
@@ -9,15 +10,15 @@ from utils.fileutils.kaldi import readMatrixByOffset
 from utils.fileutils.kaldi import read_scp_info
 
 
-class FeatsReaderKaldi(FeatsReader):
+class FeatsReaderVideo(FeatsReader):
 
     def __init__ (self, info_set, config):
 
         self.__config = config
 
         #constructing parent class and creating self.list_files and stroing self._info_set
-        super(FeatsReaderKaldi, self).__init__(info_set, self.__config[constants.CONF_TAGS.DATA_DIR],
-                                               self.__config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF], "scp")
+        super(FeatsReaderVideo, self).__init__(info_set, self.__config[constants.CONF_TAGS.DATA_DIR],
+                                               self.__config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF], "video")
 
         #getting feat in dict format
         feat_dict_info_languages = self.__read_dict_info_languages()
@@ -27,24 +28,10 @@ class FeatsReaderKaldi(FeatsReader):
 
     #TODO check augmentation this idea is kinda ok, but should take a closer look
     def change_source (self, new_source_positions):
-
-        if(self._info_set != 'train'):
-            print("this option is not available for this type of info_set (cv)")
-            print(debug.get_debug_info())
-            print("exiting...")
-            sys.exit()
-
-        #we need to recreat and refill the dictionary becuase we removed it before
-        feat_dict_info_languages={}
-        for language_id, scp_path in self._language_augment_scheme.iteritems():
-            print(80 * "-")
-            print("preparing dictionary for "+language_id+"...\n")
-            feat_dict_info_languages[language_id] = read_scp_info(scp_path[new_source_positions[language_id]])
-
-        print(80 * "-")
-        self._batches_x, self._batches_id = self.__create_ordered_batches_all_languages(feat_dict_info_languages,
-                                                                                        self.__config[constants.CONF_TAGS.LSTM_TYPE],
-                                                                                        self.__config[constants.CONF_TAGS.BATCH_SIZE])
+        print("change source (augmentation mix) is not needed by feats_reader_video")
+        print(debug.get_debug_info())
+        print("exiting...")
+        sys.exit()
 
     #read batch idx. Input: batch index. Output: batch read with feats
     def read (self, idx):
@@ -58,26 +45,32 @@ class FeatsReaderKaldi(FeatsReader):
         #TODO remove this asap (just sanity check)
         uttid_check=[]
 
-        #TODO remove uttid asap(just sanitychek)
-        for arkfile, offset, feat_len, feat_dim, augment, uttid in self._batches_x[idx]:
+        for uttid, filename, video_len, frame_height, frame_width in self._batches_x[idx]:
 
-            feat = readMatrixByOffset(arkfile, offset)
+            #TODO (brian) should we try catch here?
+            video = np.asarray(imageio.mimread(filename), dtype=np.float32) / 255.0
 
-            feat = self._augmenter.augment(feat, augment)
+            #TODO augmentation should be done online
+            #feat = self._augmenter.augment(video, augment)
 
             #sanity check that the augmentatbacion is ok
-            if feat_len != feat.shape[0] or feat_dim != feat.shape[1]:
-                print("invalid shape", feat_len, feat.shape[0], feat_dim,feat.shape[1], augment)
+            if video_len != len(video) or frame_height != video[0].shape[0] or frame_width != video[0].shape[1]:
+                print("invalid shape:")
+                print("should be video_len: "+str(video_len)+", frame_height: "+str(frame_height)+", frame width: "+str(frame_height))
+                print("but is video_len: "+str(len(video))+", frame_height: "+ str(video[0].shape[0])+", frame width: "+str(video[0].shape[0]))
                 print(debug.get_debug_info())
                 print("exiting...")
                 sys.exit()
 
-            if tmpx is None:
-                tmpx = np.zeros((number_of_utt, max_utt_len, feat_dim), np.float32)
 
-            tmpx[i, :feat_len, :] = feat
+            #TODO (brian) should we do this even batches thing?
+            #if tmpx is None:
+            #    tmpx = np.zeros((number_of_utt, max_utt_len, feat_dim), np.float32)
+
+            #tmpx[i, :feat_len, :] = feat
+            #i += 1
+
             uttid_check.append(uttid)
-            i += 1
 
         return (tmpx, uttid_check)
 

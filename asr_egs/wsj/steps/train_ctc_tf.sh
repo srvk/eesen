@@ -33,6 +33,7 @@ learn_rate=0.02
 l2=0.0001
 max_iters=25
 half_after=6
+debug=false
 
 #continue training
 continue_ckpt=""
@@ -98,7 +99,7 @@ else
     diff_num_target_ckpt=""
 fi
 
-if [ $continue_ckpt != "" ]; then
+if [[ $continue_ckpt != "" ]]; then
     continue_ckpt="--continue_ckpt $continue_ckpt"
 else
     continue_ckpt=""
@@ -121,7 +122,7 @@ fi
 
 #SPEAKER ADAPTATION
 
-if [ "$sat_type" != "" ]; then
+if [[ "$sat_type" != "" ]]; then
     cat $sat_path | copy-feats ark,t:- ark,scp:$tmpdir/sat_local.ark,$tmpdir/sat_local.scp
 
     sat_type="--sat_type $sat_type"
@@ -129,7 +130,7 @@ else
     sat_type=""
 fi
 
-if [ "$sat_stage" != "" ]; then
+if [[ "$sat_stage" != "" ]]; then
     sat_stage="--sat_stage $sat_stage"
 else
     sat_stage=""
@@ -149,13 +150,16 @@ echo ""
 
 data_tr=$1
 data_cv=$2
-copy-feats "scp:$data_tr/feats.scp" ark,scp:$tmpdir/train.ark,$tmpdir/train_local.scp || exit 1;
+
+feats_cv="ark,s,cs:apply-cmvn --norm-vars=true --utt2spk=ark:$data_cv/utt2spk scp:$data_cv/cmvn.scp scp:$data_cv/feats.scp ark:- |"
+copy-feats "$feats_cv" ark,scp:$tmpdir/cv.ark,$tmpdir/cv_local.scp || exit 1;
 
 echo ""
 echo copying cv features ...
 echo ""
 
-copy-feats "scp:$data_cv/feats.scp" ark,scp:$tmpdir/cv.ark,$tmpdir/cv_local.scp || exit 1;
+feats_tr="ark,s,cs:apply-cmvn --norm-vars=true --utt2spk=ark:$data_tr/utt2spk scp:$data_tr/cmvn.scp scp:$data_tr/feats.scp ark:- |"
+copy-feats "$feats_tr" ark,scp:$tmpdir/train.ark,$tmpdir/train_local.scp || exit 1;
 
 echo ""
 echo copying labels ...
@@ -183,7 +187,7 @@ echo "TRAINING STARTS [$cur_time]"
 
 $train_tool $train_opts --lr_rate $learn_rate --batch_size $batch_size --l2 $l2 \
     --nhidden $nhidden --nlayer $nlayer $nproj $feat_proj $ckpt $max_iters \
-    --train_dir $dir --data_dir $tmpdir --half_after $half_after $sat_stage $sat_type $sat_nlayer --model $model --window $window $norm $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt  || exit 1;
+    --train_dir $dir --data_dir $tmpdir --half_after $half_after $sat_stage $sat_type $sat_nlayer $debug --model $model --window $window $norm $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt  || exit 1;
 
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
 echo "TRAINING ENDS [$cur_time]"

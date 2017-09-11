@@ -51,46 +51,16 @@ echo "$0 $@"  # Print the command line for logging
 
 . utils/parse_options.sh || exit 1;
 
-#checking number of arguments
-if [ $# != 3 ]; then
-   echo "Usage: $0 <data-tr> <data-cv> <exp-dir>"
-   echo " e.g.: $0 data/train_tr data/train_cv exp/train_phn"
-   exit 1;
-fi
+#getting last argument (dir)
+dir="${!#}"
 
-#getting main arguments
-data_tr=$1
-data_cv=$2
-dir=$3
+#getting all languages
+all_lan=( "$@" )
+unset "all_lan[${#all_lan[@]}-1]"
 
 #creating tmp directory (concrete tmp path is defined in path.sh)
 tmpdir=`mktemp -d`
 trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; rm -r $tmpdir" EXIT ERR
-
-#checking folders
-for f in $data_tr/feats.scp $data_cv/feats.scp; do
-  [ ! -f $f ] && echo `basename "$0"`": no such file $f" && exit 1;
-done
-
-#multitarget training check
-
-train_labels=$(ls $dir | grep labels | grep tr)
-
-if [ -z "$train_labels" ]; then
-    echo "no training labels found in: $dir"
-    echo "training dir should have \"labels*.tr\""
-    exit
-fi
-
-#multitarget training checking
-
-cv_labels=$(ls $dir | grep labels | grep cv)
-
-if [ -z "$train_labels" ]; then
-    echo "no training labels found in: $dir"
-    echo "training dir should have \"labels*.cv\""
-    exit
-fi
 
 
 ## Adjust parameter variables
@@ -165,53 +135,92 @@ fi
 
 sat_nlayer="--sat_nlayer $sat_nlayer"
 
-echo ""
-echo copying training features ...
-echo ""
 
-data_tr=$1
-data_cv=$2
 
-feats_cv="ark,s,cs:apply-cmvn --norm-vars=true --utt2spk=ark:$data_cv/utt2spk scp:$data_cv/cmvn.scp scp:$data_cv/feats.scp ark:- |"
-copy-feats "$feats_cv" ark,scp:$tmpdir/cv.ark,$tmpdir/cv_local.scp || exit 1;
 
-echo ""
-echo copying cv features ...
-echo ""
+for language_dir in "${all_lan[@]}"; do
 
-feats_tr="ark,s,cs:apply-cmvn --norm-vars=true --utt2spk=ark:$data_tr/utt2spk scp:$data_tr/cmvn.scp scp:$data_tr/feats.scp ark:- |"
-copy-feats "$feats_tr" ark,scp:$tmpdir/train.ark,$tmpdir/train_local.scp || exit 1;
+    language_name=$(basename $language_dir)
 
-echo ""
-echo copying labels ...
-echo ""
-
-cp $dir/labels*.tr $tmpdir/ || exit 1
-cp $dir/labels*.cv $tmpdir/ || exit 1
-
-echo ""
-echo cleaning train set ...
-echo ""
-
-for f in $tmpdir/*.tr; do
-
-	echo ""
-	echo cleaning train set $(basename $f)...
-	echo ""
-
-	python ./utils/clean_length.py --scp_in  $tmpdir/train_local.scp --labels $f --subsampling 3 --scp_out $tmpdir/train_local.scp
-done
-
-for f in $dir/*.cv; do
+    mkdir $tmpdir/$language_name
 
     echo ""
-    echo cleaning cv set $(basename $f)...
-    echo ""
+    echo START COPYING LANGUAGE: $language_name
 
-    python ./utils/clean_length.py --scp_in  $tmpdir/cv_local.scp --labels $f --subsampling 3 --scp_out $tmpdir/cv_local.scp
+    echo copying training features ...
+
+    cv_folder=$(ls $language_dir | grep \_cv)
+
+    if [ -z "$cv_folder" ]; then
+	echo "no training folder found for language: $language_name ($language_dir)"
+	echo "training dir should have \"_cv\""
+	exit
+    fi
+
+    echo copying cv features ...
+
+    data_cv=$language_dir/$cv_folder
+
+    feats_cv="ark,s,cs:apply-cmvn --norm-vars=true --utt2spk=ark:$data_cv/utt2spk scp:$data_cv/cmvn.scp scp:$data_cv/feats.scp ark:- |"
+    copy-feats "$feats_cv" ark,scp:$tmpdir/$language_name/cv.ark,$tmpdir/$language_name/cv_local.scp || exit 1;
+
+
+    tr_folder=$(ls $language_dir | grep \_tr)
+
+    if [ -z "$tr_folder" ]; then
+	echo "no training folder found for language: $language_name ($language_dir)"
+	echo "training dir should have \"_tr\""
+	exit
+    fi
+
+    echo copying train features ...
+
+    data_tr=$language_dir/$tr_folder
+
+    feats_tr="ark,s,cs:apply-cmvn --norm-vars=true --utt2spk=ark:$data_tr/utt2spk scp:$data_tr/cmvn.scp scp:$data_tr/feats.scp ark:- |"
+
+    copy-feats "$feats_tr" ark,scp:$tmpdir/$language_name/train.ark,$tmpdir/$language_name/train_local.scp || exit 1;
+
+
+    labels_tr=$(ls $language_dir | grep labels | grep \.tr)
+
+    if [ -z "$labels_tr" ]; then
+	echo "no training labels found: $language_name ($language_dir)"
+	echo "training dir should have \".cv\""
+	exit
+    fi
+
+    labels_cv=$(ls $language_dir | grep labels | grep \.cv)
+
+    if [ -z "$labels_tr" ]; then
+	echo "no training labels found: $language_name ($language_dir)"
+	echo "training dir should have \".cv\""
+	exit
+    fi
+
+    echo copying labels ...
+
+    cp $language_dir/labels.tr $tmpdir/$language_name/ || exit 1
+    cp $language_dir/labels.cv $tmpdir/$language_name/ || exit 1
+
+    echo cleaning train set ...
+
+    python ./utils/clean_length.py --scp_in  $tmpdir/$language_name/train_local.scp --labels $tmpdir/$language_name/labels.tr --subsampling 3 --scp_out $tmpdir/$language_name/train_local.scp
+
+    echo cleaning cv set ...
+
+    python ./utils/clean_length.py --scp_in  $tmpdir/$language_name/cv_local.scp --labels $tmpdir/$language_name/labels.cv --subsampling 3 --scp_out $tmpdir/$language_name/cv_local.scp
+
+    echo ""
 
 done
 
+
+echo ""
+echo final distribution of data_dir:
+echo ""
+
+find $tmpdir
 
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
 echo "TRAINING STARTS [$cur_time]"

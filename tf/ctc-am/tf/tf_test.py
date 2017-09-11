@@ -96,7 +96,7 @@ class Test():
                                   batch_log_soft_probs, log_soft_probs, batch_logits, logits, batch_log_likes, log_likes)
 
                 else:
-                    self.__store_online(config, batch_id, batch_soft_probs, batch_log_soft_probs, batch_logits, batch_log_likes, batch_seq_len)
+                    self.__store_online(config, batch_id, batch_soft_probs, batch_log_soft_probs, batch_logits, batch_log_likes)
 
                 if(config[constants.CONFIG_TAGS_TEST.COMPUTE_TER]):
                     self.__update_counters(config, batch_size, ntest, y_batch, ntest_labels, batch_ters, test_ters, batch_cost, test_costs)
@@ -153,7 +153,7 @@ class Test():
                 return request_list
 
     def  __store_online(self, config, batch_id, batch_soft_probs,
-                        batch_log_soft_probs, batch_logits, batch_log_likes, batch_seq_len):
+                        batch_log_soft_probs, batch_logits, batch_log_likes):
 
         language_idx = 0
         for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
@@ -179,7 +179,7 @@ class Test():
                         log_like_store_path = os.path.join(root_store_path, "log_like.hdf5")
 
                     self.__partial_store_hdf5(log_like_store_path, batch_log_likes[language_idx][target_idx],
-                                              config[constants.CONFIG_TAGS_TEST.COUNT_AUGMENT], batch_id, batch_seq_len)
+                                              config[constants.CONFIG_TAGS_TEST.COUNT_AUGMENT], batch_id, config[constants.CONFIG_TAGS_TEST.SUBSAMPLED_UTT])
 
 
                 #soft probs
@@ -188,7 +188,7 @@ class Test():
                 else:
                     soft_prob_path = os.path.join(root_store_path, "soft_prob.hdf5")
                 self.__partial_store_hdf5(soft_prob_path, batch_soft_probs[language_idx][target_idx],
-                                          config[constants.CONFIG_TAGS_TEST.COUNT_AUGMENT], batch_id, batch_seq_len)
+                                          config[constants.CONFIG_TAGS_TEST.COUNT_AUGMENT], batch_id, config[constants.CONFIG_TAGS_TEST.SUBSAMPLED_UTT])
 
                 #log_soft probs
                 if(len(target_scheme.keys()) > 1):
@@ -196,7 +196,7 @@ class Test():
                 else:
                     log_soft_prob_path = os.path.join(root_store_path, "log_soft_prob.hdf5")
                 self.__partial_store_hdf5(log_soft_prob_path, batch_log_soft_probs[language_idx][target_idx],
-                                          config[constants.CONFIG_TAGS_TEST.COUNT_AUGMENT], batch_id, batch_seq_len)
+                                          config[constants.CONFIG_TAGS_TEST.COUNT_AUGMENT], batch_id, config[constants.CONFIG_TAGS_TEST.SUBSAMPLED_UTT])
 
                 #logits
                 if(len(target_scheme.keys()) > 1):
@@ -204,13 +204,13 @@ class Test():
                 else:
                     logit_path = os.path.join(root_store_path, "logits.hdf5")
                 self.__partial_store_hdf5(logit_path, batch_logits[language_idx][target_idx], config[constants.CONFIG_TAGS_TEST.COUNT_AUGMENT],
-                                          batch_id, batch_seq_len)
+                                          batch_id, config[constants.CONFIG_TAGS_TEST.SUBSAMPLED_UTT])
 
                 target_idx += 1
 
             language_idx += 1
 
-    def __partial_store_hdf5(self, path, data, batch_id_counts, batch_id, batch_seq_len):
+    def __partial_store_hdf5(self, path, data, batch_id_counts, batch_id, subsampled_utt):
 
 
         with h5py.File(path) as h5file:
@@ -220,24 +220,30 @@ class Test():
 
                 rolled_utt = np.roll(utt, 1, axis=1)
 
-                if(batch_id[idx] in h5file):
-                    #new_data = [np.roll(data[0][i, : batch_seq_len[i] :], 1, axis = 1) for i in range(len(data))]
-
-                    #get stored sample
-                    stored_sample = h5file[batch_id[idx]]
-                    #check minimum lengthtt
-                    if(stored_sample.shape[0] < rolled_utt.shape[0]):
-                        final_length = stored_sample.shape[0]
-                    else:
-                        final_length = rolled_utt.shape[0]
-
-                    del h5file[batch_id[idx]]
-
-                    h5file[batch_id[idx]] = stored_sample[0:final_length][:] + \
-                                            rolled_utt[0:final_length][:]/float(batch_id_counts[batch_id[idx]])
-
+                #TODO would be cool to decide which one to choose
+                #TODO would be cool to have a sanity check also
+                if(subsampled_utt > 0 ):
+                    if(batch_id[idx] not in h5file):
+                        h5file[batch_id[idx]] = rolled_utt
                 else:
-                    h5file[batch_id[idx]] = rolled_utt/float(batch_id_counts[batch_id[idx]])
+                    if(batch_id[idx] in h5file):
+                        #new_data = [np.roll(data[0][i, : batch_seq_len[i] :], 1, axis = 1) for i in range(len(data))]
+
+                        #get stored sample
+                        stored_sample = h5file[batch_id[idx]]
+                        #check minimum lengthtt
+                        if(stored_sample.shape[0] < rolled_utt.shape[0]):
+                            final_length = stored_sample.shape[0]
+                        else:
+                            final_length = rolled_utt.shape[0]
+
+                        del h5file[batch_id[idx]]
+
+                        h5file[batch_id[idx]] = stored_sample[0:final_length][:] + \
+                                                rolled_utt[0:final_length][:]/float(batch_id_counts[batch_id[idx]])
+
+                    else:
+                        h5file[batch_id[idx]] = rolled_utt/float(batch_id_counts[batch_id[idx]])
 
     def __average_over_augmented_data(self, config, m_batches_id, m_soft_probs, m_log_soft_probs, m_log_likes, m_logits):
         #new batch structure

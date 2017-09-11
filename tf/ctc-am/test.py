@@ -90,6 +90,8 @@ def main_parser():
     parser.add_argument('--use_priors', default = False, action='store_true', help='if --use_priors it will take ')
     parser.add_argument('--compute_ter', default = False, action='store_true', help='if --compute_ter the labels will be taken from data_dir (label_phn.test)and ter will be computed')
 
+    parser.add_argument('--subsampled_utt', default = 0, type=int, help='if set we will only consider the subsampled selected')
+
     return parser
 
 def create_test_config(args, language_scheme):
@@ -110,6 +112,8 @@ def create_test_config(args, language_scheme):
     config_test[constants.CONFIG_TAGS_TEST.USE_PRIORS] = args.use_priors
     config_test[constants.CONFIG_TAGS_TEST.BATCH_SIZE] = args.batch_size
     config_test[constants.CONFIG_TAGS_TEST.ONLINE_STORAGE] = args.online_storage
+
+    config_test[constants.CONFIG_TAGS_TEST.SUBSAMPLED_UTT] = args.subsampled_utt
 
     if(config_test[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
         config_test[constants.CONFIG_TAGS_TEST.PRIORS_SCHEME] = generate_priors(config_test[constants.CONFIG_TAGS_TEST.DATA_DIR], language_scheme)

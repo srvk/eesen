@@ -43,10 +43,10 @@ with open(args.scp_out, "w") as f:
     for key, element in dict_scp.items():
         uttid_aux, arkfile, offset, feat_len, feat_dim  = element
         if(args.subsampling > 1):
-            feat_len = int(float(feat_len) / float(3))
+            feat_len = int(float(feat_len) / float(args.subsampling))
 
         if(key in labels_dict):
-            if(labels_dict[key] < feat_len):
+            if(labels_dict[key] < feat_len and labels_dict[key] != 0):
                 new_len += 1
                 f.write(str(key)+" "+str(dict_text[key])+"\n")
         else:
@@ -62,7 +62,7 @@ with open(args.scp_out, "w") as f:
 
 
 print("cleaning done:")
-print("original scp length:" +str(original_scp_len))
+print("original scp length: " +str(original_scp_len))
 print("scp deleted: "+str(original_scp_len-new_len))
 print("final scp length: "+str(new_len))
 print("number of labels not found: "+str(labels_not_found))

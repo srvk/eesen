@@ -143,7 +143,15 @@ class Train():
             if lr_rate != self.__config[constants.CONF_TAGS.LR_RATE]:
 
                 print("about to restore variables form "+str(best_epoch)+" epoch")
-                best_epoch_path = os.path.join(self.__config[constants.CONF_TAGS.MODEL_DIR], "/epoch%02d.ckpt" % (best_epoch))
+                epoch_name = "/epoch%02d.ckpt" % (best_epoch)
+                print(epoch_name)
+                print(epoch_name)
+                print(epoch_name)
+                print(self.__config[constants.CONF_TAGS.MODEL_DIR])
+                print(self.__config[constants.CONF_TAGS.MODEL_DIR])
+                print(self.__config[constants.CONF_TAGS.MODEL_DIR])
+                print(self.__config[constants.CONF_TAGS.MODEL_DIR])
+                best_epoch_path = os.path.join(self.__config[constants.CONF_TAGS.MODEL_DIR], epoch_name)
 
                 if(os.path.isfile(best_epoch_path)):
                     print("epoch "+str(best_epoch)+" found. ")

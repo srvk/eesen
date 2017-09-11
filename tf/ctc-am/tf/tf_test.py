@@ -181,7 +181,6 @@ class Test():
                     self.__partial_store_hdf5(log_like_store_path, batch_log_likes[language_idx][target_idx],
                                               config[constants.CONFIG_TAGS_TEST.COUNT_AUGMENT], batch_id, config[constants.CONFIG_TAGS_TEST.SUBSAMPLED_UTT])
 
-
                 #soft probs
                 if(len(target_scheme.keys()) > 1):
                     soft_prob_path = os.path.join(root_store_path, "soft_prob_"+target_id+".hdf5")
@@ -264,7 +263,7 @@ class Test():
                             S[utt_id] = [s]; P[utt_id] = [p]; L[utt_id] = [l]; O[utt_id] = [o]
 
                         #utt exists. Lets concatenate
-                        else:
+                        elif(config[constants.CONFIG_TAGS_TEST.SUBSAMPLED_UTT] == 0):
                             S[utt_id] += [s]; P[utt_id] += [p]; L[utt_id] += [l]; O[utt_id] += [o]
 
                     S, P, O, L = self.__shrink_and_average(S, P, O, L)
@@ -280,7 +279,7 @@ class Test():
                             S[utt_id] = [s]; P[utt_id] = [p]; O[utt_id] = [o]
 
                         #utt exists. Lets concatenate
-                        else:
+                        elif(config[constants.CONFIG_TAGS_TEST.SUBSAMPLED_UTT] == 0):
                             S[utt_id] += [s]; P[utt_id] += [p]; O[utt_id] += [o]
 
                     S, P, O, _ = self.__shrink_and_average(S, P, O)

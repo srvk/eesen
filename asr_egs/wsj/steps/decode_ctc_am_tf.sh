@@ -1,5 +1,7 @@
 results=""
 
+subsampled_utt=0
+
 batch_size=16
 
 online_storage=false
@@ -27,6 +29,13 @@ else
       online_storage=""
 fi
 
+if [ "$subsampled_utt" -gt "0" ]; then
+
+      subsampled_utt="--subsampled_utt $subsampled_utt"
+else
+      subsampled_utt=""
+fi
+
 mkdir -p $results
 
 norm_vars=true
@@ -39,7 +48,7 @@ copy-feats "${feats}" ark,scp:$tmpdir/f.ark,$tmpdir/test_local.scp
 
 if $compute_ter; then
     compute_ter="--compute_ter"
-    python ./utils/clean_length.py --scp_in  $tmpdir/test_local.scp --labels $tmpdir/labels.test --subsampling 3 --scp_out $tmpdir/test_local.scp
+    python ./utils/clean_length.py --scp_in  $tmpdir/test_local.scp --labels $tmpdir/labels.test --subsampling 3 --scp_out $tmpdir/test_local.scp $subsampled_utt_utt
     cp $data/labels.test
 else
     force_lr_epoch_ckpt=""

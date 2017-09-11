@@ -134,7 +134,6 @@ def create_sat_config(args, config_imported = None):
 
     sat[constants.CONF_TAGS.NUM_SAT_LAYERS] = int(args.sat_nlayer)
     sat[constants.CONF_TAGS.CONTINUE_CKPT_SAT] = args.continue_ckpt_sat
-    print(sat[constants.CONF_TAGS.CONTINUE_CKPT_SAT])
 
     return sat
 
@@ -303,8 +302,9 @@ def main():
         config[constants.CONF_TAGS.MODEL_DIR] = os.path.join(config[constants.CONF_TAGS.TRAIN_DIR],
                                                              constants.DEFAULT_NAMES.MODEL_DIR_NAME,
                                                              constants.DEFAULT_NAMES.SAT_DIR_NAME+"_"+
-                                                             config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE]+
-                                                             "_l"+str(config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.NUM_SAT_LAYERS]))
+                                                             config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE]+"_"+
+                                                             config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE]+"_"+
+                                                             str(config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.NUM_SAT_LAYERS]))
 
         #checking that all sets are consitent
         set_checkers.check_sets_training(cv_x, cv_y, tr_x, tr_y, tr_sat, cv_sat)

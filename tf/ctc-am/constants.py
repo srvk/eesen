@@ -103,7 +103,7 @@ class CONFIG_TAGS_TEST:
     #io dir
     DATA_DIR = "data_dir"
     RESULTS_DIR = "results_dir"
-    SUBSAMPLED_UTT = "results_dir"
+    SUBSAMPLED_UTT = "subsampled_utt"
 
     #train configuration
     EVAL_CONFIG_FILE = "eval_config_file"

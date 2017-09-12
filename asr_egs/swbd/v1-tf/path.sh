@@ -84,7 +84,7 @@ else
   [ -n "$PBS_JOBID" ] && export THEANO_FLAGS="device=`qstat -n $PBS_JOBID | tail -n 1 | sed 's|.*/|gpu|g'`"
 
   export TMPDIR=/scratch
-  export TMPDIR=/data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/asr_egs/how_to/adapted/random_exp/tmp/
+  #export TMPDIR=/data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/asr_egs/how_to/adapted/random_exp/tmp/
 
   export LD_LIBRARY_PATH=/data/ASR1/tools/sox-14.4.2/install/lib:$LD_LIBRARY_PATH
   export BABEL_DATA=/data/MM23/sdalmia/eval_lorelei/il5_tig_set1_tts

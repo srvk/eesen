@@ -19,6 +19,7 @@ def create_reader(info_set, info_format, config):
     #sanity check for feats
     #read features with kaldi format
     if info_format == "kaldi": return FeatsReaderKaldi(info_set, config)
+    if info_format == "video": return FeatsReaderVideo(info_set, config)
 
     else:
         print("Error: "+info_format+" is not defined as \"info_format\" in \"info_set\": "+info_set)

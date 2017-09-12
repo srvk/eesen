@@ -233,8 +233,6 @@ def import_config(args):
 # -----------------------------------------------------------------
 
 def main():
-
-
     #TODO construct a factory/helper to load everything by just looking at data_dir
 
     parser = main_parser()
@@ -253,7 +251,11 @@ def main():
     print("tr_x:")
     print(80 * "-")
     #load training feats
-    tr_x = feats_reader_factory.create_reader('train', 'kaldi', config)
+    if(config[constants.CONF_TAGS.MODEL] == constants.MODEL_NAME.ARCNET):
+
+        tr_x = feats_reader_factory.create_reader('train', 'kaldi', config)
+    else:
+        tr_x = feats_reader_factory.create_reader('train', 'kaldi', config)
 
     print(80 * "-")
     print("tr_y:")
@@ -340,6 +342,8 @@ def main():
         print(key+" "+str(value))
     print(80 * "-")
     eesen.train(data, config)
+
+
 
 if __name__ == "__main__":
     main()

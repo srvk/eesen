@@ -4,7 +4,7 @@
 #PBS -j oe
 #PBS -o log
 #PBS -d .
-#PBS -N eesen_tf_swbd_pipeline
+#PBS -N eesen_tf_swbd_pipeline_char
 #PBS -V
 #PBS -l walltime=48:00:00
 #PBS -l nodes=1:ppn=1
@@ -113,7 +113,7 @@ if [ $stage -le 4 ]; then
   python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_dev/text --input_units ./data/local/dict_char/units.txt --output_labels $dir/labels.cv || exit 1
 
   # Train the network with CTC. Refer to the script for details about the arguments
-  steps/train_ctc_tf.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size 16 --learn_rate 0.02 --half_after 6 --model $am_model --window $am_window --debug true --norm $am_norm data/train_nodup data/train_dev $dir || exit 1;
+  steps/train_ctc_tf.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size 16 --learn_rate 0.02 --half_after 6 --model $am_model --window $am_window --norm $am_norm data/train_nodup data/train_dev $dir || exit 1;
 
   exit
 

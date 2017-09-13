@@ -4,7 +4,7 @@
 #PBS -j oe
 #PBS -o log
 #PBS -d .
-#PBS -N eesen_tf_swbd_pipeline_phn
+#PBS -N eesen_tf_swbd_pipeline_char_phn_mt
 #PBS -V
 #PBS -l walltime=48:00:00
 #PBS -l nodes=1:ppn=1
@@ -57,12 +57,13 @@ if [ $stage -le 1 ]; then
   # Use the same datap prepatation script from Kaldi
   local/swbd1_data_prep.sh $swbd  || exit 1;
 
-  # Construct the phoneme-based lexicon
-  local/swbd1_prepare_phn_dict.sh || exit 1;
+  # Represent word spellings using a dictionary-like format
+  local/swbd1_prepare_char_dict.sh || exit 1;
 
   # Data preparation for the eval2000 set
   local/eval2000_data_prep.sh $eval2000_dirs
 fi
+
 
 if [ $stage -le 2 ]; then
   echo =====================================================================
@@ -99,20 +100,27 @@ if [ $stage -le 4 ]; then
   echo =====================================================================
 
 
-  dir=exp/train_phn_l${am_nlayer}_c${am_ncell_dim}_m${am_model}_w${am_window}_n${am_norm}
+  dir=exp/train_char_phn_mt_l${am_nlayer}_c${am_ncell_dim}_m${am_model}_w${am_window}_n${am_norm}
 
   mkdir -p $dir
 
   echo generating train labels...
 
-  python ./local/swbd1_prepare_phn_dict_tf.py --phn_lexicon ./data/local/dict_phn/lexicon.txt --text_file ./data/train_nodup/text --output_units ./data/local/dict_phn/units.txt --output_labels $dir/labels.tr --ignore_noises || exit 1
+  python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_nodup/text --output_units ./data/local/dict_char/units.txt --output_labels $dir/labels_char.tr --lower_case --ignore_noises || exit 1
+
+  python ./local/swbd1_prepare_phn_dict_tf.py --phn_lexicon ./data/local/dict_phn/lexicon.txt --text_file ./data/train_nodup/text --output_units ./data/local/dict_phn/units.txt --output_labels $dir/labels_phn.tr --ignore_noises || exit 1
+
 
   echo generating cv labels...
 
-  python ./local/swbd1_prepare_phn_dict_tf.py --phn_lexicon ./data/local/dict_phn/lexicon.txt --text_file ./data/train_dev/text --output_units ./data/local/dict_phn/units.txt --output_labels $dir/labels.cv --ignore_noises || exit 1
+  python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_dev/text --input_units ./data/local/dict_char/units.txt --output_labels $dir/labels_char.cv || exit 1
+
+  python ./local/swbd1_prepare_phn_dict_tf.py --phn_lexicon ./data/local/dict_phn/lexicon.txt --text_file ./data/train_dev/text --output_units ./data/local/dict_phn/units.txt --output_labels $dir/labels_phn.cv --ignore_noises || exit 1
 
   # Train the network with CTC. Refer to the script for details about the arguments
   steps/train_ctc_tf.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size 16 --learn_rate 0.02 --half_after 6 --model $am_model --window $am_window --norm $am_norm data/train_nodup data/train_dev $dir || exit 1;
+
+  exit
 
 
   echo =====================================================================
@@ -132,3 +140,89 @@ if [ $stage -le 4 ]; then
 
 fi
 
+if [ $stage -le 5 ]; then
+  echo =====================================================================
+  echo "             Char RNN LM Training with the Full Set                "
+  echo =====================================================================
+
+  dir=exp/train_lm_char_l${lstm_layer_num}_c${lstm_cell_dim}_e${lm_embed_size}_d${drop_out}_o${optimizer}/
+
+  mkdir -p $dir
+  mkdir -p ./data/local/dict_char_lm/
+
+  echo ""
+  echo creating labels files from train...
+  echo ""
+
+  python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_nodup/text --input_units ./data/local/dict_char/units.txt --output_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.tr --lm
+
+  echo ""
+  echo creating word list from train...
+  echo ""
+
+  python ./local/swbd1_prepare_word_list_tf.py --text_file ./data/train_nodup/text --output_word_list $dir/words.tr --ignore_noises
+
+
+  echo ""
+  echo creating labels files from cv...
+  echo ""
+
+  python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_dev/text --input_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.cv --lm
+
+  echo ""
+  echo creating word list from cv...
+  echo ""
+
+  python ./local/swbd1_prepare_word_list_tf.py --text_file ./data/train_dev/text --output_word_list $dir/words.cv --ignore_noises
+
+  echo ""
+  echo generating fisher_data...
+  echo ""
+
+  ./local/swbd1_create_fisher_text.sh ./data/fisher/ $fisher_dir_a $fisher_dir_b
+
+
+  echo ""
+  echo creating labels files from fisher...
+  echo ""
+
+  python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/fisher/text --input_units ./data/local/dict_char_lm/units.txt --output_labels $dir/labels.fisher --lm
+
+  echo ""
+  echo creating word list from fisher...
+  echo ""
+
+  python ./local/swbd1_prepare_word_list_tf.py --text_file ./data/fisher/text --output_word_list $dir/words.fisher --ignore_noises
+
+
+  echo ""
+  echo fusing swbd data with fisher data...
+  echo ""
+
+  cat $dir/labels.fisher >> $dir/labels.tr
+
+  echo ""
+  echo fusing words files...
+  echo ""
+
+  cat $dir/words.fisher > $dir/words
+  cat $dir/words.cv >> $dir/words
+  cat $dir/words.tr >> $dir/words
+
+  echo ""
+  echo training with full swbd text...
+  echo ""
+
+  #./steps/train_char_lm.sh --train_dir $dir --nembed $lm_embed_size --nlayer $lm_nlayer --nhidden $lm_ncell_dim --batch_size $lm_batch_size --nepoch 100 --train_labels $dir/labels.tr --cv_labels $dir/labels.cv --drop_out $lm_drop_out --optimizer ${lm_optimizer}
+
+fi
+
+if [ $stage -le 6 ]; then
+  echo =====================================================================
+  echo "             	Decode Eval 2000 (AM + (char) LM)                  "
+  echo =====================================================================
+
+
+  #./steps/decode_ctc_am_tf.sh --config /data/ASR5/sdalmia_1/fall2017/swbd/v1-tf/exp/train_char_l4_c320_mdeepbilstm_w3_nfalse/model/config.pkl --data ./data/eval2000/ --weights /data/ASR5/sdalmia_1/fall2017/swbd/v1-tf/exp/train_char_l4_c320_mdeepbilstm_w3_nfalse/model/epoch04.ckpt --results ./results/am/
+
+fi

@@ -116,4 +116,8 @@ class CONFIG_TAGS_TEST:
     COMPUTE_TER = "compute_ter"
     COUNT_AUGMENT = "count_augment"
 
+class LOG_TAGS:
+
+    VALIDATE = "Validate"
+
 

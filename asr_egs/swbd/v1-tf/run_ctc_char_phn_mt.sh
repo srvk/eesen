@@ -118,7 +118,7 @@ if [ $stage -le 4 ]; then
   python ./local/swbd1_prepare_phn_dict_tf.py --phn_lexicon ./data/local/dict_phn/lexicon.txt --text_file ./data/train_dev/text --output_units ./data/local/dict_phn/units.txt --output_labels $dir/labels_phn.cv --ignore_noises || exit 1
 
   # Train the network with CTC. Refer to the script for details about the arguments
-  steps/train_ctc_tf.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size 16 --learn_rate 0.02 --half_after 6 --model $am_model --window $am_window --norm $am_norm data/train_nodup data/train_dev $dir || exit 1;
+  steps/train_ctc_tf.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size 16 --learn_rate 0.01 --continue_ckpt ./exp/train_char_phn_mt_l4_c320_mdeepbilstm_w3_nfalse/model/epoch08.ckpt --half_after 6 --model $am_model --window $am_window --norm $am_norm data/train_nodup data/train_dev $dir || exit 1;
 
   exit
 

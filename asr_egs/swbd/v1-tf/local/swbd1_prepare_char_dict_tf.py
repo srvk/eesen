@@ -55,7 +55,9 @@ def generate_labels_am(config, text_path, units_dict, output_labels_path):
         for line in input_text:
             total_lines += 1
             utt_id = line.split()[0]
-            new_line = utt_id for word in  line.split()[1:]: if(("[" in word) and ("]" in word)):
+            new_line = utt_id
+            for word in  line.split()[1:]: 
+                if(("[" in word) and ("]" in word)):
                     if(word in units_dict):
                         new_line += " " + str(units_dict[word])
 

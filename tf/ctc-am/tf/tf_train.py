@@ -45,11 +45,10 @@ class Train():
             self.__sess.run(tf.global_variables_initializer())
 
             # restore a training
-            saver, alpha = self.__restore_weights()
+            saver, alpha, best_avg_ters = self.__restore_weights()
 
             #initialize counters
-            best_avg_ters = float("inf")
-            best_epoch = 0
+            best_epoch = alpha
             lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
 
             if(alpha > 0):
@@ -81,7 +80,7 @@ class Train():
                 self.__generate_logs(cv_ters, cv_cost, ncv, train_ters, train_cost, ntrain, epoch, lr_rate, tic)
 
                 #update lr_rate if needed
-                lr_rate, best_avg_ters, best_epoch = self.__update_lr_rate(epoch, cv_ters, best_avg_ters, best_epoch, saver)
+                lr_rate, best_avg_ters, best_epoch = self.__update_lr_rate(epoch, cv_ters, best_avg_ters, best_epoch, saver, lr_rate)
 
                 print("Epoch "+str(epoch)+" done.")
                 print(80 * "-")
@@ -119,7 +118,7 @@ class Train():
 
 
 
-    def __update_lr_rate(self, epoch, cv_ters, best_avg_ters, best_epoch, saver):
+    def __update_lr_rate(self, epoch, cv_ters, best_avg_ters, best_epoch, saver, lr_rate):
 
         avg_ters = self.__compute_avg_ters(cv_ters)
 
@@ -138,22 +137,19 @@ class Train():
 
             diff_epoch= int(float(epoch+1) / float(self.__config[constants.CONF_TAGS.HALF_AFTER]))
 
-            lr_rate = self.__config[constants.CONF_TAGS.LR_RATE] * (self.__config[constants.CONF_TAGS.HALF_RATE] ** (diff_epoch))
+            new_lr_rate = self.__config[constants.CONF_TAGS.LR_RATE] * (self.__config[constants.CONF_TAGS.HALF_RATE] ** (diff_epoch))
 
-            if lr_rate != self.__config[constants.CONF_TAGS.LR_RATE]:
+            if lr_rate != new_lr_rate:
 
                 print("about to restore variables form "+str(best_epoch)+" epoch")
                 epoch_name = "/epoch%02d.ckpt" % (best_epoch)
                 best_epoch_path = self.__config[constants.CONF_TAGS.MODEL_DIR] + epoch_name
 
-                if(os.path.isfile(best_epoch_path)):
+                if(os.path.isfile(best_epoch_path+".index")):
                     print("epoch "+str(best_epoch)+" found. ")
                     saver.restore(self.__sess, "%s/epoch%02d.ckpt" % (self.__config["model_dir"], best_epoch+1))
                 else:
                     print("epoch "+str(best_epoch)+" NOT found. restoring can not be done. ("+best_epoch_path+")")
-
-        else:
-            lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
 
         if(best_avg_ters > avg_ters):
             best_avg_ters = avg_ters
@@ -364,6 +360,7 @@ class Train():
     def __restore_weights(self):
 
         alpha = 0
+        best_avg_ters = float('Inf')
 
         if self.__config[constants.CONF_TAGS.CONTINUE_CKPT]:
 
@@ -392,6 +389,7 @@ class Train():
 
                 #lets track all the variables again...
                 alpha = int(re.match(".*epoch([-+]?\d+).ckpt", self.__config[constants.CONF_TAGS.CONTINUE_CKPT]).groups()[0])
+
                 alpha += 1
 
             else:
@@ -416,6 +414,15 @@ class Train():
                 saver.restore(self.__sess, self.__config[constants.CONF_TAGS.CONTINUE_CKPT])
 
                 alpha = int(re.match(".*epoch([-+]?\d+).ckpt", self.__config[constants.CONF_TAGS.CONTINUE_CKPT]).groups()[0])
+
+                num_val = 0
+                acum_val = 0
+                with open(self.__config[constants.CONF_TAGS.CONTINUE_CKPT].replace(".ckpt",".log")) as input_file:
+                    for line in input_file:
+                        if (constants.LOG_TAGS.VALIDATE in line):
+                            acum_val += float(line.split()[4].replace("%,",""))
+                            num_val += 1
+                best_avg_ters = acum_val/num_val
                 alpha += 1
 
             print(80 * "-")
@@ -423,7 +430,8 @@ class Train():
         #we want to store everyhting
         saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH])
 
-        return saver, alpha
+
+        return saver, alpha, best_avg_ters
 
     def __generate_logs(self, cv_ters, cv_cost, ncv, train_ters, train_cost, ntrain, epoch, lr_rate, tic):
 
@@ -442,9 +450,9 @@ class Train():
                         print("\tTarget: %s" % (target_id))
                         fp.write("\tTarget: %s" % (target_id))
                     print("\t\t Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost[language_id][target_id], 100.0*train_ters[language_id][target_id], ntrain[language_id]))
-                    print("\t\t Validate cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost[language_id][target_id], 100.0*cv_ter, ncv[language_id]))
+                    print("\t\t"+constants.LOG_TAGS.VALIDATE+" cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost[language_id][target_id], 100.0*cv_ter, ncv[language_id]))
                     fp.write("\t\tTrain    cost: %.1f, ter: %.1f%%, #example: %d\n" % (train_cost[language_id][target_id], 100.0*train_ters[language_id][target_id], ntrain[language_id]))
-                    fp.write("\t\tValidate cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost[language_id][target_id], 100.0*cv_ter, ncv[language_id]))
+                    fp.write("\t\t"+constants.LOG_TAGS.VALIDATE+" cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost[language_id][target_id], 100.0*cv_ter, ncv[language_id]))
 
     def __print_counts_debug(self, epoch, batch_counter, total_number_batches, batch_cost, batch_size, batch_ters, data_queue):
 

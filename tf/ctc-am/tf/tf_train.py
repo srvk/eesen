@@ -139,6 +139,13 @@ class Train():
 
             new_lr_rate = self.__config[constants.CONF_TAGS.LR_RATE] * (self.__config[constants.CONF_TAGS.HALF_RATE] ** (diff_epoch))
 
+
+            print("***********************")
+            print("checking lr_rate:")
+            print("lr_rate: "+str(lr_rate))
+            print("new_lr_rate: "+str(new_lr_rate))
+            print("***********************")
+
             if lr_rate != new_lr_rate:
 
                 print("about to restore variables form "+str(best_epoch)+" epoch")
@@ -150,6 +157,8 @@ class Train():
                     saver.restore(self.__sess, "%s/epoch%02d.ckpt" % (self.__config["model_dir"], best_epoch+1))
                 else:
                     print("epoch "+str(best_epoch)+" NOT found. restoring can not be done. ("+best_epoch_path+")")
+                print("lr updated from "+str(lr_rate)+" to "+str(new_lr_rate))
+                lr_rate=new_lr_rate
 
         if(best_avg_ters > avg_ters):
             best_avg_ters = avg_ters

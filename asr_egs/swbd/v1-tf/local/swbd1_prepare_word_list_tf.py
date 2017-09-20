@@ -29,7 +29,7 @@ config = create_config(args)
 dict_words={}
 with open(config["text_file"]) as input_file:
     for line in input_file:
-        for word in line.split()[1:]:
+        for word in line.strip().split(" ")[1:]:
             if(word not in dict_words):
                 if("[" in word and "]" in word):
                     if(not config["ignore_noises"]):

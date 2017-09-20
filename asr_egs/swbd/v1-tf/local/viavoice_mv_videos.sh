@@ -13,9 +13,9 @@ if [ $# -ne 3 ]; then
   exit 1;
 fi
 
-if [ -f "$3" ]; then 
+if [ -f "$3" ]; then
     echo removing $3 ...
-    rm $3; 
+    rm $3;
 fi
 
 #!/bin/bash
@@ -38,6 +38,6 @@ while IFS='' read -r line || [[ -n "$line" ]]; do
 
     cp $original_path $new_path
 
-    echo $new_line > $3
+    echo $new_line >> $3
 
 done < "$1"

@@ -105,7 +105,7 @@ if [ $stage -le 4 ]; then
   mkdir -p $dir
   all_language=("./data_ml/phn/" "./data_ml/char/")
 
-  steps/train_ctc_tf_ml.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size  16 --learn_rate 0.02 --half_after 6 --model $am_model --window $am_window --continue_ckpt ./exp/train_char_phn_ml_l4_c320_mdeepbilstm_w3_nfalse/model/epoch06.ckpt --norm  $am_norm "${all_language[@]}" $dir || exit 1;
+  steps/train_ctc_tf_ml.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size  16 --learn_rate 0.01 --half_after 6 --model $am_model --window $am_window --continue_ckpt ./exp/train_char_phn_ml_l4_c320_mdeepbilstm_w3_nfalse/model/epoch07.ckpt --norm  $am_norm "${all_language[@]}" $dir || exit 1;
 
   exit
 

@@ -7,7 +7,16 @@ stage=1
 wsj0=/path/to/LDC93S6B
 wsj1=/path/to/LDC94S13B
 
-. parse_options.sh
+. utils/parse_options.sh
+
+# add check for IRSTLM prune-lm
+if ! prune-lm > /dev/null 2>&1; then
+    echo "Error: prune-lm (part of IRSTLM) is not in path"
+    echo "Make sure that you run tools/extras/install_irstlm.sh in the main Eesen directory;"
+    echo " this is no longer installed by default."
+    exit 1
+fi
+
 
 if [ $stage -le 1 ]; then
   echo =====================================================================

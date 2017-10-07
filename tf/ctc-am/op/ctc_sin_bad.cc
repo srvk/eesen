@@ -16,26 +16,23 @@ limitations under the License.
 //this is mandatory
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/op_kernel.h"
+
 //do we need this?
 #include "tensorflow/core/framework/shape_inference.h"
-
-
-
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/kernels/bounds_check.h"
 #include "tensorflow/core/platform/logging.h"
 #include "tensorflow/core/platform/macros.h"
 #include "tensorflow/core/util/sparse/sparse_tensor.h"
 
-
-#include "tensorflow/core/util/ctc/ctc_loss_calculator.h"
+#include "ctc_loss_calculator_sin_bad.h"
 
 
 using namespace tensorflow;
 
 typedef Eigen::ThreadPoolDevice CPUDevice;
 
-class CTCLossOpSinBad : public OpKernel {
+class CTCLossOp : public OpKernel {
 
   typedef Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic,
                                          Eigen::RowMajor> >
@@ -45,7 +42,7 @@ class CTCLossOpSinBad : public OpKernel {
       OutputMap;
 
  public:
-  explicit CTCLossOpSinBas(OpKernelConstruction* ctx) : OpKernel(ctx) {
+  explicit CTCLossOp(OpKernelConstruction* ctx) : OpKernel(ctx) {
 
     OP_REQUIRES_OK(ctx, ctx->GetAttr("preprocess_collapse_repeated",
                                      &preprocess_collapse_repeated_));
@@ -100,7 +97,7 @@ class CTCLossOpSinBad : public OpKernel {
 
     auto seq_len_t = seq_len->vec<int32>();
 
-    	
+
     OP_REQUIRES(ctx, labels_indices->dim_size(0) == labels_values->dim_size(0),
                 errors::InvalidArgument(
                     "labels_indices and labels_values must contain the "
@@ -191,8 +188,8 @@ class CTCLossOpSinBad : public OpKernel {
   bool ctc_merge_repeated_;
   bool ignore_longer_outputs_than_inputs_;
 
-  TF_DISALLOW_COPY_AND_ASSIGN(CTCLossOpSinBad);
+  TF_DISALLOW_COPY_AND_ASSIGN(CTCLossOp);
 };
 
-REGISTER_KERNEL_BUILDER(Name("CTCLoss").Device(DEVICE_CPU), CTCLossOpSinBad);
+REGISTER_KERNEL_BUILDER(Name("SinBadCtc").Device(DEVICE_CPU), CTCLossOp);
 

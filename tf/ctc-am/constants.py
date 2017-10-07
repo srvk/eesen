@@ -47,6 +47,7 @@ class CONF_TAGS:
     LSTM_TYPE = "lstm_type"
     MODEL = "model"
     NPROJ = "nproj"
+    FINAL_NPROJ = "final_nproj"
     L2="l2"
     NLAYERS="nlayer"
     NHIDDEN="nhidden"
@@ -87,6 +88,7 @@ class LSTM_TYPE:
 
 class SAT_SATGES:
     TRAIN_SAT = "train_sat"
+    TRAIN_DIRECT = "train_direct"
     FINE_TUNE = "fine_tune"
 
 class SAT_TYPE:
@@ -115,6 +117,7 @@ class CONFIG_TAGS_TEST:
     USE_PRIORS = "use_priors"
     COMPUTE_TER = "compute_ter"
     COUNT_AUGMENT = "count_augment"
+
 
 class LOG_TAGS:
 

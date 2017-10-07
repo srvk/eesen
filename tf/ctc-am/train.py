@@ -34,6 +34,7 @@ from reader.labels_reader import labels_reader_factory
 def main_parser():
     parser = argparse.ArgumentParser(description='Train TF-Eesen Model')
 
+
     #general arguments
     parser.add_argument('--debug', default=False, dest='debug', action='store_true', help='enable debug mode')
     parser.add_argument('--store_model', default=False, dest='store_model', action='store_true', help='store model')
@@ -48,7 +49,6 @@ def main_parser():
     parser.add_argument('--diff_num_target_ckpt', default=False, action='store_true', help='change the number of targets after retaking training')
     parser.add_argument('--force_lr_epoch_ckpt', default=False, action='store_true', help='force to start for epoch 0 with the learning rate specified in flags')
 
-
     #augment arugments
     parser.add_argument('--augment', default=False, dest='augment', action='store_true', help='do internal data augmentation')
     parser.add_argument('--window', default=3, type=int, help='how many frames will concatenate')
@@ -61,6 +61,8 @@ def main_parser():
     #TODO this should be done through a model manager
     parser.add_argument('--model', default="deepbilstm", help = "model: achen, bilstm, achen_sum")
     parser.add_argument('--nproj', default = 0, type=int, help='dimension of projection units, set to 0 if no projection needed')
+    parser.add_argument('--nfinalproj', default = 0, type=int, help='dimension of the final projection layer, if 0 no final projection layer will be added')
+
     parser.add_argument('--l2', default = 0.0, type=float, help='l2 normalization')
     parser.add_argument('--nlayer', default = 5, type=int, help='#layer')
     parser.add_argument('--nhidden', default = 320, type=int, help='dimension of hidden units in single direction')
@@ -119,12 +121,15 @@ def create_sat_config(args, config_imported = None):
             print("exiting...")
             sys.exit()
 
-
         if(args.sat_stage == constants.SAT_SATGES.FINE_TUNE):
             sat[constants.CONF_TAGS.SAT_SATGE] = constants.SAT_SATGES.FINE_TUNE
 
         elif(args.sat_stage == constants.SAT_SATGES.TRAIN_SAT):
             sat[constants.CONF_TAGS.SAT_SATGE] = constants.SAT_SATGES.TRAIN_SAT
+
+        elif(args.sat_stage == constants.SAT_SATGES.TRAIN_DIRECT):
+
+            sat[constants.CONF_TAGS.SAT_SATGE] = constants.SAT_SATGES.TRAIN_DIRECT
 
         else:
             print("this sat type  ("+str(args.sat_stage)+") was not expected")
@@ -183,12 +188,14 @@ def create_global_config(args):
         constants.CONF_TAGS.MODEL: args.model,
         constants.CONF_TAGS.LSTM_TYPE: args.lstm_type,
         constants.CONF_TAGS.NPROJ: args.nproj,
+        constants.CONF_TAGS.FINAL_NPROJ: args.nfinalproj,
         constants.CONF_TAGS.L2: args.l2,
         constants.CONF_TAGS.NLAYERS: args.nlayer,
         constants.CONF_TAGS.NHIDDEN: args.nhidden,
         constants.CONF_TAGS.CLIP: args.clip,
         constants.CONF_TAGS.BATCH_NORM: args.batch_norm,
         constants.CONF_TAGS.GRAD_OPT: args.grad_opt,
+
     }
 
     config[constants.CONF_TAGS.SAT_CONF] = create_sat_config(args)
@@ -224,6 +231,8 @@ def import_config(args):
 
     config = pickle.load(open(args.import_config, "rb"))
     update_conf_import(config, args)
+    config[constants.CONF_TAGS.FORCE_LR_EPOCH_CKPT] = args.force_lr_epoch_ckpt
+    config[constants.CONF_TAGS.DIFF_NUM_TARGET_CKPT] = args.diff_num_target_ckpt
     config[constants.CONF_TAGS.SAT_CONF] = create_sat_config(args, config)
 
     return config
@@ -239,7 +248,9 @@ def main():
     args = parser.parse_args()
 
     if(args.import_config):
-        config = import_config(args)
+        config = create_global_config(args)
+        config.update(import_config(args))
+
     else:
         config = create_global_config(args)
 
@@ -261,7 +272,14 @@ def main():
     print("tr_y:")
     print(80 * "-")
     #load training targets
-    tr_y = labels_reader_factory.create_reader('train', 'txt', config, tr_x.get_batches_id())
+    if(args.import_config):
+        print("creating tr_y according imported config...")
+        tr_y = labels_reader_factory.create_reader('train', 'txt', config, tr_x.get_batches_id(), config[constants.CONF_TAGS.LANGUAGE_SCHEME])
+    else:
+        print("creating tr_y from scratch...")
+        tr_y = labels_reader_factory.create_reader('train', 'txt', config, tr_x.get_batches_id())
+
+
 
     print(80 * "-")
     print("cv_x:")
@@ -274,7 +292,12 @@ def main():
     print("cv_y:")
     print(80 * "-")
     #create lm_reader for labels
-    cv_y = labels_reader_factory.create_reader('cv', 'txt', config, cv_x.get_batches_id())
+    if(args.import_config):
+        print("creating cv_y according imported config...")
+        cv_y = labels_reader_factory.create_reader('cv', 'txt', config, cv_x.get_batches_id(), config[constants.CONF_TAGS.LANGUAGE_SCHEME])
+    else:
+        print("creating cv_y from scratch...")
+        cv_y = labels_reader_factory.create_reader('cv', 'txt', config, cv_x.get_batches_id())
 
     #set config (targets could change)
     config[constants.CONF_TAGS.INPUT_FEATS_DIM] = cv_x.get_num_dim()
@@ -341,6 +364,8 @@ def main():
     for key, value in config.items():
         print(key+" "+str(value))
     print(80 * "-")
+
+
     eesen.train(data, config)
 
 

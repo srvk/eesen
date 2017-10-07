@@ -7,6 +7,7 @@ import pdb
 import constants
 from reader.reader_queue import run_reader_queue
 from random import randint
+from collections import deque
 
 
 class Train():
@@ -17,6 +18,7 @@ class Train():
         self.__model = create_model(config)
         self.__sess = tf.Session()
         self.max_targets_layers = 0
+        self.__ter_buffer = [float('inf'), float('inf')]
 
         self.last_mult_lr_rate = 0
 
@@ -49,21 +51,22 @@ class Train():
 
             #initialize counters
             best_epoch = alpha
+
             lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
 
             if(alpha > 0):
                 if(self.__config[constants.CONF_TAGS.FORCE_LR_EPOCH_CKPT]):
                     lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
                     alpha=0
+                    self.__ter_buffer = [float('inf'), float('inf')]
+                    best_epoch=0
                 else:
                     lr_rate = self.__compute_new_lr_rate(alpha)
 
             for epoch in range(alpha, self.__config[constants.CONF_TAGS.NEPOCH]):
 
                 #log start
-                print(80 * "-")
-                print("Epoch "+str(epoch)+" starting ... ( lr_rate: "+str(lr_rate)+")")
-                print(80 * "-")
+                self.__info("Epoch %d starting, learning rate :"+str(lr_rate))
 
                 #start timer...
                 tic = time.time()
@@ -82,7 +85,6 @@ class Train():
                 #update lr_rate if needed
                 lr_rate, best_avg_ters, best_epoch = self.__update_lr_rate(epoch, cv_ters, best_avg_ters, best_epoch, saver, lr_rate)
 
-                print("Epoch "+str(epoch)+" done.")
                 print(80 * "-")
                 #change set if needed (mix augmentation)
                 self.__update_sets(tr_x, tr_y, tr_sat)
@@ -94,8 +96,9 @@ class Train():
         avg_ters = 0.0
         for language_id, target_scheme in ters.items():
             for target_id, ter in target_scheme.items():
-                avg_ters += ter
-                nters+=1
+                if(ter > 0):
+                    avg_ters += ter
+                    nters+=1
         avg_ters /= float(nters)
 
         return avg_ters
@@ -122,8 +125,34 @@ class Train():
 
         avg_ters = self.__compute_avg_ters(cv_ters)
 
-        if epoch > self.__config[constants.CONF_TAGS.HALF_AFTER]:
+        udpate_lr=True
 
+        print("checking parameters...")
+
+        # for idx, element in enumerate(self.__ter_buffer):
+        #     if (element > avg_ters):
+        #         print("Epoch "+str(epoch)+": did improve over epoch "+str(epoch -idx - 1))
+        #         udpate_lr=False
+        #     else:
+        #         print("Epoch "+str(epoch)+": did not improve over epoch "+str(epoch -idx - 1))
+
+        if (self.__ter_buffer[1] > avg_ters):
+            print("Epoch "+str(epoch)+": did improve over epoch "+str(epoch - 1))
+            udpate_lr=False
+        else:
+            print("Epoch "+str(epoch)+": did not improve over epoch "+str(epoch - 1))
+            udpate_lr=True
+
+        # if epoch > self.__config[constants.CONF_TAGS.HALF_AFTER]:
+        if udpate_lr:
+
+            print("updating learning rate...")
+
+            print("from: "+str(lr_rate))
+
+            lr_rate = lr_rate / 2
+
+            print("to: "+str(lr_rate))
             #new_lr_rate = self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"]) // self.__config["half_period"]))
             #new_lr_rate = self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"])))
             #lr_rate = new_lr_rate
@@ -135,34 +164,30 @@ class Train():
 
             #new_lr_rate = init_lr_rate * (half_rate ** ((epoch - half_after) // half_period))
 
-            diff_epoch= int(float(epoch+1) / float(self.__config[constants.CONF_TAGS.HALF_AFTER]))
+            #diff_epoch= int(float(epoch+1) / float(self.__config[constants.CONF_TAGS.HALF_AFTER]))
 
-            new_lr_rate = self.__config[constants.CONF_TAGS.LR_RATE] * (self.__config[constants.CONF_TAGS.HALF_RATE] ** (diff_epoch))
+            #new_lr_rate = self.__config[constants.CONF_TAGS.LR_RATE] * (self.__config[constants.CONF_TAGS.HALF_RATE] ** (diff_epoch))
+                         # * (self.__config[constants.CONF_TAGS.HALF_RATE] ** (diff_epoch))
 
 
-            print("***********************")
-            print("checking lr_rate:")
-            print("lr_rate: "+str(lr_rate))
-            print("new_lr_rate: "+str(new_lr_rate))
-            print("***********************")
+            #if lr_rate != new_lr_rate:
 
-            if lr_rate != new_lr_rate:
+            print("about to restore variables from "+str(best_epoch)+" epoch")
+            epoch_name = "/epoch%02d.ckpt" % (best_epoch)
+            best_epoch_path = self.__config[constants.CONF_TAGS.MODEL_DIR] + epoch_name
 
-                print("about to restore variables form "+str(best_epoch)+" epoch")
-                epoch_name = "/epoch%02d.ckpt" % (best_epoch)
-                best_epoch_path = self.__config[constants.CONF_TAGS.MODEL_DIR] + epoch_name
-
-                if(os.path.isfile(best_epoch_path+".index")):
-                    print("epoch "+str(best_epoch)+" found. ")
-                    saver.restore(self.__sess, "%s/epoch%02d.ckpt" % (self.__config["model_dir"], best_epoch+1))
-                else:
-                    print("epoch "+str(best_epoch)+" NOT found. restoring can not be done. ("+best_epoch_path+")")
-                print("lr updated from "+str(lr_rate)+" to "+str(new_lr_rate))
-                lr_rate=new_lr_rate
+            if(os.path.isfile(best_epoch_path+".index")):
+                print("epoch "+str(best_epoch)+" found. ")
+                saver.restore(self.__sess, "%s/epoch%02d.ckpt" % (self.__config["model_dir"], best_epoch))
+            else:
+                print("epoch "+str(best_epoch)+" NOT found. restoring can not be done. ("+best_epoch_path+")")
 
         if(best_avg_ters > avg_ters):
             best_avg_ters = avg_ters
             best_epoch = epoch
+
+        self.__ter_buffer[0]=self.__ter_buffer[1]
+        self.__ter_buffer[0]=avg_ters
 
         return lr_rate, best_avg_ters, best_epoch
 
@@ -272,11 +297,13 @@ class Train():
         #averaging counters
         for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
             for target_id, _ in target_scheme.items():
-                train_cost[language_id][target_id] = train_cost[language_id][target_id] / float(ntrain[language_id])
+                if(ntrain[language_id] != 0):
+                    train_cost[language_id][target_id] = train_cost[language_id][target_id] / float(ntrain[language_id])
 
         for language_id, target_scheme in train_ters.items():
             for target_id, train_ter in target_scheme.items():
-                train_ters[language_id][target_id] = train_ter/float(ntr_labels[language_id][target_id])
+                if(ntr_labels[language_id][target_id] != 0):
+                    train_ters[language_id][target_id] = train_ter/float(ntr_labels[language_id][target_id])
 
         return train_cost, train_ters, ntrain
 
@@ -340,11 +367,13 @@ class Train():
         #averaging counters
         for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
             for target_id, _ in target_scheme.items():
-                cv_cost[language_id][target_id] = cv_cost[language_id][target_id] / float(ncv[language_id])
+                if(ncv[language_id] != 0):
+                    cv_cost[language_id][target_id] = cv_cost[language_id][target_id] / float(ncv[language_id])
 
         for language_id, target_scheme in cv_ters.items():
             for target_id, cv_ter in target_scheme.items():
-                cv_ters[language_id][target_id] = cv_ter/float(ncv_labels[language_id][target_id])
+                if(ncv_labels[language_id][target_id] != 0):
+                    cv_ters[language_id][target_id] = cv_ter/float(ncv_labels[language_id][target_id])
 
         return cv_cost, cv_ters, ncv
 
@@ -379,8 +408,9 @@ class Train():
             #restoring all variables that should be loaded during adaptation stage (all of them except adaptation layer)
             if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] \
                     != constants.SAT_TYPE.UNADAPTED and \
-                self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
-                            == constants.SAT_SATGES.TRAIN_SAT and not \
+                    (self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
+                            == constants.SAT_SATGES.TRAIN_SAT or self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
+                            == constants.SAT_SATGES.TRAIN_DIRECT) and not \
                     self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.CONTINUE_CKPT_SAT]:
 
                 print("partial restoring....")
@@ -426,17 +456,32 @@ class Train():
 
                 num_val = 0
                 acum_val = 0
+
                 with open(self.__config[constants.CONF_TAGS.CONTINUE_CKPT].replace(".ckpt",".log")) as input_file:
                     for line in input_file:
                         if (constants.LOG_TAGS.VALIDATE in line):
                             acum_val += float(line.split()[4].replace("%,",""))
                             num_val += 1
-                best_avg_ters = acum_val/num_val
+
+                    self.__ter_buffer[len(self.__ter_buffer) - 1]= acum_val / num_val
+
+                if(alpha > 1):
+
+                    new_log=self.__config[constants.CONF_TAGS.CONTINUE_CKPT][:-7]+"%02d" % (alpha-1,)+".log"
+
+                    with open(new_log) as input_file:
+                        for line in input_file:
+                            if (constants.LOG_TAGS.VALIDATE in line):
+                                acum_val += float(line.split()[4].replace("%,",""))
+                                num_val += 1
+
+                    self.__ter_buffer[0]= acum_val / num_val
+
                 alpha += 1
 
             print(80 * "-")
 
-        #we want to store everyhting
+        #we want to store everything
         saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH])
 
 
@@ -458,7 +503,7 @@ class Train():
                     if(len(target_scheme) > 1):
                         print("\tTarget: %s" % (target_id))
                         fp.write("\tTarget: %s" % (target_id))
-                    print("\t\t Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost[language_id][target_id], 100.0*train_ters[language_id][target_id], ntrain[language_id]))
+                    print("\t\tTrain    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost[language_id][target_id], 100.0*train_ters[language_id][target_id], ntrain[language_id]))
                     print("\t\t"+constants.LOG_TAGS.VALIDATE+" cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost[language_id][target_id], 100.0*cv_ter, ncv[language_id]))
                     fp.write("\t\tTrain    cost: %.1f, ter: %.1f%%, #example: %d\n" % (train_cost[language_id][target_id], 100.0*train_ters[language_id][target_id], ntrain[language_id]))
                     fp.write("\t\t"+constants.LOG_TAGS.VALIDATE+" cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost[language_id][target_id], 100.0*cv_ter, ncv[language_id]))

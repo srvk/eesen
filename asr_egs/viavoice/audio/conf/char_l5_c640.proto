@@ -1,0 +1,9 @@
+<Nnet>
+<BiLstmParallel> <InputDim> 120 <CellDim> 640 <ParamRange> 0.1 <LearnRateCoef> 1.0 <MaxGrad> 50.0 <FgateBias> 1.0
+<BiLstmParallel> <InputDim> 640 <CellDim> 640 <ParamRange> 0.1 <LearnRateCoef> 1.0 <MaxGrad> 50.0 <FgateBias> 1.0
+<BiLstmParallel> <InputDim> 640 <CellDim> 640 <ParamRange> 0.1 <LearnRateCoef> 1.0 <MaxGrad> 50.0 <FgateBias> 1.0
+<BiLstmParallel> <InputDim> 640 <CellDim> 640 <ParamRange> 0.1 <LearnRateCoef> 1.0 <MaxGrad> 50.0 <FgateBias> 1.0
+<BiLstmParallel> <InputDim> 640 <CellDim> 640 <ParamRange> 0.1 <LearnRateCoef> 1.0 <MaxGrad> 50.0 <FgateBias> 1.0
+<AffineTransform> <InputDim> 640 <OutputDim> 47 <ParamRange> 0.1
+<Softmax> <InputDim> 47 <OutputDim> 47
+</Nnet>

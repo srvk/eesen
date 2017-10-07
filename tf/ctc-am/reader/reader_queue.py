@@ -13,7 +13,6 @@ def run_reader_queue(queue, reader_x, reader_y, do_shuf, is_debug, reader_sat= N
     for idx_batch in idx_shuf:
         x = reader_x.read(idx_batch)
 
-
         if(reader_y):
             y = reader_y.read(idx_batch)
 

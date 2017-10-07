@@ -177,6 +177,7 @@ class DeepBidirRNN:
         nlayer = config[constants.CONF_TAGS.NLAYERS]
         clip = config[constants.CONF_TAGS.CLIP]
         nproj = config[constants.CONF_TAGS.NPROJ]
+        finalfeatproj = config[constants.CONF_TAGS.FINAL_NPROJ]
         batch_norm = config[constants.CONF_TAGS.BATCH_NORM]
         lstm_type = config[constants.CONF_TAGS.LSTM_TYPE]
         grad_opt = config[constants.CONF_TAGS.GRAD_OPT]
@@ -192,7 +193,6 @@ class DeepBidirRNN:
             featproj = config["feat_proj"]
         except:
             featproj = 0
-
 
         # build the graph
         self.lr_rate = tf.placeholder(tf.float32, name = "learning_rate")[0]
@@ -252,6 +252,11 @@ class DeepBidirRNN:
         else:
             outputs = self.my_native_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "native_lstm")
 
+
+        if finalfeatproj > 0:
+            outputs = tf.contrib.layers.fully_connected(
+                activation_fn = None, inputs = outputs, num_outputs = finalfeatproj,
+                scope = "input_fc", biases_initializer = tf.contrib.layers.xavier_initializer())
 
         with tf.variable_scope("optimizer"):
             optimizer = None

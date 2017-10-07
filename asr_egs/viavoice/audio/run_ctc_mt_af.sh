@@ -18,7 +18,7 @@
 
 
 
-stage=4
+stage=2
 
 #acoustic model parameters
 am_nlayer=4
@@ -26,6 +26,32 @@ am_ncell_dim=320
 am_model=deepbilstm
 am_window=3
 am_norm=false
+
+if [ $stage -le 2 ]; then
+  echo =====================================================================
+  echo "                    FBank Feature Generation                       "
+  echo =====================================================================
+  fbankdir=fbank_pitch_11
+
+  which sox
+  which sox
+  which sox
+  which sox
+  which sox
+  which sox
+
+  # Generate the fbank features; by default 40-dimensional fbanks on each frame
+  for set in train_11 test_11; do
+    steps/make_fbank_pitch.sh --cmd "$train_cmd" --nj 10 --paste-length-tolerance 10000  data/$set exp/make_fbank_pitch_f11/$set $fbankdir || exit 1;
+    utils/fix_data_dir.sh data/$set || exit;
+    steps/compute_cmvn_stats.sh data/$set exp/make_fbank_11/$set $fbankdir || exit 1;
+  done
+
+  # Split the whole training data into training (95%) and cross-validation (5%) sets
+  utils/subset_data_dir_tr_cv.sh --cv-spk-percent 5 data/train data/train_tr95_f11 data/train_cv05_f11 || exit 1
+fi
+
+exit
 
 if [ $stage -le 4 ]; then
   echo =====================================================================

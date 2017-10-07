@@ -17,7 +17,7 @@ model="deepbilstm"
 nlayer=5
 nhidden=320
 nproj=0
-feat_proj=0
+nfinalproj=0
 norm=false
 
 #speaker adaptation configuration
@@ -37,6 +37,7 @@ debug=false
 
 #continue training
 continue_ckpt=""
+import_config=""
 diff_num_target_ckpt=false
 force_lr_epoch_ckpt=false
 
@@ -96,16 +97,30 @@ else
     continue_ckpt=""
 fi
 
+if [[ $import_config != "" ]]; then
+    import_config="--import_config $import_config"
+else
+    import_config=""
+fi
+
+if [ $nfinalproj -gt 0 ]; then
+    nfinalproj="--nfinalproj $nfinalproj"
+else
+    nfinalproj=""
+fi
+
 if [ $nproj -gt 0 ]; then
     nproj="--nproj $nproj"
 else
     nproj=""
 fi
-if [ $feat_proj -gt 0 ]; then
-    feat_proj="--feat_proj $feat_proj"
+
+if [ $window -gt 0 ]; then
+    window="--window $window"
 else
-    feat_proj=""
+    window=""
 fi
+
 if [ -n "$max_iters" ]; then
     max_iters="--nepoch $max_iters"
 fi
@@ -227,8 +242,8 @@ echo "TRAINING STARTS [$cur_time]"
 
 
 $train_tool $train_opts --lr_rate $learn_rate --batch_size $batch_size --l2 $l2 \
-    --nhidden $nhidden --nlayer $nlayer $nproj $feat_proj $ckpt $max_iters \
-    --train_dir $dir --data_dir $tmpdir --half_after $half_after $sat_stage $sat_type $sat_nlayer $debug --model $model --window $window $norm $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt  || exit 1;
+    --nhidden $nhidden --nlayer $nlayer $nproj  $nfinalproj $ckpt $max_iters \
+    --train_dir $dir --data_dir $tmpdir --half_after $half_after $sat_stage $sat_type $sat_nlayer $debug --model $model $window $norm $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt $import_config  || exit 1;
 
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
 echo "TRAINING ENDS [$cur_time]"

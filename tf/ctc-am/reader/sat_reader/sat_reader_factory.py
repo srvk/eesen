@@ -1,7 +1,7 @@
 import sys
 
 from utils.fileutils import debug
-from sat_reader_kaldi import SatReaderKaldi
+from reader.sat_reader.sat_reader_kaldi import SatReaderKaldi
 
 
 #it returns an object lm_reader that internaly will manage all the data

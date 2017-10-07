@@ -45,7 +45,7 @@ class FeatsReaderKaldi(FeatsReader):
                                                                                         self.__config[constants.CONF_TAGS.BATCH_SIZE])
 
     #read batch idx. Input: batch index. Output: batch read with feats
-    def read (self, idx):
+    def read(self, idx):
 
         i=0
         tmpx=None

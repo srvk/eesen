@@ -21,7 +21,6 @@ if [[ `uname -n` =~ ip-* ]]; then
 elif [[ `uname -n` =~ instance ]]; then
   # Google Cloud
   export EESEN_ROOT=/data/ASR5/fmetze/eesen-block-copy
-  export KALDI_ROOT=/data/ASR5/fmetze/eesen-block-copy
   export PATH=$PWD/utils/:$EESEN_ROOT/src-google/netbin:$EESEN_ROOT/src-google/featbin:$EESEN_ROOT/src-google/decoderbin:$EESEN_ROOT/src-google/fstbin:$EESEN_ROOT/tools/openfst/bin:$EESEN_ROOT/tools/sph2pipe_v2.5:$EESEN_ROOT/../kaldi-latest/src/featbin:$PATH
 
   export TMPDIR=/scratch
@@ -34,11 +33,11 @@ elif [[ `uname -n` =~ bridges ]]; then
   module load gcc/6.3.0
 
 
-  export EESEN_ROOT=/pylon2/ir3l68p/metze/eesen/
+  export EESEN_ROOT=$SCRATCH
   export PATH=$PWD/utils/:$EESEN_ROOT/src/netbin:$EESEN_ROOT/src/featbin:$EESEN_ROOT/src/decoderbin:$EESEN_ROOT/src/fstbin:$EESEN_ROOT/tools/openfst/bin:$EESEN_ROOT/tools/sph2pipe_v2.5:$EESEN_ROOT/../kaldi/src/featbin:$EESEN_ROOT/../sox-14.4.2/src:$PWD:$PATH
 
-  #export TMPDIR=/pylon1/ir3l68p/metze
-  export TMPDIR=$SCRATCH
+  export TMPDIR=/pylon1/ir3l68p/metze
+  #export TMPDIR=$LOCAL
   #export TMPDIR=.
   export BABEL_DATA=/pylon2/ir3l68p/metze/babel-corpus
 
@@ -57,6 +56,7 @@ elif [[ `uname -n` =~ comet* ]]; then
 
 elif [[ `uname -n` =~ islpc* ]]; then
   # islpc-cluster
+  export CUDA_VISIBLE_DEVICES=0
   export LD_LIBRARY_PATH=/usr/local/cuda-8.0/lib64:$LD_LIBRARY_PATH
   export BABEL_DATA=/data/MM3/babel-corpus
   #export PYTHONPATH=/data/ASR5/fmetze/asr-test/lorelei-audio/egs/asr/s5c/201-haitian-flp:
@@ -87,10 +87,7 @@ else
   export TMPDIR=/scratch
   #export TMPDIR=/data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/asr_egs/how_to/adapted/random_exp/tmp/
 
-  #TODO uncomment this
-  #export LD_LIBRARY_PATH=/data/ASR1/tools/sox-14.4.2/install/lib:$LD_LIBRARY_PATH
-  #export PATH=/data/ASR1/tools/sox-14.4.2/install/bin:/data/ASR1/tools/kenlm/bin:$PATH
-
+  export LD_LIBRARY_PATH=/data/ASR1/tools/sox-14.4.2/install/lib:$LD_LIBRARY_PATH
   export BABEL_DATA=/data/MM23/sdalmia/eval_lorelei/il5_tig_set1_tts
   export KALDI_ROOT=/data/ASR1/tools/kaldi
   export EESEN_ROOT=/data/MM23/sdalmia/eesen
@@ -101,10 +98,7 @@ else
   #. /export/babel/data/software/env.sh
   export PATH=$PWD/utils/:$EESEN_ROOT/src/netbin:$EESEN_ROOT/src/featbin:$EESEN_ROOT/src/decoderbin:$EESEN_ROOT/src/fstbin:$EESEN_ROOT/tools/openfst/bin:$EESEN_ROOT/tools/sph2pipe_v2.5:/home/fmetze/tools/kaldi/src/bin:/data/ASR5/fmetze/kaldi-latest/src/latbin:$PATH
   #export PATH=$PWD/meine:$PWD/utils/:$KALDI_ROOT/tools/sph2pipe_v2.5/:$KALDI_ROOT/src/bin:$KALDI_ROOT/tools/openfst/bin:$KALDI_ROOT/src/fstbin/:$KALDI_ROOT/src/gmmbin/:$KALDI_ROOT/src/featbin/:$KALDI_ROOT/src/lm/:$KALDI_ROOT/src/sgmmbin/:$KALDI_ROOT/src/sgmm2bin/:$KALDI_ROOT/src/fgmmbin/:$KALDI_ROOT/src/latbin/:$KALDI_ROOT/src/nnetbin:$KALDI_ROOT/src/nnet2bin/:$KALDI_ROOT/src/kwsbin:$PWD:$PATH
-
-
-  
-
+  export PATH=/data/ASR1/tools/sox-14.4.2/install/bin:/data/ASR1/tools/kenlm/bin:$PATH
   #export PATH="/home/fmetze/tools/eesen/src/netbin/:/home/fmetze/tools/eesen/src/decoderbin/:/home/fmetze/tools/eesen/src/fstbin/:/home/fmetze/tools/eesen/src/featbin/:/data/ASR4/babel/sctk-2.4.0/bin/:$PATH"
 
   #export PATH="/data/ASR1/ramons/anaconda2/bin":$PATH

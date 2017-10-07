@@ -22,7 +22,7 @@ from eesen import Eesen
 from utils.checkers import set_checkers
 from utils.fileutils import debug
 
-from reader.sat_reader import sat_reader_factory
+#from reader.sat_reader import sat_reader_factory
 from reader.feats_reader import feats_reader_factory
 from reader.labels_reader import labels_reader_factory
 

@@ -1,6 +1,6 @@
 import sys
 
-from labels_reader_txt import LabelsReaderTxt
+from reader.labels_reader.labels_reader_txt import LabelsReaderTxt
 from utils.fileutils import debug
 
 

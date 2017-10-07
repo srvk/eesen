@@ -34,8 +34,7 @@ from reader.labels_reader import labels_reader_factory
 def main_parser():
     parser = argparse.ArgumentParser(description='Train TF-Eesen Model')
 
-    #general arguments
-    parser.add_argument('--debug', default=False, dest='debug', action='store_true', help='enable debug mode')
+    k
     parser.add_argument('--store_model', default=False, dest='store_model', action='store_true', help='store model')
     parser.add_argument('--data_dir', default = "", help = "data dir")
     parser.add_argument('--train_dir', default = "", help='log and model (output) dir')

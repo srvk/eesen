@@ -7,7 +7,7 @@ from utils.fileutils import debug
 
 class LabelsReader(object):
 
-    def __init__(self, info_set, m_conf, batches_id):
+    def __init__(self, info_set, m_conf, batches_id, language_scheme = None):
 
         #temporal dictonary that stores all paths from all targets dict[language][target_1]=path_target_1
         self.__all_languages_labels_files={}
@@ -33,6 +33,7 @@ class LabelsReader(object):
                                      constants.DEFAULT_NAMES.NO_LANGUAGE_NAME,
                                      info_set)
 
+
         #load all dicts
         #iterate over languages
         for language, labels_path_dic in self.__all_languages_labels_files.iteritems():
@@ -48,6 +49,18 @@ class LabelsReader(object):
 
                 self.__language_scheme[language][target_id] = ntarget
                 all_languages_labels_dicts[language][target_id] = label_dict
+
+        if(language_scheme != None):
+            self.__language_scheme = language_scheme
+
+            #fill it up with void dicts
+            for language_id, target_scheme in self.__language_scheme.items():
+
+                if(language_id not in all_languages_labels_dicts):
+
+                    all_languages_labels_dicts[language_id] = {}
+                    for target_id, _ in target_scheme.items():
+                        all_languages_labels_dicts[language_id][target_id]={}
 
         self.__batches_y = self.__order_labels(all_languages_labels_dicts, batches_id)
 

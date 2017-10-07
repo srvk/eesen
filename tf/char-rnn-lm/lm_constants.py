@@ -1,11 +1,22 @@
+class IDS:
+    BLANK_ID=0
+
 class MODEL_NAME:
     RNN="rnn"
     CNN_RNN="cnn_rnn"
 
+class DECODE_STRATEGY_NAMES:
+    BEAM_SEARCH="beam_search"
+    GREEDY_SEARCH="greedy_search"
+
 class SPECIAL_CARACTERS:
     SPACE=" "
+    EOS="<eos>"
+    SPACE_SYMBOL="<space>"
 
 class CONF_TAGS:
+
+
 
     #developer arguments
     DEBUG = "debug"
@@ -48,16 +59,24 @@ class DECODING_TYPE:
 
 class CONFIG_TAGS_TEST:
 
+
+    C2I="c2i"
+
+    EOS_ID="eos_id"
+    RNN_LM_WEIGHT="config"
+
+
     #io options
+    LM_WEIGHT="lm_weight"
+    LM_WEIGHTS_CKPT="lm_weights_ckpt"
     RESULTS_FILENAME="results_filename"
-    DATA_DIR="data_dir"
     UNITS_FILE="units_file"
     LEXICON_FILE="lexicon_file"
     COMPUTE_WER="compute_wer"
 
     #previous models options
     LM_CKPT = "lm_cpkt"
-    TRAIN_CONFIG="train_config"
+    LM_CONFIG="lm_config"
 
     #output options
     TYPE_OF_DECODING = "type_of_decoding"
@@ -68,10 +87,12 @@ class CONFIG_TAGS_TEST:
 
     #decoding options
     BATCH_SIZE="batch_size"
-    TEMPERATURE="temperature"
+    BLANK_SCALING="blank_scaling"
+    CTC_PROBS="ctc_probs"
+
+    #TODO the ones above need to be implemented yet
     USE_PRIORS="use_priors"
     COMPUTE_TER="compute_ter"
-    BLANK_SCALING="blank_scaling"
 
 #names
 class DEFAULT_NAMES:

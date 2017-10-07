@@ -5,10 +5,10 @@ from labels_reader import LabelsReader
 
 class LabelsReaderTxt(LabelsReader):
 
-    def __init__(self, info_set, conf, batches_id):
+    def __init__(self, info_set, conf, batches_id, language_scheme):
 
         #constructing parent class and creating self.list_files and stroing self.__info_set
-        super(LabelsReaderTxt, self).__init__(info_set, conf, batches_id)
+        super(LabelsReaderTxt, self).__init__(info_set, conf, batches_id, language_scheme)
 
     #get filenmae an
     def _load_dict(self, filename, nclass=0):

@@ -66,7 +66,8 @@ class Train():
             for epoch in range(alpha, self.__config[constants.CONF_TAGS.NEPOCH]):
 
                 #log start
-                self.__info("Epoch %d starting, learning rate :"+str(lr_rate))
+                print(80 * "-")
+                self.__info("Epoch %d starting, learning rate: %.4g" % (epoch, lr_rate))
 
                 #start timer...
                 tic = time.time()
@@ -146,13 +147,13 @@ class Train():
         # if epoch > self.__config[constants.CONF_TAGS.HALF_AFTER]:
         if udpate_lr:
 
-            print("updating learning rate...")
+            #print("updating learning rate...")
 
-            print("from: "+str(lr_rate))
+            #print("from: "+str(lr_rate))
 
             lr_rate = lr_rate / 2
 
-            print("to: "+str(lr_rate))
+            #print("to: "+str(lr_rate))
             #new_lr_rate = self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"]) // self.__config["half_period"]))
             #new_lr_rate = self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"])))
             #lr_rate = new_lr_rate
@@ -222,8 +223,6 @@ class Train():
             m_tr_y.update_batches_id(m_tr_x.get_batches_id())
         else:
             print("augmentation is not needed.")
-
-    print(80 * "-")
 
     def __check_needed_mix_augmentation(self, tr_x):
         for target_id, augment_dirs in tr_x.get_language_augment_scheme().items():

@@ -168,7 +168,7 @@ fi
 sat_nlayer="--sat_nlayer $sat_nlayer"
 
 echo ""
-echo copying training features ...
+echo copying cv features ...
 echo ""
 
 data_tr=$1
@@ -178,7 +178,7 @@ feats_cv="ark,s,cs:apply-cmvn --norm-vars=true --utt2spk=ark:$data_cv/utt2spk sc
 copy-feats "$feats_cv" ark,scp:$tmpdir/cv.ark,$tmpdir/cv_local.scp || exit 1;
 
 echo ""
-echo copying cv features ...
+echo copying training features ...
 echo ""
 
 feats_tr="ark,s,cs:apply-cmvn --norm-vars=true --utt2spk=ark:$data_tr/utt2spk scp:$data_tr/cmvn.scp scp:$data_tr/feats.scp ark:- |"

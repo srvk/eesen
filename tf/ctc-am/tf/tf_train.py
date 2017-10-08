@@ -139,11 +139,11 @@ class Train():
         #     else:
         #         print("Epoch "+str(epoch)+": did not improve over epoch "+str(epoch -idx - 1))
 
-        if (self.__ter_buffer[1] > avg_ters):
-            print("Epoch "+str(epoch)+": did improve over epoch "+str(epoch - 1))
+        if (best_avg_ters > avg_ters):
+            print("Epoch "+str(epoch)+": did improve over epoch "+str(best_epoch))
             udpate_lr=False
         else:
-            print("Epoch "+str(epoch)+": did not improve over epoch "+str(epoch - 1))
+            print("Epoch "+str(epoch)+": did not improve over epoch "+str(best_epoch))
             udpate_lr=True
 
         # if epoch > self.__config[constants.CONF_TAGS.HALF_AFTER]:
@@ -189,8 +189,8 @@ class Train():
             best_avg_ters = avg_ters
             best_epoch = epoch
 
-        self.__ter_buffer[0]=self.__ter_buffer[1]
-        self.__ter_buffer[0]=avg_ters
+        #self.__ter_buffer[1]=self.__ter_buffer[0]
+        self.__ter_buffer[1]=avg_ters
 
         return lr_rate, best_avg_ters, best_epoch
 

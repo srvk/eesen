@@ -1,4 +1,6 @@
-### for CMU rocks cluster ###
+#!/bin/bash
+#
+
 #PBS -M ramon.sanabria.teixidor@gmail.com
 #PBS -q gpu
 #PBS -j oe
@@ -10,11 +12,17 @@
 #PBS -l nodes=1:ppn=1
 
 
+#SBATCH --job-name=fisher_feats
+#SBATCH --output=log/fisher_extract_1
+#SBATCH --ntasks=16
+#SBATCH --time=48:00:00
+
+
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
 
-stage=1
+stage=2
 
 fisher_dirs="/path/to/LDC2004T19/fe_03_p1_tran/ /path/to/LDC2005T19/fe_03_p2_tran/" # Set to "" if you don't have the fisher corpus
 eval2000_dirs="/path/to/LDC2002S09/hub5e_00 /path/to/LDC2002T43"
@@ -64,11 +72,8 @@ if [ $stage -le 1 ]; then
 
   local/fisher_data_prep.sh $fisher_dirs
 
+  utils/subset_data_dir.sh data/train_all
    #/export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 /export/corpora3/LDC/LDC2004S13 /export/corpora3/LDC/LDC2005S13
-
-
-  exit
-
 
   # Use the same datap prepatation script from Kaldi
   local/swbd1_data_prep.sh $swbd  || exit 1;
@@ -88,12 +93,22 @@ if [ $stage -le 2 ]; then
 
   fbankdir=fbank
 
+  utils/fix_data_dir.sh data/train_all
+
   # Generate the fbank features; by default 40-dimensional fbanks on each frame
-  steps/make_fbank.sh --cmd "$train_cmd" --nj 32 data/train exp/make_fbank/train $fbankdir || exit 1;
+  steps/make_fbank_pitch.sh --cmd "$train_cmd" --nj 16 data/train_all exp/make_fbank/train_all $fbankdir || exit 1;
+  steps/compute_cmvn_stats.sh data/train_all exp/make_fbank/train_all $fbankdir || exit 1;
+  utils/fix_data_dir.sh data/train_all || exit;
+
+
+  exit
+
+  # Generate the fbank features; by default 40-dimensional fbanks on each frame
+  steps/make_fbank_pitch.sh --cmd "$train_cmd" --nj 32 data/train exp/make_fbank/train $fbankdir || exit 1;
   steps/compute_cmvn_stats.sh data/train exp/make_fbank/train $fbankdir || exit 1;
   utils/fix_data_dir.sh data/train || exit;
 
-  steps/make_fbank.sh --cmd "$train_cmd" --nj 10 data/eval2000 exp/make_fbank/eval2000 $fbankdir || exit 1;
+  steps/make_fbank_pitch.sh --cmd "$train_cmd" --nj 10 data/eval2000 exp/make_fbank/eval2000 $fbankdir || exit 1;
   steps/compute_cmvn_stats.sh data/eval2000 exp/make_fbank/eval2000 $fbankdir || exit 1;
   utils/fix_data_dir.sh data/eval2000 || exit;
 

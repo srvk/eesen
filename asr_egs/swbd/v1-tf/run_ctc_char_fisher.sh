@@ -53,7 +53,9 @@ dir_lm=exp/train_lm_char_l${lm_nlayer}_c${lm_ncell_dim}_e${lm_embed_size}_d${lm_
 fisher_text_dir="./data/fisher/"
 
 
-fisher_dirs="/pylon2/ir3l68p/metze/LDC2004T19 /pylon2/ir3l68p/metze/LDC2005T19 /pylon2/ir3l68p/metze/LDC2004S13 /pylon2/ir3l68p/metze/LDC2005S13"
+#fisher_dirs="/pylon2/ir3l68p/metze/LDC2004T19 /pylon2/ir3l68p/metze/LDC2005T19 /pylon2/ir3l68p/metze/LDC2004S13 /pylon2/ir3l68p/metze/LDC2005S13"
+fisher_dirs="/data/MM1/corpora/LDC2004T19 /data/MM1/corpora/LDC2005T19 /data/MM1/corpora/LDC2004S13 /data/MM1/corpora/LDC2005S13"
+
 
 if [ $stage -le 1 ]; then
   echo =====================================================================

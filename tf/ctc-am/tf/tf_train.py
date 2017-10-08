@@ -22,7 +22,7 @@ class Train():
 
         self.last_mult_lr_rate = 0
 
-        for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
+        for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
                 if(self.max_targets_layers < len(target_scheme)):
                     self.max_targets_layers = len(target_scheme)
 
@@ -67,8 +67,7 @@ class Train():
 
                 #log start
                 print(80 * "-")
-                print("Epoch "+str(epoch)+" starting ... ( lr_rate: "+str(lr_rate)+")")
-                print(80 * "-")
+                self.__info("Epoch %d starting, learning rate: %.4g" % (epoch, lr_rate))
 
                 #start timer...
                 tic = time.time()
@@ -87,7 +86,6 @@ class Train():
                 #update lr_rate if needed
                 lr_rate, best_avg_ters, best_epoch = self.__update_lr_rate(epoch, cv_ters, best_avg_ters, best_epoch, saver, lr_rate)
 
-                print("Epoch "+str(epoch)+" done.")
                 print(80 * "-")
                 #change set if needed (mix augmentation)
                 self.__update_sets(tr_x, tr_y, tr_sat)
@@ -149,13 +147,13 @@ class Train():
         # if epoch > self.__config[constants.CONF_TAGS.HALF_AFTER]:
         if udpate_lr:
 
-            print("updating learning rate...")
+            #print("updating learning rate...")
 
-            print("from: "+str(lr_rate))
+            #print("from: "+str(lr_rate))
 
             lr_rate = lr_rate / 2
 
-            print("to: "+str(lr_rate))
+            #print("to: "+str(lr_rate))
             #new_lr_rate = self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"]) // self.__config["half_period"]))
             #new_lr_rate = self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"])))
             #lr_rate = new_lr_rate
@@ -175,7 +173,7 @@ class Train():
 
             #if lr_rate != new_lr_rate:
 
-            print("about to restore variables form "+str(best_epoch)+" epoch")
+            print("about to restore variables from "+str(best_epoch)+" epoch")
             epoch_name = "/epoch%02d.ckpt" % (best_epoch)
             best_epoch_path = self.__config[constants.CONF_TAGS.MODEL_DIR] + epoch_name
 
@@ -203,7 +201,7 @@ class Train():
             dic_sources={}
 
             #randomizing over all lanaguages (aka geting a number for each language)
-            for language_id, lan_aug_folders in m_tr_x.get_language_augment_scheme().iteritems():
+            for language_id, lan_aug_folders in m_tr_x.get_language_augment_scheme().items():
                 new_src = randint(0, len(lan_aug_folders)-1)
                 dic_sources[language_id] = new_src
 
@@ -226,8 +224,6 @@ class Train():
         else:
             print("augmentation is not needed.")
 
-    print(80 * "-")
-
     def __check_needed_mix_augmentation(self, tr_x):
         for target_id, augment_dirs in tr_x.get_language_augment_scheme().items():
             if(len (augment_dirs) > 1):
@@ -247,7 +243,7 @@ class Train():
 
         #TODO change all iteritems for iter for python 3.0
         #TODO try to do an lm_utils for this kind of functions
-        for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
+        for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
 
             ntr_labels[language_id] = {}
             train_ters[language_id] = {}
@@ -255,7 +251,7 @@ class Train():
 
             ntrain[language_id] = 0
 
-            for target_id, _ in target_scheme.iteritems():
+            for target_id, _ in target_scheme.items():
                 ntr_labels[language_id][target_id] = 0
                 train_ters[language_id][target_id] = 0
                 train_cost[language_id][target_id] = 0
@@ -303,8 +299,8 @@ class Train():
                 if(ntrain[language_id] != 0):
                     train_cost[language_id][target_id] = train_cost[language_id][target_id] / float(ntrain[language_id])
 
-        for language_id, target_scheme in train_ters.iteritems():
-            for target_id, train_ter in target_scheme.iteritems():
+        for language_id, target_scheme in train_ters.items():
+            for target_id, train_ter in target_scheme.items():
                 if(ntr_labels[language_id][target_id] != 0):
                     train_ters[language_id][target_id] = train_ter/float(ntr_labels[language_id][target_id])
 
@@ -318,14 +314,14 @@ class Train():
         #initializing counters and dicts
         ncv_labels, cv_ters, cv_cost, ncv = {}, {}, {}, {}
 
-        for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
+        for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
             ncv_labels[language_id] = {}
             cv_ters[language_id] = {}
             cv_cost[language_id] = {}
 
             ncv[language_id] = 0
 
-            for target_id, _ in target_scheme.iteritems():
+            for target_id, _ in target_scheme.items():
                 ncv_labels[language_id][target_id] = 0
                 cv_ters[language_id][target_id]= 0
                 cv_cost[language_id][target_id] = 0
@@ -373,8 +369,8 @@ class Train():
                 if(ncv[language_id] != 0):
                     cv_cost[language_id][target_id] = cv_cost[language_id][target_id] / float(ncv[language_id])
 
-        for language_id, target_scheme in cv_ters.iteritems():
-            for target_id, cv_ter in target_scheme.iteritems():
+        for language_id, target_scheme in cv_ters.items():
+            for target_id, cv_ter in target_scheme.items():
                 if(ncv_labels[language_id][target_id] != 0):
                     cv_ters[language_id][target_id] = cv_ter/float(ncv_labels[language_id][target_id])
 
@@ -386,9 +382,9 @@ class Train():
         #https://stackoverflow.com/questions/835092/python-dictionary-are-keys-and-values-always-the-same-order
         #TODO although this should be changed for now is a workaround
 
-        for idx_lan, (language_id, target_scheme) in enumerate (self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems()):
+        for idx_lan, (language_id, target_scheme) in enumerate (self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].items()):
             if(ybatch[1] == language_id):
-                for idx_tar, (target_id, _) in enumerate(target_scheme.iteritems()):
+                for idx_tar, (target_id, _) in enumerate(target_scheme.items()):
 
                     #note that ybatch[0] contains targets and ybathc[1] contains language_id
                     m_acum_ters[language_id][target_id] += batch_ters[idx_tar]
@@ -484,7 +480,7 @@ class Train():
 
             print(80 * "-")
 
-        #we want to store everyhting
+        #we want to store everything
         saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH])
 
 
@@ -497,16 +493,16 @@ class Train():
         with open("%s/epoch%02d.log" % (self.__config["model_dir"], epoch), 'w') as fp:
             fp.write("Time: %.0f minutes, lrate: %.4g\n" % ((time.time() - tic)/60.0, lr_rate))
 
-            for language_id, target_scheme in cv_ters.iteritems():
+            for language_id, target_scheme in cv_ters.items():
                 if(len(cv_ters) > 1):
                     print("Language: "+language_id)
                     fp.write("Language: "+language_id)
 
-                for target_id,  cv_ter in target_scheme.iteritems():
+                for target_id,  cv_ter in target_scheme.items():
                     if(len(target_scheme) > 1):
                         print("\tTarget: %s" % (target_id))
                         fp.write("\tTarget: %s" % (target_id))
-                    print("\t\t Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost[language_id][target_id], 100.0*train_ters[language_id][target_id], ntrain[language_id]))
+                    print("\t\tTrain    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost[language_id][target_id], 100.0*train_ters[language_id][target_id], ntrain[language_id]))
                     print("\t\t"+constants.LOG_TAGS.VALIDATE+" cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost[language_id][target_id], 100.0*cv_ter, ncv[language_id]))
                     fp.write("\t\tTrain    cost: %.1f, ter: %.1f%%, #example: %d\n" % (train_cost[language_id][target_id], 100.0*train_ters[language_id][target_id], ntrain[language_id]))
                     fp.write("\t\t"+constants.LOG_TAGS.VALIDATE+" cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost[language_id][target_id], 100.0*cv_ter, ncv[language_id]))
@@ -534,14 +530,14 @@ class Train():
         batch_size = len(x_batch)
 
         current_lan_index = 0
-        for language_id, language_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
+        for language_id, language_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
             if (language_id == y_batch[1]):
                 index_correct_lan = current_lan_index
             current_lan_index += 1
 
         y_batch_list = []
-        for _, value in y_batch[0].iteritems():
-            for _, value in value.iteritems():
+        for _, value in y_batch[0].items():
+            for _, value in value.items():
                 y_batch_list.append(value)
 
         if(len(y_batch_list) < self.max_targets_layers):

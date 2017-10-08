@@ -34,7 +34,7 @@ class FeatsReaderKaldi(FeatsReader):
 
         #we need to recreat and refill the dictionary becuase we removed it before
         feat_dict_info_languages={}
-        for language_id, scp_path in self._language_augment_scheme.iteritems():
+        for language_id, scp_path in self._language_augment_scheme.items():
             print(80 * "-")
             print("preparing dictionary for "+language_id+"...\n")
             feat_dict_info_languages[language_id] = read_scp_info(scp_path[new_source_positions[language_id]])
@@ -84,7 +84,7 @@ class FeatsReaderKaldi(FeatsReader):
         all_ziped_batches = []
         #https://stackoverflow.com/questions/7529376/pythonic-way-to-mix-two-lists
 
-        for language, feat_dict_info in feat_dict_info_languages.iteritems():
+        for language, feat_dict_info in feat_dict_info_languages.items():
 
             batch_x_language, batch_id_language = self.__create_ordered_batches(feat_dict_info, lstm_type, batch_size)
 
@@ -92,7 +92,7 @@ class FeatsReaderKaldi(FeatsReader):
             #coloring every batch with its language
             batch_id_language_c=zip(batch_id_language, [language]*len(batch_id_language))
 
-            all_ziped_batches=all_ziped_batches+zip(batch_x_language, batch_id_language_c)
+            all_ziped_batches=all_ziped_batches+list(zip(batch_x_language, batch_id_language_c))
 
         #unzip
         batch_x, batch_id = zip(*all_ziped_batches)
@@ -103,7 +103,7 @@ class FeatsReaderKaldi(FeatsReader):
 
         feat_dict_info_languages = {}
 
-        for language, scp_path in self._language_augment_scheme.iteritems():
+        for language, scp_path in self._language_augment_scheme.items():
             print("preparing dictionary for "+language+"...\n")
             feat_dict_info_languages[language] = read_scp_info(scp_path[0])
             if(len(feat_dict_info_languages[language]) == 0):

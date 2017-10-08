@@ -21,6 +21,7 @@ if [[ `uname -n` =~ ip-* ]]; then
 elif [[ `uname -n` =~ instance ]]; then
   # Google Cloud
   export EESEN_ROOT=/data/ASR5/fmetze/eesen-block-copy
+  export KALDI_ROOT=/data/ASR5/fmetze/eesen-block-copy
   export PATH=$PWD/utils/:$EESEN_ROOT/src-google/netbin:$EESEN_ROOT/src-google/featbin:$EESEN_ROOT/src-google/decoderbin:$EESEN_ROOT/src-google/fstbin:$EESEN_ROOT/tools/openfst/bin:$EESEN_ROOT/tools/sph2pipe_v2.5:$EESEN_ROOT/../kaldi-latest/src/featbin:$PATH
 
   export TMPDIR=/scratch
@@ -33,11 +34,11 @@ elif [[ `uname -n` =~ bridges ]]; then
   module load gcc/6.3.0
 
 
-  export EESEN_ROOT=$SCRATCH
+  export EESEN_ROOT=/pylon2/ir3l68p/metze/eesen/
   export PATH=$PWD/utils/:$EESEN_ROOT/src/netbin:$EESEN_ROOT/src/featbin:$EESEN_ROOT/src/decoderbin:$EESEN_ROOT/src/fstbin:$EESEN_ROOT/tools/openfst/bin:$EESEN_ROOT/tools/sph2pipe_v2.5:$EESEN_ROOT/../kaldi/src/featbin:$EESEN_ROOT/../sox-14.4.2/src:$PWD:$PATH
 
-  export TMPDIR=/pylon1/ir3l68p/metze
-  #export TMPDIR=$LOCAL
+  #export TMPDIR=/pylon1/ir3l68p/metze
+  export TMPDIR=$SCRATCH
   #export TMPDIR=.
   export BABEL_DATA=/pylon2/ir3l68p/metze/babel-corpus
 

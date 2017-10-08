@@ -36,13 +36,13 @@ class LabelsReader(object):
 
         #load all dicts
         #iterate over languages
-        for language, labels_path_dic in self.__all_languages_labels_files.iteritems():
+        for language, labels_path_dic in self.__all_languages_labels_files.items():
 
             self.__language_scheme[language] = {}
             all_languages_labels_dicts[language] = {}
 
             #iterate over all targets of this language
-            for target_id, target_path in labels_path_dic.iteritems():
+            for target_id, target_path in labels_path_dic.items():
 
                 #get number of targets and dictioanries (utt -> sequence)
                 ntarget, label_dict = self._load_dict(target_path)
@@ -84,13 +84,13 @@ class LabelsReader(object):
         all_languages_labels_dicts={}
 
         #iterate over languages
-        for language, labels_path_dic in self.__all_languages_labels_files.iteritems():
+        for language, labels_path_dic in self.__all_languages_labels_files.items():
 
             self.__language_scheme[language] = {}
             all_languages_labels_dicts[language] = {}
 
             #iterate over all targets of this language
-            for target_id, target_path in labels_path_dic.iteritems():
+            for target_id, target_path in labels_path_dic.items():
 
                 #get number of targets and dictioanries (utt -> sequence)
                 ntarget, label_dict = self._load_dict(target_path)
@@ -192,12 +192,12 @@ class LabelsReader(object):
 
             #initialize counters and target batches
             #note that we are taking the langugae from batch_id
-            for language_id, target_scheme in all_languages_labels_dicts.iteritems():
+            for language_id, target_scheme in all_languages_labels_dicts.items():
                 yidx[language_id]={}
                 yval[language_id]={}
                 max_label_len[language_id]={}
 
-                for target_id, _ in target_scheme.iteritems():
+                for target_id, _ in target_scheme.items():
                     yidx[language_id][target_id]=[]
                     yval[language_id][target_id]=[]
                     max_label_len[language_id][target_id]=0
@@ -206,10 +206,10 @@ class LabelsReader(object):
             for i, uttid in enumerate(batch_id[0]):
 
                 #iterate over all target dictionaries (languages)
-                for language_id, language_dict in all_languages_labels_dicts.iteritems():
+                for language_id, language_dict in all_languages_labels_dicts.items():
 
                     #iterate over all targets
-                    for target_id, label_dict in language_dict.iteritems():
+                    for target_id, label_dict in language_dict.items():
 
                         #if it is the correct one we fill everything ok
                         if(language_id == batch_language):
@@ -234,10 +234,10 @@ class LabelsReader(object):
 
             #construct the final batch
             batch_y={}
-            for language_id, target_scheme in all_languages_labels_dicts.iteritems():
+            for language_id, target_scheme in all_languages_labels_dicts.items():
                 batch_y[language_id]={}
 
-                for target_id, _ in target_scheme.iteritems():
+                for target_id, _ in target_scheme.items():
 
                     yshape_np = np.array([len(batch_id[0]), max_label_len[language_id][target_id]], dtype = np.int32)
                     yidx_np = np.asarray(yidx[language_id][target_id], dtype = np.int32)

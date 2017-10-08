@@ -39,8 +39,8 @@ def check_sets_training(cv_x, cv_y, tr_x, tr_y, tr_sat = None, cv_sat = None):
         print("exiting... \n")
         sys.exit()
 
-    for language,  targets_dic in tr_y.get_language_scheme().iteritems():
-        for target_id, number_targets in targets_dic.iteritems():
+    for language,  targets_dic in tr_y.get_language_scheme().items():
+        for target_id, number_targets in targets_dic.items():
             if target_id not in cv_y.get_language_scheme()[language]:
                 print("Error: target: "+target_id+" not find in tr_y\n")
                 print(debug.get_debug_info())

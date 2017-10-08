@@ -1,7 +1,7 @@
 import sys, os
 import pdb
 import numpy as np
-from labels_reader import LabelsReader
+from reader.labels_reader.labels_reader import LabelsReader
 
 class LabelsReaderTxt(LabelsReader):
 

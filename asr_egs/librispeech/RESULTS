@@ -1,0 +1,19 @@
+## Results for NML-sequence + Forward-sequence stochastic combination with max perturbation
+$ for x in exp/nml_seq_fw_seq_tw/train_lstm/*decode_*; do [ -d $x ] && grep WER $x/wer_* |utils/best_wer.sh ;done
+
+# dev_clean
+%WER 7.44 [ 4045 / 54402, 490 ins, 383 del, 3172 sub ] exp/nml_seq_fw_seq_tw/train_lstm/decode_dev_clean_tgmed/wer_12_0.5
+%WER 7.93 [ 4315 / 54402, 486 ins, 444 del, 3385 sub ] exp/nml_seq_fw_seq_tw/train_lstm/decode_dev_clean_tgsmall/wer_14_1.0
+# dev_other
+%WER 24.00 [ 12229 / 50948, 1280 ins, 1609 del, 9340 sub ] exp/nml_seq_fw_seq_tw/train_lstm/decode_dev_other_tgmed/wer_10_1.0
+%WER 25.05 [ 12762 / 50948, 1345 ins, 1664 del, 9753 sub ] exp/nml_seq_fw_seq_tw/train_lstm/decode_dev_other_tgsmall/wer_9_0.5
+# test_clean
+%WER 8.15 [ 4286 / 52576, 552 ins, 422 del, 3312 sub ] exp/nml_seq_fw_seq_tw/train_lstm/decode_test_clean_tgmed/wer_11_0.5
+%WER 8.67 [ 4557 / 52576, 543 ins, 506 del, 3508 sub ] exp/nml_seq_fw_seq_tw/train_lstm/decode_test_clean_tgsmall/wer_12_1.0
+# test_other
+%WER 25.08 [ 13130 / 52343, 1319 ins, 1733 del, 10078 sub ] exp/nml_seq_fw_seq_tw/train_lstm/decode_test_other_tgmed/wer_10_1.0
+%WER 26.12 [ 13674 / 52343, 1396 ins, 1701 del, 10577 sub ] exp/nml_seq_fw_seq_tw/train_lstm/decode_test_other_tgsmall/wer_10_0.5
+
+
+
+

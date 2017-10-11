@@ -74,6 +74,9 @@ int main(int argc, char *argv[]) {
     int32 utts_per_avg = 500;
     po.Register("utts-per-avg", &utts_per_avg, "Number of utterances to process per average (default is 250)");
 
+    std::string opt = "SGD";
+    po.Register("opt-algorithm", &opt, "Optimization algorithm (SGD|Adagrad|RMSProp)");
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4-(crossvalidate?1:0)) {
@@ -108,6 +111,7 @@ int main(int argc, char *argv[]) {
     Net net;
     net.Read(model_filename);
     net.SetTrainOptions(trn_opts);
+    net.SetUpdateAlgorithm(opt);
 
     if (crossvalidate)
       net.SetTestMode();

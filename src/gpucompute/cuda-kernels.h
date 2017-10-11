@@ -47,6 +47,15 @@ void cudaD_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);
 void cudaF_apply_pow(dim3 Gr, dim3 Bl, float* mat, float power, MatrixDim d);
 void cudaD_apply_pow(dim3 Gr, dim3 Bl, double* mat, double power, MatrixDim d);
 
+void cudaF_apply_pow(dim3 Gr, dim3 Bl, float* mat, float epsilon, MatrixDim d);
+void cudaD_apply_pow(dim3 Gr, dim3 Bl, double* mat, double epsilon, MatrixDim d);
+
+void cudaF_sqrt_elements(dim3 Gr, dim3 Bl, float* mat, float epsilon, MatrixDim d);
+void cudaD_sqrt_elements(dim3 Gr, dim3 Bl, double* mat, double epsilon, MatrixDim d);
+
+void cudaF_invert_elements(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);
+void cudaD_invert_elements(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);
+
 void cudaF_apply_floor(dim3 Gr, dim3 Bl, float* mat, float floor_val, MatrixDim d);
 void cudaD_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val, MatrixDim d);
 
@@ -79,6 +88,11 @@ void cudaD_add_mat(dim3 Gr, dim3 Bl, double alpha, const double *src, double *ds
 
 void cudaF_add_vec_to_rows(dim3 Gr, dim3 Bl, float alpha, const float *row, float beta, float *dst, MatrixDim d);
 void cudaD_add_vec_to_rows(dim3 Gr, dim3 Bl, double alpha, const double *row, double beta, double *dst, MatrixDim d); 
+
+void cudaD_add_mat_mat_elements(dim3 Gr, dim3 Bl, double *data, const double *srcA_data, const double *srcB_data, MatrixDim dim, int srcA_stride, int srcB_stride, 
+                                double alpha, double beta); 
+void cudaF_add_mat_mat_elements(dim3 Gr, dim3 Bl, float *data, const float *srcA_data, const float *srcB_data, MatrixDim dim, int srcA_stride, int srcB_stride,
+                                float alpha, float beta);
 
 /*
  * CuVector

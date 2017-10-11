@@ -106,6 +106,10 @@ class CuMatrixBase {
   void Scale(Real value);
   /// Apply log()
   void ApplyLog();
+  /// Apply pow()
+  void ApplyPow(Real power);
+  /// Apply sqrt(x+epsilon)
+  void ApplySqrt(Real epsilon);
   /// Sum of the matrix
   Real Sum() const;
   /// If the elements < floor_val, set them to floor_val
@@ -122,6 +126,8 @@ class CuMatrixBase {
   void SetRandUniform();
   /// Set to random values drawn from a uniform distribution [-range, range]
   void InitRandUniform(Real range);
+  // Invert elements
+  void InvertElements();
 
   /////////////////////////////////////////////////////
   /////  Activation
@@ -227,6 +233,11 @@ class CuMatrixBase {
                     const CuMatrixBase<Real>& B, MatrixTransposeType transB,
                     const Real beta);
 
+
+  void AddMatMatElements(Real alpha,
+                         const CuMatrixBase<Real> &A, 
+                         const CuMatrixBase<Real> &B, 
+                         Real beta);
 
   /////////////////////////////////////////////////////
   ///// SubMatrix and SubVector

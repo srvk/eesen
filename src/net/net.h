@@ -43,6 +43,7 @@ class Net {
   ~Net();
 
  public:
+  
   /// Perform forward pass through the network
   void Propagate(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *out);
   /// Perform backward pass through the network
@@ -142,6 +143,9 @@ class Net {
   /// Relese the memory
   void Destroy();
 
+  /// sets the update algorithm that backprogate uses through the network
+  void SetUpdateAlgorithm(std::string opt);
+
   /// Set training hyper-parameters to the network and its TrainableLayer(s)
   void SetTrainOptions(const NetTrainOptions& opts);
   /// Get training hyper-parameters from the network
@@ -166,6 +170,8 @@ class Net {
 
   /// Option class with hyper-parameters passed to TrainableLayer(s)
   NetTrainOptions opts_;
+
+  UpdateRule update_algorithm;
 };
 
 

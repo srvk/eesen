@@ -95,7 +95,15 @@ inline void cuda_mul_rows_vec(dim3 Gr, dim3 Bl, double *mat, const double *scale
 
 inline void cuda_add_vec_to_rows(dim3 Gr, dim3 Bl, float alpha, const float *row, float beta, float *dst, MatrixDim d) { cudaF_add_vec_to_rows(Gr,Bl,alpha,row,beta,dst,d); }
 inline void cuda_add_vec_to_rows(dim3 Gr, dim3 Bl, double alpha, const double *row, double beta, double *dst, MatrixDim d) { cudaD_add_vec_to_rows(Gr,Bl,alpha,row,beta,dst,d); }
- 
+
+inline void cuda_add_mat_mat_elements(dim3 Gr, dim3 Bl, float *data, const float *srcA_data,const float *srcB_data, MatrixDim dim,
+                                int srcA_stride, int srcB_stride, float alpha, float beta)
+                                {cudaF_add_mat_mat_elements(Gr,Bl,data,srcA_data,srcB_data,dim,srcA_stride,srcB_stride,alpha,beta);}
+
+inline void cuda_add_mat_mat_elements(dim3 Gr, dim3 Bl, double *data, const double *srcA_data,const double *srcB_data, MatrixDim dim,
+                                int srcA_stride, int srcB_stride, double alpha, double beta)
+                                {cudaD_add_mat_mat_elements(Gr,Bl,data,srcA_data,srcB_data,dim,srcA_stride,srcB_stride,alpha,beta);}
+
 /*
  * CuVector
  */
@@ -116,14 +124,15 @@ inline void cuda_vec_max(const double* v, double* value, int dim) { cudaD_vec_ma
 inline void cuda_add_diag_mat_mat(int Gr, int Bl, float alpha, float* v, int v_dim, const float* M, 
                                   int M_cols, int M_row_stride, int M_col_stride, const float *N, int N_row_stride, 
                                   int N_col_stride, int threads_per_element, float beta) {
-  cudaF_add_diag_mat_mat(Gr, Bl, alpha, v, v_dim, M, M_cols, M_row_stride, M_col_stride, N, N_row_stride,
-                         N_col_stride, threads_per_element, beta);
+    cudaF_add_diag_mat_mat(Gr, Bl, alpha, v, v_dim, M, M_cols, M_row_stride, M_col_stride, N, N_row_stride,
+                             N_col_stride, threads_per_element, beta);
 }
+
 inline void cuda_add_diag_mat_mat(int Gr, int Bl, double alpha, double* v, int v_dim, const double* M,
                                   int M_cols, int M_row_stride, int M_col_stride, const double *N, int N_row_stride,
                                   int N_col_stride, int threads_per_element, double beta) {
-  cudaD_add_diag_mat_mat(Gr, Bl, alpha, v, v_dim, M, M_cols, M_row_stride, M_col_stride, N, N_row_stride,
-                         N_col_stride, threads_per_element, beta);
+    cudaD_add_diag_mat_mat(Gr, Bl, alpha, v, v_dim, M, M_cols, M_row_stride, M_col_stride, N, N_row_stride,
+                             N_col_stride, threads_per_element, beta);
 }
 
 inline void cuda_add_vec_vec(int Gr, int Bl, float alpha, float* v, const float* x, const float* y, float beta, int dim) { cudaF_add_vec_vec(Gr,Bl,alpha,v,x,y,beta,dim); }
@@ -143,6 +152,12 @@ inline void cuda_vec_apply_exp(int Gr, int Bl, double* v, int dim) { cudaD_vec_a
 
 inline void cuda_vec_apply_log(int Gr, int Bl, float* v, float* flag, int dim) { cudaF_vec_apply_log(Gr,Bl,v,flag,dim); }
 inline void cuda_vec_apply_log(int Gr, int Bl, double* v, double* flag, int dim) { cudaD_vec_apply_log(Gr,Bl,v,flag,dim); }
+
+inline void cuda_sqrt_elements(dim3 Gr, dim3 Bl, float* data, float epsilon, MatrixDim d) { cudaF_sqrt_elements(Gr, Bl, data, epsilon, d); }
+inline void cuda_sqrt_elements(dim3 Gr, dim3 Bl, double* data, double epsilon, MatrixDim d) { cudaD_sqrt_elements(Gr, Bl, data, epsilon, d); }
+
+inline void cuda_invert_elements(dim3 Gr, dim3 Bl, float *data, MatrixDim d) { cudaF_invert_elements(Gr, Bl, data, d); }
+inline void cuda_invert_elements(dim3 Gr, dim3 Bl, double *data, MatrixDim d) { cudaD_invert_elements(Gr, Bl, data, d); }
 
 inline void cuda_add_row_sum_mat(dim3 Gr, dim3 Bl, const float *mat, float *vec_sum, MatrixDim d) { cudaF_add_row_sum_mat(Gr,Bl,mat,vec_sum,d); }
 inline void cuda_add_row_sum_mat(dim3 Gr, dim3 Bl, const double *mat, double *vec_sum, MatrixDim d) { cudaD_add_row_sum_mat(Gr,Bl,mat,vec_sum,d); }

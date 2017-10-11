@@ -16,3 +16,6 @@ NOTE:
 
 - please create/link exp and tmp directories prior to running scripts.
 - these take a *long* time to run.
+
+For dropout and max perturbation, please cite:
+- "Improving LSTM-CTC based ASR performance in domains with limited training data", Jajadev Billa (https://arxiv.org/pdf/1707.00722.pdf)

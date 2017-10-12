@@ -45,6 +45,7 @@ log
 exp/
 exp_110h/
 fbank/
+v1/data/
 data/
 data_ml/
 log/

@@ -132,11 +132,10 @@ else
 fi
 
 if [ $ninitproj -gt 0 ]; then
-    ninitproj="--ninitproj $nfinalproj"
+    ninitproj="--ninitproj $ninitproj"
 else
     ninitproj=""
 fi
-
 
 if [ $nfinalproj -gt 0 ]; then
     nfinalproj="--nfinalproj $nfinalproj"

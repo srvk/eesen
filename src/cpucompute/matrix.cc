@@ -949,6 +949,22 @@ void MatrixBase<Real>::SetRandUniform() {
 }
 
 template<typename Real>
+void MatrixBase<Real>::SetRandUniformCol() {
+  eesen::RandomState rstate;
+  std::vector<Real> col_vals(num_cols_);
+
+  for (MatrixIndexT col = 0; col < num_cols_; col++) {
+    col_vals[col] = static_cast<Real>(eesen::RandUniform(&rstate));
+  }
+  for (MatrixIndexT row = 0; row < num_rows_; row++) {
+    Real *row_data = this->RowData(row);
+    for (MatrixIndexT col = 0; col < num_cols_; col++, row_data++) {
+      *row_data = col_vals[col];
+    }
+  }
+}
+
+template<typename Real>
 void MatrixBase<Real>::Write(std::ostream &os, bool binary) const {
   if (!os.good()) {
     KALDI_ERR << "Failed to write matrix to stream: stream not good";

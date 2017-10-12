@@ -5,6 +5,7 @@ class MODEL_NAME:
     ACHEN_CONV="achen_conv"
     DEEP_BILSTM="deepbilstm"
     ARCNET="arc_net"
+    ARCNET_VIDEO="arc_net_video"
     CONVNET="conv_net"
 
 class DEFAULT_FILENAMES:
@@ -48,6 +49,7 @@ class CONF_TAGS:
     MODEL = "model"
     NPROJ = "nproj"
     FINAL_NPROJ = "final_nproj"
+    INIT_NPROJ = "init_nproj"
     L2="l2"
     NLAYERS="nlayer"
     NHIDDEN="nhidden"

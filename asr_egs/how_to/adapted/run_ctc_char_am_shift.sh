@@ -4,7 +4,7 @@
 #PBS -j oe
 #PBS -o log
 #PBS -d .
-#PBS -N how_to_fuse
+#PBS -N how_to_shift_sat_ft_e4
 #PBS -V
 #PBS -l walltime=48:00:00
 #PBS -l nodes=1:ppn=1
@@ -41,22 +41,24 @@ nlayer=5                 # number of layers
 nhidden=200              # cells in each layer and direction
 nproj=100
 
-dir=exp/train_am_char_l${nlayer}_c${nhidden}_p${nproj}_fuse
+dir=exp/train_am_char_480h_l${nlayer}_c${nhidden}_p${nproj}_e3
 
 mkdir -p $dir
 
 echo generating train labels...
 
-python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_tr95/text --input_units ./data/local/dict_char/units.txt --output_labels $dir/labels.tr --lower_case
+#python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_tr95/text --input_units ./data/local/dict_char/units.txt --output_labels $dir/labels.tr --lower_case
 
 
 echo generating cv labels...
 
-python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_cv05/text --input_units ./data/local/dict_char/units.txt --output_labels $dir/labels.cv --lower_case
+#python ./local/swbd1_prepare_dicts_tf.py --text_file ./data/train_cv05/text --input_units ./data/local/dict_char/units.txt --output_labels $dir/labels.cv --lower_case
 
 
 # Train the network with CTC. Refer to the script for details about the arguments
-steps/train_ctc_tf.sh --num-sequence 16 --learn-rate 0.02 --half_after 6  --nlayer $nlayer --nproj $nproj --nhidden $nhidden  --fuse_sat /data/ASR5/abhinav5/PlacesAlexNet_480h/final_feats --max_iters 25 ./data/train_tr95_fbank/ ./data/train_cv05_fbank/ $dir || exit 1;
+#steps/train_ctc_tf.sh --batch_size 16 --sat_type shift --sat_stage train_sat --learn-rate 0.02 --half_after 6  --nlayer $nlayer --nproj $nproj --nhidden $nhidden --continue_ckpt /data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/asr_egs/how_to/no_adapted/exp/train_am_char_480h_l5_c200_p100/model/epoch03.ckpt --force_lr_epoch_ckpt true --sat_path /data/ASR5/abhinav5/PlacesAlexNet_480h/final_feats --max_iters 25 ./data/train_480h_tr95/ ./data/train_480h_cv05/ $dir || exit 1;
+
+steps/train_ctc_tf.sh --batch_size 16 --sat_type shift --sat_stage fine_tune --learn-rate 0.01 --half_after 6  --nlayer $nlayer --nproj $nproj --nhidden $nhidden --force_lr_epoch_ckpt true --continue_ckpt /data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/asr_egs/how_to/adapted/exp/train_am_char_480h_l5_c200_p100_e4/model/sat_shift_train_sat_2/epoch02.ckpt --sat_path /data/ASR5/abhinav5/PlacesAlexNet_480h/final_feats --max_iters 25 ./data/train_480h_tr95_2/ ./data/train_480h_cv05/ $dir || exit 1;
 
 
 

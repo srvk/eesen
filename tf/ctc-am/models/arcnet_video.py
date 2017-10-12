@@ -1,22 +1,24 @@
-import constants
 import tensorflow as tf
-from utils.fileutils import debug
-import sys
+import constants
+import numpy as np
+from core import layers
 
+from core.layers import layers
 
-class DeepBidirRNN:
+FLAGS = tf.app.flags.FLAGS
 
+class ArcNetVideo:
+
+    '''
+    LipNet Model
+    '''
     def length(self, sequence):
         with tf.variable_scope("seq_len"):
-            used = tf.sign(tf.reduce_max(tf.abs(sequence), axis=2))
+            used = tf.sign(tf.reduce_max(tf.abs(sequence), axis=[2,3,4]))
             length = tf.reduce_sum(used, axis=1)
             length = tf.cast(length, tf.int32)
         return length
 
-
-    #def my_cnn (self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope, batch_norm, is_training = True):
-
-    #    if(nlayer > 0 ):
 
 
     def my_cudnn_lstm(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope, batch_norm, is_training = True):
@@ -29,6 +31,7 @@ class DeepBidirRNN:
                     ninput = nfeat
                     for i in range(nlayer):
                         with tf.variable_scope("layer%d" % i):
+
                             cudnn_model = tf.contrib.cudnn_rnn.CudnnLSTM(1, nhidden, ninput, direction = 'bidirectional')
                             params_size_t = cudnn_model.params_size()
                             input_h = tf.zeros([2, batch_size, nhidden], dtype = tf.float32, name = "init_lstm_h")
@@ -37,8 +40,8 @@ class DeepBidirRNN:
                             cudnn_params = tf.Variable(tf.random_uniform([params_size_t], -bound, bound), validate_shape = False, name = "params", trainable=self.is_trainable_sat)
                             #TODO is_training=is_training should be changed!
                             outputs, _output_h, _output_c = cudnn_model(is_training=is_training,
-                                input_data=outputs, input_h=input_h, input_c=input_c,
-                                params=cudnn_params)
+                                                                        input_data=outputs, input_h=input_h, input_c=input_c,
+                                                                        params=cudnn_params)
                             outputs = tf.contrib.layers.fully_connected(
                                 activation_fn = None, inputs = outputs,
                                 num_outputs = nproj, scope = "projection")
@@ -55,10 +58,10 @@ class DeepBidirRNN:
                     bound = tf.sqrt(6. / (nhidden + nhidden))
 
                     cudnn_params = tf.Variable(tf.random_uniform([params_size_t], -bound, bound),
-                        validate_shape = False, name = "params", trainable=self.is_trainable_sat)
+                                               validate_shape = False, name = "params", trainable=self.is_trainable_sat)
 
                     outputs, _output_h, _output_c = cudnn_model(is_training=is_training,input_data=outputs,
-                            input_h=input_h, input_c=input_c,params=cudnn_params)
+                                                                input_h=input_h, input_c=input_c,params=cudnn_params)
 
                     if(batch_norm):
                         outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
@@ -100,72 +103,128 @@ class DeepBidirRNN:
                     # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs,
                     # self.seq_len, swap_memory=True, time_major = True, dtype = tf.float32)
                     outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs,
-                        self.seq_len, time_major = True, dtype = tf.float32)
+                                                                 self.seq_len, time_major = True, dtype = tf.float32)
                     # also some API change
                     outputs = tf.concat_v2(values = outputs, axis = 2, name = "output")
                     # outputs = tf.concat(values = outputs, axis = 2, name = "output")
-            # for i in range(nlayer):
-                # with tf.variable_scope("layer%d" % i):
+                    # for i in range(nlayer):
+                    # with tf.variable_scope("layer%d" % i):
                     # cell = tf.contrib.rnn.LSTMBlockCell(nhidden)
                     # if nproj > 0:
-                        # cell = tf.contrib.rnn.OutputProjectionWrapper(cell, nproj)
+                    # cell = tf.contrib.rnn.OutputProjectionWrapper(cell, nproj)
                     # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell,
-                        # outputs, self.seq_len, swap_memory=True, dtype = tf.float32, time_major = True)
+                    # outputs, self.seq_len, swap_memory=True, dtype = tf.float32, time_major = True)
                     # # outputs = tf.concat_v2(outputs, 2, name = "output")
                     # outputs = tf.concat(outputs, 2, name = "output")
                     # outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell, cell, outputs, self.seq_len, dtype = tf.float32)
-        return outputs
-
-    def my_sat_layers(self, num_sat_layers, adapt_dim, nfeat, outputs):
-
-        for i in range(num_sat_layers-1):
-            with tf.variable_scope("layer%d" % i):
-                outputs = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = adapt_dim)
-
-        with tf.variable_scope("last_sat_layer"):
-            outputs = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs, num_outputs = nfeat)
 
         return outputs
 
+    def my_cnn(self, x, batch_size, is_training):
 
-    def my_sat_module(self, config, input_feats, input_sat):
+        with tf.variable_scope('video'):
+            CONV_KEEP_PROB = 0.7
+            CONV_ACTIVATION = 'relu'
 
+            # assume input is 5D and has shape:
+            # (batch, n_frames, video_height, video_width, video_channels)
+            # filters=[depth, height, width, in_channels, out_channels],
+            st_net = []  # spatiotemporal
+            v_conv_1, weights, biases = layers.conv3d(
+                input=x,
+                shape=(3, 5, 5, 3, 32),
+                strides=[1, 1, 2, 2, 1],
+                padding='SAME',
+                activation=CONV_ACTIVATION,
+                name='v_conv_1')
+            st_net.append(v_conv_1)
 
-        if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
-                == constants.SAT_SATGES.TRAIN_SAT:
+            # Even though it says 3d, we're using it only spatially
+            st_net.append(tf.nn.max_pool3d(
+                input=st_net[-1],
+                ksize=[1, 1, 2, 2, 1],
+                strides=[1, 1, 2, 2, 1],
+                padding='SAME',
+                name='v_pool_1'
+            ))
 
-            self.is_trainable_sat=False
+            st_net.append(layers.batch_norm(st_net[-1],
+                                            phase=is_training,
+                                            name='bn_1'))
 
-        with tf.variable_scope(constants.SCOPES.SPEAKER_ADAPTAION):
+            st_net.append(layers.channel_dropout(
+                input=st_net[-1],
+                keep_prob=CONV_KEEP_PROB,
+                is_training=is_training,
+                name='v_dropout_1',
+            ))
 
+            st_net.append(layers.conv3d(
+                input=st_net[-1],
+                shape=(3, 5, 5, 32, 64),
+                strides=[1, 1, 1, 1, 1],
+                padding='SAME',
+                activation=CONV_ACTIVATION,
+                name='v_conv_2')[0])
 
-            if(config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] == constants.SAT_TYPE.CONCAT):
+            st_net.append(tf.nn.max_pool3d(
+                input=st_net[-1],
+                ksize=[1, 1, 2, 2, 1],
+                strides=[1, 1, 2, 2, 1],
+                padding='SAME',
+                name='v_pool_2'
+            ))
 
-                with tf.variable_scope(constants.SCOPES.SAT_FUSE):
-                    sat_input = tf.tile(input_sat, tf.stack([tf.shape(input_feats)[0], 1, 1]))
-                    outputs = tf.concat([input_feats, sat_input], 2)
+            st_net.append(layers.batch_norm(
+                st_net[-1],
+                phase=is_training,
+                name='bn_2'))
 
-                    return self.my_sat_layers(
-                                    config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.NUM_SAT_LAYERS],
-                                    config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_FEAT_DIM],
-                                    config[constants.CONF_TAGS.INPUT_FEATS_DIM],
-                                           outputs)
+            st_net.append(layers.channel_dropout(
+                input=st_net[-1],
+                keep_prob=CONV_KEEP_PROB,
+                is_training=is_training,
+                name='v_dropout_2',
+            ))
 
-            elif(config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] == constants.SAT_TYPE.SHIFT):
+            st_net.append(layers.conv3d(
+                input=st_net[-1],
+                shape=(3, 3, 3, 64, 96),
+                strides=[1, 1, 1, 1, 1],
+                padding='SAME',
+                activation=CONV_ACTIVATION,
+                name='v_conv_3')[0])
 
-                    learned_sat = self.my_sat_layers(
-                        config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.NUM_SAT_LAYERS],
-                                                     config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_FEAT_DIM],
-                                                     config[constants.CONF_TAGS.INPUT_FEATS_DIM],
-                                                    input_sat)
+            st_net.append(tf.nn.max_pool3d(
+                input=st_net[-1],
+                ksize=[1, 1, 2, 2, 1],
+                strides=[1, 1, 2, 2, 1],
+                padding='SAME',
+                name='v_pool_3'
+            ))
 
-                    return tf.add(input_feats, learned_sat, name="shift")
-            else:
+            st_net.append(layers.batch_norm(
+                st_net[-1],
+                phase=is_training,
+                name='bn_3'))
 
-                print("this sat type ("+str(config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE])+") was not contemplates")
-                print(debug.get_debug_info())
-                print("exiting...")
-                sys.exit()
+            st_net.append(layers.channel_dropout(
+                input=st_net[-1],
+                keep_prob=CONV_KEEP_PROB,
+                is_training=is_training,
+                name='v_dropout_3',
+            ))
+
+            # Flatten the video branch output into a feature vector
+            # The "Output" layer of the video branch.
+            # Output shape: (batch, frames, features)
+            fan_in = int(np.prod(st_net[-1].get_shape()[2:]))
+            shape = [batch_size, -1, fan_in]
+
+            st_net.append(tf.reshape(st_net[-1], shape))
+
+        # The "Output" layer of the video branch.
+        return st_net[-1]
 
     def __init__(self, config):
 
@@ -177,11 +236,6 @@ class DeepBidirRNN:
         nlayer = config[constants.CONF_TAGS.NLAYERS]
         clip = config[constants.CONF_TAGS.CLIP]
         nproj = config[constants.CONF_TAGS.NPROJ]
-
-        if(constants.CONF_TAGS.INIT_NPROJ in config):
-            init_nproj = config[constants.CONF_TAGS.INIT_NPROJ]
-        else:
-            init_nproj = 0
 
         if(constants.CONF_TAGS.FINAL_NPROJ in config):
             finalfeatproj = config[constants.CONF_TAGS.FINAL_NPROJ]
@@ -206,7 +260,13 @@ class DeepBidirRNN:
 
         # build the graph
         self.lr_rate = tf.placeholder(tf.float32, name = "learning_rate")[0]
-        self.feats = tf.placeholder(tf.float32, [None, None, nfeat], name = "feats")
+
+
+        #shape=(BATCH_SIZE, None, VIDEO_SIZE[0], VIDEO_SIZE[1], 3), name='x_video')
+        shape=(None, None, nfeat[0], nfeat[1], 3)
+
+        self.feats = tf.placeholder(tf.float32, shape, name = "feats")
+
         self.temperature = tf.placeholder(tf.float32, name = "temperature")
         self.is_training_ph = tf.placeholder(tf.bool, shape=(), name="is_training")
         self.opt = []
@@ -236,31 +296,21 @@ class DeepBidirRNN:
         self.seq_len = self.length(self.feats)
 
         batch_size = tf.shape(self.feats)[0]
-        outputs = tf.transpose(self.feats, (1, 0, 2), name = "feat_transpose")
 
-        if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] \
-                != constants.SAT_TYPE.UNADAPTED:
+        outputs = self.my_cnn(self.feats, batch_size, self.is_training_ph)
 
-            self.sat = tf.placeholder(tf.float32, [None, 1, config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_FEAT_DIM]], name="sat")
-            sat_t = tf.transpose(self.sat, (1, 0, 2), name="sat_transpose")
-
-            outputs = self.my_sat_module(config, outputs, sat_t)
-
-        if batch_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
-
-
-        if init_nproj > 0:
-            outputs = tf.contrib.layers.fully_connected(
-                activation_fn = None, inputs = outputs, num_outputs = init_nproj,
-                scope = "input_fc", biases_initializer = tf.contrib.layers.xavier_initializer())
+        outputs = tf.transpose(outputs, (1, 0, 2), name = "feat_transpose")
 
         if lstm_type == "cudnn":
-            outputs = self.my_cudnn_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj,  "cudnn_lstm", batch_norm, self.is_training)
+            outputs = self.my_cudnn_lstm(outputs, batch_size, nlayer, nhidden, int(outputs.get_shape()[-1]), nproj,  "cudnn_lstm", batch_norm, self.is_training)
         elif lstm_type == "fuse":
-            outputs = self.my_fuse_block_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "fuse_lstm")
+            print("not implemented")
+            print("exiting....")
+            sys.exit()
         else:
-            outputs = self.my_native_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "native_lstm")
+            print("not implemented")
+            print("exiting....")
+            sys.exit()
 
 
         if finalfeatproj > 0:
@@ -287,22 +337,17 @@ class DeepBidirRNN:
 
         for language_id, language_target_dict in language_scheme.items():
 
-
             tmp_cost, tmp_debug_cost, tmp_ter, tmp_logits, tmp_softmax_probs, tmp_log_softmax_probs, tmp_log_likelihoods = [], [], [], [], [], [], []
 
             with tf.variable_scope(constants.SCOPES.OUTPUT):
                 for target_id, num_targets in language_target_dict.items():
 
                     scope="output_fc_"+language_id+"_"+target_id
-
                     logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs,
                                                               num_outputs=num_targets,
                                                               scope = scope,
                                                               biases_initializer = tf.contrib.layers.xavier_initializer(),
                                                               trainable=self.is_trainable_sat)
-                    if batch_norm:
-                        logit = tf.contrib.layers.batch_norm(logit, scope = scope+"_bn", center=True, scale=True, decay=0.9,
-                                                             is_training=self.is_training_ph, updates_collections=None)
 
                     loss = tf.nn.ctc_loss(labels=self.labels[count], inputs=logit, sequence_length=self.seq_len)
                     tmp_cost.append(loss)
@@ -330,7 +375,7 @@ class DeepBidirRNN:
 
             #preparing variables to optimize
             if config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE] \
-                == constants.SAT_SATGES.TRAIN_SAT:
+                    == constants.SAT_SATGES.TRAIN_SAT:
                 var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=constants.SCOPES.SPEAKER_ADAPTAION)
             else:
                 var_list = self.get_variables_by_lan(language_id)

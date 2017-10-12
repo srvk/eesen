@@ -4,7 +4,7 @@
 #PBS -j oe
 #PBS -o log
 #PBS -d .
-#PBS -N how_to_am_480h_l5_c200_p100
+#PBS -N how_to_am_480h2_l5_c200_p0
 #PBS -V
 #PBS -l walltime=48:00:00
 #PBS -l nodes=1:ppn=1
@@ -81,11 +81,11 @@ if [ $stage -le 3 ]; then
   echo "                Network Training with the 90-Hour Set             "
   echo =====================================================================
   # Specify network structure and generate the network topology
-  nlayer=5                 # number of layers
+  nlayer=5                # number of layers
   nhidden=200              # cells in each layer and direction
-  nproj=100
+  nproj=0
 
-  dir=exp/train_am_char_480h_l${nlayer}_c${nhidden}_p${nproj}
+  dir=exp/train_am_char_480h2_l${nlayer}_c${nhidden}_p${nproj}
 
   mkdir -p $dir
 
@@ -102,7 +102,7 @@ if [ $stage -le 3 ]; then
 
 
   # Train the network with CTC. Refer to the script for details about the arguments
-  steps/train_ctc_tf.sh --batch_size 16 --learn-rate 0.02 --half_after 6 --nlayer $nlayer --nproj $nproj --nhidden $nhidden --max_iters 25 ./data/train_480h_tr95/ ./data/train_480h_cv05/ ./$dir || exit 1;
+  steps/train_ctc_tf.sh --batch_size 16 --learn-rate 0.02 --half_after 6 --nlayer $nlayer --nproj $nproj --nhidden $nhidden --max_iters 25 ./data/train_480h_tr95_2/ ./data/train_480h_cv05/ ./$dir || exit 1;
 
 fi
 

@@ -1,7 +1,6 @@
 import tensorflow as tf
-import rnn_cell_mulint_modern
 
-from summary_utils import variable_summaries
+from utils.imageutils.summary_utils import variable_summaries
 
 '''
 Uses https://github.com/NickShahML/tensorflow_with_latest_papers.git
@@ -92,34 +91,39 @@ def batch_norm(x, phase, name='bn'):
         normed = tf.nn.batch_normalization(x, mean, var, beta, gamma, 1e-3)
     return normed
 
-def multi_layer_bi_rnn(name, input, units, n_layers, sequence_length,
-        keep_prob=1.0, dtype=tf.float32, phase=True):
+def multi_layer_bi_rnn(name, input, units, n_layers,
+        sequence_length=None,
+        keep_prob=1,
+        dtype=tf.float32):
     '''
     Creates a multilayer birdirectional dynamic rnn with GRU cells
 
+    If sequence_length is none, the entire batch length is considered
+    the sequence_length (good for batch size 1)
+
+    Otherwise sequence length should be a vector of size [batch_size]
+
     Input is a Tensor of shape: (Batch size x time_steps x features)
     '''
+    with tf.variable_scope(name):
+        fw_cell = tf.contrib.rnn.GRUCell(num_units=units)
+        bw_cell = tf.contrib.rnn.GRUCell(num_units=units)
 
-    fw_cell = rnn_cell_mulint_modern.GRUCell_MulInt(num_units=units,
-                use_recurrent_dropout=True, recurrent_dropout_factor=keep_prob,
-                is_training=phase)
-    bw_cell = rnn_cell_mulint_modern.GRUCell_MulInt(num_units=units,
-                use_recurrent_dropout=True, recurrent_dropout_factor=keep_prob,
-                is_training=phase)
+        fw_multicell = tf.contrib.rnn.MultiRNNCell(
+                [tf.contrib.rnn.DropoutWrapper(
+                    tf.contrib.rnn.GRUCell(num_units=units),
+                    input_keep_prob=keep_prob) for _ in range(n_layers)])
+        bw_multicell = tf.contrib.rnn.MultiRNNCell(
+                [tf.contrib.rnn.DropoutWrapper(
+                    tf.contrib.rnn.GRUCell(num_units=units),
+                    input_keep_prob=keep_prob) for _ in range(n_layers)])
 
-    # Legacy code for old checkpoints
-    #fw_cell = tf.contrib.rnn.GRUCell(num_units=units, activation=tf.nn.tanh)
-    #bw_cell = tf.contrib.rnn.GRUCell(num_units=units, activation=tf.nn.tanh)
-
-    fw_multicell = tf.contrib.rnn.MultiRNNCell([fw_cell]*n_layers)
-    bw_multicell = tf.contrib.rnn.MultiRNNCell([bw_cell]*n_layers)
-
-    outputs, states = tf.nn.bidirectional_dynamic_rnn(
-            cell_fw=fw_multicell,
-            cell_bw=bw_multicell,
-            dtype=dtype,
-            sequence_length=sequence_length,
-            inputs=input)
+        outputs, states = tf.nn.bidirectional_dynamic_rnn(
+                cell_fw=fw_multicell,
+                cell_bw=bw_multicell,
+                dtype=dtype,
+                sequence_length=sequence_length,
+                inputs=input)
     return tf.concat(outputs,2), states
 
 def bi_rnn(name, input, units,
@@ -244,7 +248,6 @@ def fc_broadcast(name, input, units,
     result, weights, biases = fc(name, input_flat, units, dtype, initializer, activation)
 
     # Reshape back into original shape
-    #output = tf.reshape(result, input_shape)
     output = tf.reshape(result, [input_shape[0], -1, units])
     return output, weights, biases
 
@@ -279,3 +282,4 @@ def fc(name, input, units,
         except ValueError:
             scope.reuse_variables()
             return fc_helper(input, units, initializer, activation)
+

@@ -16,11 +16,8 @@ train_opts="--store_model --lstm_type=cudnn --augment"
 model="deepbilstm"
 nlayer=5
 nhidden=320
-
 nproj=0
 nfinalproj=0
-ninitproj=0
-
 norm=false
 
 #speaker adaptation configuration
@@ -130,13 +127,6 @@ if [[ $continue_ckpt != "" ]]; then
 else
     continue_ckpt=""
 fi
-
-if [ $ninitproj -gt 0 ]; then
-    ninitproj="--ninitproj $nfinalproj"
-else
-    ninitproj=""
-fi
-
 
 if [ $nfinalproj -gt 0 ]; then
     nfinalproj="--nfinalproj $nfinalproj"

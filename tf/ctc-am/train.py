@@ -22,7 +22,7 @@ from eesen import Eesen
 from utils.checkers import set_checkers
 from utils.fileutils import debug
 
-#from reader.sat_reader import sat_reader_factory
+from reader.sat_reader import sat_reader_factory
 from reader.feats_reader import feats_reader_factory
 from reader.labels_reader import labels_reader_factory
 
@@ -33,7 +33,6 @@ from reader.labels_reader import labels_reader_factory
 
 def main_parser():
     parser = argparse.ArgumentParser(description='Train TF-Eesen Model')
-
 
     #general arguments
     parser.add_argument('--debug', default=False, dest='debug', action='store_true', help='enable debug mode')
@@ -61,6 +60,7 @@ def main_parser():
     #TODO this should be done through a model manager
     parser.add_argument('--model', default="deepbilstm", help = "model: achen, bilstm, achen_sum")
     parser.add_argument('--nproj', default = 0, type=int, help='dimension of projection units, set to 0 if no projection needed')
+    parser.add_argument('--ninitproj', default = 0, type=int, help='dimension of the initial projection layer, if 0 no final projection layer will be added')
     parser.add_argument('--nfinalproj', default = 0, type=int, help='dimension of the final projection layer, if 0 no final projection layer will be added')
 
     parser.add_argument('--l2', default = 0.0, type=float, help='l2 normalization')
@@ -189,6 +189,7 @@ def create_global_config(args):
         constants.CONF_TAGS.LSTM_TYPE: args.lstm_type,
         constants.CONF_TAGS.NPROJ: args.nproj,
         constants.CONF_TAGS.FINAL_NPROJ: args.nfinalproj,
+        constants.CONF_TAGS.INIT_NPROJ: args.ninitproj,
         constants.CONF_TAGS.L2: args.l2,
         constants.CONF_TAGS.NLAYERS: args.nlayer,
         constants.CONF_TAGS.NHIDDEN: args.nhidden,
@@ -262,9 +263,9 @@ def main():
     print("tr_x:")
     print(80 * "-")
     #load training feats
-    if(config[constants.CONF_TAGS.MODEL] == constants.MODEL_NAME.ARCNET):
+    if(config[constants.CONF_TAGS.MODEL] == constants.MODEL_NAME.ARCNET_VIDEO):
+        tr_x = feats_reader_factory.create_reader('train', 'video', config)
 
-        tr_x = feats_reader_factory.create_reader('train', 'kaldi', config)
     else:
         tr_x = feats_reader_factory.create_reader('train', 'kaldi', config)
 
@@ -285,7 +286,10 @@ def main():
     print("cv_x:")
     print(80 * "-")
     #create lm_reader for labels
-    cv_x = feats_reader_factory.create_reader('cv', 'kaldi', config)
+    if(config[constants.CONF_TAGS.MODEL] == constants.MODEL_NAME.ARCNET_VIDEO):
+        cv_x = feats_reader_factory.create_reader('cv', 'video', config)
+    else:
+        cv_x = feats_reader_factory.create_reader('cv', 'kaldi', config)
 
 
     print(80 * "-")

@@ -39,19 +39,19 @@ with open(args.scp_in, "r") as input_scp:
 
         for input_line_scp in input_scp:
             utt_id=input_line_scp.split()[0]
+            path=input_line_scp.split()[1]
             feat_len=int(input_line_scp.split()[2])
-            input_scp_dict[utt_id] = feat_len
-    
-    
+            input_scp_dict[utt_id] = (feat_len, input_line_scp)
+
+
 with open(args.scp_out, "w") as output_scp:
 
-    for utt_id, feat_len in input_scp_dict.items():
+    for utt_id, element in input_scp_dict.items():
 
         if(utt_id in labels_dict):
-            if(labels_dict[utt_id] < feat_len and labels_dict[utt_id] != 0):
+            if(labels_dict[utt_id] < element[0] and labels_dict[utt_id] != 0 and element[0] != 0):
                 new_len += 1
-                output_scp.write(input_line_scp)
-
+                output_scp.write(element[1])
         else:
             labels_not_found += 1
             print("")

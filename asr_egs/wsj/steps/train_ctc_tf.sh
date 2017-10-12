@@ -175,21 +175,26 @@ data_tr=$1
 data_cv=$2
 
 feats_cv="ark,s,cs:apply-cmvn --norm-vars=true --utt2spk=ark:$data_cv/utt2spk scp:$data_cv/cmvn.scp scp:$data_cv/feats.scp ark:- |"
-copy-feats "$feats_cv" ark,scp:$tmpdir/cv.ark,$tmpdir/cv_local.scp || exit 1;
+copy-feats "$feats_cv" ark,scp:$tmpdir/cv.ark,$tmpdir/cv_tmp.scp || exit 1;
 
 echo ""
 echo copying training features ...
 echo ""
 
 feats_tr="ark,s,cs:apply-cmvn --norm-vars=true --utt2spk=ark:$data_tr/utt2spk scp:$data_tr/cmvn.scp scp:$data_tr/feats.scp ark:- |"
-copy-feats "$feats_tr" ark,scp:$tmpdir/train.ark,$tmpdir/train_local.scp || exit 1;
+copy-feats "$feats_tr" ark,scp:$tmpdir/train.ark,$tmpdir/train_tmp.scp || exit 1;
 
 echo ""
 echo copying labels ...
 echo ""
 
-cp $dir/labels*.tr $tmpdir/ || exit 1
-cp $dir/labels*.cv $tmpdir/ || exit 1
+if [ -f $dir/labels.tr.gz ]; then
+    gzip -cd $dir/labels.tr.gz > $tmpdir/labels.tr || exit 1
+    gzip -cd $dir/labels.cv.gz > $tmpdir/labels.cv || exit 1
+else
+    cp $dir/labels*.tr $tmpdir/ || exit 1
+    cp $dir/labels*.cv $tmpdir/ || exit 1
+fi
 
 echo ""
 echo cleaning train set ...
@@ -201,16 +206,16 @@ for f in $tmpdir/*.tr; do
 	echo cleaning train set $(basename $f)...
 	echo ""
 
-	python ./utils/clean_length.py --scp_in  $tmpdir/train_local.scp --labels $f --subsampling 3 --scp_out $tmpdir/train_local.scp
+	python ./utils/clean_length.py --scp_in  $tmpdir/train_tmp.scp --labels $f --subsampling 3 --scp_out $tmpdir/train_local.scp
 done
 
-for f in $dir/*.cv; do
+for f in $tmpdir/*.cv; do
 
     echo ""
     echo cleaning cv set $(basename $f)...
     echo ""
 
-    python ./utils/clean_length.py --scp_in  $tmpdir/cv_local.scp --labels $f --subsampling 3 --scp_out $tmpdir/cv_local.scp
+    python ./utils/clean_length.py --scp_in  $tmpdir/cv_tmp.scp --labels $f --subsampling 3 --scp_out $tmpdir/cv_local.scp
 
 done
 

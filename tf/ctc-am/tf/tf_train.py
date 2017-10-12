@@ -127,10 +127,10 @@ class Train():
         avg_ters = self.__compute_avg_ters(cv_ters)
 
         if (best_avg_ters > avg_ters):
-            print("Improved ter by %.1f%% over previous optimum %.1f%% in epoch %d, not updating learning rate" % (100.0*(best_avg_ters-avg_ters), 100.0*self.__ter_buffer[1], best_epoch))
+            print("Improved ter by %.1f%% over previous minimum %.1f%% in epoch %d, not updating learning rate" % (100.0*(best_avg_ters-avg_ters), 100.0*self.__ter_buffer[1], best_epoch))
             update_lr=False
         else:
-            print("ter worsened by %.1f%% from previous optimum %.1f%% in epoch %d, updating learning rate" % (100.0*(avg_ters-best_avg_ters), 100.0*self.__ter_buffer[1], best_epoch))
+            print("ter worsened by %.1f%% from previous minimum %.1f%% in epoch %d, updating learning rate" % (100.0*(avg_ters-best_avg_ters), 100.0*self.__ter_buffer[1], best_epoch))
             update_lr=True
 
         # if epoch > self.__config[constants.CONF_TAGS.HALF_AFTER]:

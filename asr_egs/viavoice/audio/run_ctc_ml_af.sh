@@ -4,7 +4,7 @@
 #PBS -j oe
 #PBS -o log
 #PBS -d .
-#PBS -N viavoice_af_multitask_ml
+#PBS -N viavoice_af_multitask_ml_11
 #PBS -V
 #PBS -l walltime=48:00:00
 #PBS -l nodes=1:ppn=1
@@ -32,11 +32,11 @@ if [ $stage -le 4 ]; then
   echo =====================================================================
 
 
-  dir=exp/train_af_l${am_nlayer}_c${am_ncell_dim}_m${am_model}_w${am_window}_n${am_norm}_ml
+  dir=exp/train_af_l${am_nlayer}_c${am_ncell_dim}_m${am_model}_w${am_window}_n${am_norm}_ml_11
 
   mkdir -p $dir
 
-  all_language=("./data_ml/articulators/" "./data_ml/articulatory_location/" "./data_ml/mouth_opening/" "./data_ml/rounding/" "./data_ml/tong_position/" "./data_ml/voiced_voiceless/")
+  all_language=("./data_ml_11/articulators/" "./data_ml_11/articulatory_location/" "./data_ml_11/mouth_opening/" "./data_ml_11/rounding/" "./data_ml_11/tong_position/" "./data_ml_11/voiced_voiceless/")
 
   echo generating train labels
 

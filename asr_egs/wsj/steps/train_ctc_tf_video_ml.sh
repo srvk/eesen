@@ -60,7 +60,8 @@ unset "all_lan[${#all_lan[@]}-1]"
 
 #creating tmp directory (concrete tmp path is defined in path.sh)
 tmpdir=`mktemp -d`
-trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; rm -r $tmpdir" EXIT ERR
+trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; rm -r $tmpdir" EXIT
+trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; rm -r $tmpdir" ERR
 
 
 ## Adjust parameter variables
@@ -176,7 +177,8 @@ for language_dir in "${all_lan[@]}"; do
     echo copying cv features ...
 
     data_cv=$language_dir/$cv_folder
-    cp $data_cv/feats_video.scp $tmpdir/$language_name/cv_video_local.scp
+
+    cp $data_cv/feats_video.scp $tmpdir/$language_name/cv_video_local.video
 
     tr_folder=$(ls $language_dir | grep \_tr)
 
@@ -189,7 +191,7 @@ for language_dir in "${all_lan[@]}"; do
     #echo copying train features ...
 
     data_tr=$language_dir/$tr_folder
-    cp $data_tr/feats_video.scp $tmpdir/$language_name/train_video_local.scp
+    cp $data_tr/feats_video.scp $tmpdir/$language_name/train_video_local.video
 
 
     labels_tr=$(ls $language_dir | grep labels | grep \.tr)
@@ -213,17 +215,17 @@ for language_dir in "${all_lan[@]}"; do
     cp $language_dir/labels.tr $tmpdir/$language_name/ || exit 1
     cp $language_dir/labels.cv $tmpdir/$language_name/ || exit 1
 
-    echo ""
-    echo cleaning train set ...
-
-
-    python ./utils/clean_video_length.py --scp_in  $tmpdir/$language_name/cv_video_local.scp --labels $tmpdir/$language_name/labels.cv --scp_out $tmpdir/$language_name/cv_video_local.scp
 
     echo ""
     echo cleaning cv set ...
 
-    python ./utils/clean_video_length.py --scp_in  $tmpdir/$language_name/train_video_local.scp  --labels $tmpdir/$language_name/labels.tr --scp_out $tmpdir/$language_name/train_video_local.scp
 
+    python ./utils/clean_video_length.py --scp_in  $tmpdir/$language_name/cv_video_local.video --labels $tmpdir/$language_name/labels.cv --scp_out $tmpdir/$language_name/cv_local.video
+
+    echo ""
+    echo cleaning train set ...
+
+    python ./utils/clean_video_length.py --scp_in  $tmpdir/$language_name/train_video_local.video  --labels $tmpdir/$language_name/labels.tr --scp_out $tmpdir/$language_name/train_local.video
 
     echo ""
 
@@ -234,6 +236,10 @@ echo final distribution of data_dir:
 echo ""
 
 find $tmpdir
+
+
+head $tmpdir/$language_name/train_local.video
+
 
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
 echo "TRAINING STARTS [$cur_time]"

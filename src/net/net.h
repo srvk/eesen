@@ -40,20 +40,21 @@ class Net {
   Net(const Net& other); // Copy constructor.
   Net &operator = (const Net& other); // Assignment operator.
 
-  ~Net(); 
+  ~Net();
 
  public:
+  
   /// Perform forward pass through the network
-  void Propagate(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *out); 
+  void Propagate(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *out);
   /// Perform backward pass through the network
   void Backpropagate(const CuMatrixBase<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff);
   /// Perform forward pass through the network, don't keep buffers (use it when not training)
-  void Feedforward(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *out); 
+  void Feedforward(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *out);
 
   /// Dimensionality on network input (input feature dim.)
-  int32 InputDim() const; 
+  int32 InputDim() const;
   /// Dimensionality of network outputs (posteriors | bn-features | etc.)
-  int32 OutputDim() const; 
+  int32 OutputDim() const;
 
   /// Returns number of layers
   int32 NumLayers() const { return layers_.size(); }
@@ -64,18 +65,18 @@ class Net {
   /// Sets the c'th layer to "layer", taking ownership of the pointer
   /// and deleting the corresponding one that we own.
   void SetLayer(int32 c, Layer *layer);
- 
+
   /// Remove component
   void RemoveLayer(int32 c);
   void RemoveLastLayer() { RemoveLayer(NumLayers()-1); }
 
   /// Access to forward pass buffers
-  const std::vector<CuMatrix<BaseFloat> >& PropagateBuffer() const { 
-    return propagate_buf_; 
+  const std::vector<CuMatrix<BaseFloat> >& PropagateBuffer() const {
+    return propagate_buf_;
   }
   /// Access to backward pass buffers
-  const std::vector<CuMatrix<BaseFloat> >& BackpropagateBuffer() const { 
-    return backpropagate_buf_; 
+  const std::vector<CuMatrix<BaseFloat> >& BackpropagateBuffer() const {
+    return backpropagate_buf_;
   }
 
   /// Get the number of parameters in the network
@@ -100,16 +101,33 @@ class Net {
 
   /// Write MLP to file
   void Write(const std::string &file, bool binary) const;
-  /// Write MLP to stream 
-  void Write(std::ostream &out, bool binary) const;   
- 
+  /// Write MLP to stream
+  void Write(std::ostream &out, bool binary) const;
+
   /// Write MLP to file. The parallel version of a layer (BiLstmParallel) is saved
   /// into a non-parallel version (BiLstm).
   void WriteNonParal(const std::string &file, bool binary) const;
   /// Write MLP to stream. The parallel version of a layer (BiLstmParallel) is saved
   /// into a non-parallel version (BiLstm).
   void WriteNonParal(std::ostream &out, bool binary) const;
- 
+
+  /// Set flag to indicate training or test
+  void SetTestMode();
+  void SetTrainMode();
+
+  // Change model parameters
+  void ChangeDropoutParameters(BaseFloat forward_dropout,
+                                  bool fw_step_dropout,
+                                  bool fw_sequence_dropout,
+
+                                  bool rnndrop ,
+                                  bool no_mem_loss_dropout,
+                                  BaseFloat recurrent_dropout,
+                                  bool recurrent_step_dropout,
+                                  bool recurrent_sequence_dropout,
+
+                                  bool twiddleforward);
+
   /// Create string with human readable description of the nnet
   std::string Info() const;
   /// Create string with per-layer gradient statistics
@@ -125,6 +143,9 @@ class Net {
   /// Relese the memory
   void Destroy();
 
+  /// sets the update algorithm that backprogate uses through the network
+  void SetUpdateAlgorithm(std::string opt);
+
   /// Set training hyper-parameters to the network and its TrainableLayer(s)
   void SetTrainOptions(const NetTrainOptions& opts);
   /// Get training hyper-parameters from the network
@@ -133,7 +154,7 @@ class Net {
   }
 
   // Set lengths of utterances for LSTM parallel training
-  void SetSeqLengths(std::vector<int> &sequence_lengths) { 
+  void SetSeqLengths(std::vector<int> &sequence_lengths) {
     for(int32 i=0; i < (int32)layers_.size(); i++) {
         layers_[i]->SetSeqLengths(sequence_lengths);
     }
@@ -142,15 +163,17 @@ class Net {
  private:
   /// Vector which contains all the layers composing the neural network,
   /// the layers are for example: AffineTransform, Sigmoid, Softmax
-  std::vector<Layer*> layers_; 
+  std::vector<Layer*> layers_;
 
   std::vector<CuMatrix<BaseFloat> > propagate_buf_; ///< buffers for forward pass
   std::vector<CuMatrix<BaseFloat> > backpropagate_buf_; ///< buffers for backward pass
 
   /// Option class with hyper-parameters passed to TrainableLayer(s)
   NetTrainOptions opts_;
+
+  UpdateRule update_algorithm;
 };
-  
+
 
 } // namespace eesen
 

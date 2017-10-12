@@ -111,7 +111,7 @@ if [ $stage -le 4 ]; then
   mkdir -p $dir
   all_language=("data_ml/105-turkish-flp" "data_ml/201-haitian-flp" "data_ml/302-kazakh-flp" "data_ml/401-mongolian-flp" "data_ml/shared")
 
-  steps/train_ctc_tf_ml.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size  16 --nproj $am_projection --nfinalproj $am_finalprojection --window $am_window --learn_rate 0.02 --half_after 4 --model $am_model --norm  $am_norm "${all_language[@]}" $dir || exit 1;
+  steps/train_ctc_tf_ml.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size  16 --nproj $am_projection --nfinalproj $am_finalprojection --continue_ckpt /data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/asr_egs/babel/105_201_302_401/exp/train_char_phn_ml_l6_c360_mdeepbilstm_w3_nfalse_p0_fp_0_shared/model/epoch07.ckpt --window $am_window --learn_rate 0.02 --half_after 4 --model $am_model --norm  $am_norm "${all_language[@]}" $dir || exit 1;
 
   #--continue_ckpt exp/train_char_phn_ml_l6_c360_mdeepbilstm_w3_nfalse_p0_fp_1220.02/model/epoch08.ckpt
 fi

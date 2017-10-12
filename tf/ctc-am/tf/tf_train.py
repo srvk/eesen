@@ -16,6 +16,7 @@ class Train():
 
         self.__config = config
         self.__model = create_model(config)
+
         self.__sess = tf.Session()
         self.max_targets_layers = 0
         self.__ter_buffer = [float('inf'), float('inf')]
@@ -67,7 +68,8 @@ class Train():
 
                 #log start
                 print(80 * "-")
-                self.__info("Epoch %d starting, learning rate: %.4g" % (epoch, lr_rate))
+                print("Epoch "+str(epoch)+" starting ... ( lr_rate: "+str(lr_rate)+")")
+                print(80 * "-")
 
                 #start timer...
                 tic = time.time()
@@ -86,6 +88,7 @@ class Train():
                 #update lr_rate if needed
                 lr_rate, best_avg_ters, best_epoch = self.__update_lr_rate(epoch, cv_ters, best_avg_ters, best_epoch, saver, lr_rate)
 
+                print("Epoch "+str(epoch)+" done.")
                 print(80 * "-")
                 #change set if needed (mix augmentation)
                 self.__update_sets(tr_x, tr_y, tr_sat)
@@ -136,13 +139,13 @@ class Train():
         # if epoch > self.__config[constants.CONF_TAGS.HALF_AFTER]:
         if update_lr:
 
-            #print("updating learning rate...")
+            print("updating learning rate...")
 
-            #print("from: "+str(lr_rate))
+            print("from: "+str(lr_rate))
 
             lr_rate = lr_rate / 2
 
-            #print("to: "+str(lr_rate))
+            print("to: "+str(lr_rate))
             #new_lr_rate = self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"]) // self.__config["half_period"]))
             #new_lr_rate = self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"])))
             #lr_rate = new_lr_rate
@@ -213,6 +216,8 @@ class Train():
         else:
             print("augmentation is not needed.")
 
+    print(80 * "-")
+
     def __check_needed_mix_augmentation(self, tr_x):
         for target_id, augment_dirs in tr_x.get_language_augment_scheme().items():
             if(len (augment_dirs) > 1):
@@ -265,6 +270,7 @@ class Train():
                 break
 
             feed, batch_size, index_correct_lan = self.__prepare_feed(data, lr_rate)
+
 
             batch_cost, batch_ters, _  = self.__sess.run([self.__model.debug_costs[index_correct_lan],
                                                        self.__model.ters[index_correct_lan],
@@ -341,6 +347,7 @@ class Train():
 
             #getting the feed..
             feed, batch_size, index_correct_lan = self.__prepare_feed(data)
+
 
             #processing a batch...
             batch_cost, batch_ters, = self.__sess.run([self.__model.debug_costs[index_correct_lan], self.__model.ters[index_correct_lan]], feed)
@@ -453,6 +460,8 @@ class Train():
 
                     self.__ter_buffer[len(self.__ter_buffer) - 1]= acum_val / num_val
 
+                    best_avg_ters=acum_val / num_val
+
                 if(alpha > 1):
 
                     new_log=self.__config[constants.CONF_TAGS.CONTINUE_CKPT][:-7]+"%02d" % (alpha-1,)+".log"
@@ -469,7 +478,7 @@ class Train():
 
             print(80 * "-")
 
-        #we want to store everything
+        #we want to store everyhting
         saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH])
 
 
@@ -491,7 +500,7 @@ class Train():
                     if(len(target_scheme) > 1):
                         print("\tTarget: %s" % (target_id))
                         fp.write("\tTarget: %s" % (target_id))
-                    print("\t\tTrain    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost[language_id][target_id], 100.0*train_ters[language_id][target_id], ntrain[language_id]))
+                    print("\t\t Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost[language_id][target_id], 100.0*train_ters[language_id][target_id], ntrain[language_id]))
                     print("\t\t"+constants.LOG_TAGS.VALIDATE+" cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost[language_id][target_id], 100.0*cv_ter, ncv[language_id]))
                     fp.write("\t\tTrain    cost: %.1f, ter: %.1f%%, #example: %d\n" % (train_cost[language_id][target_id], 100.0*train_ters[language_id][target_id], ntrain[language_id]))
                     fp.write("\t\t"+constants.LOG_TAGS.VALIDATE+" cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost[language_id][target_id], 100.0*cv_ter, ncv[language_id]))
@@ -512,6 +521,22 @@ class Train():
             x_batch, y_batch, sat_batch = data
         else:
             x_batch, y_batch = data
+
+
+        if self.__config[constants.CONF_TAGS.DEBUG] == True:
+            print("")
+            print("the following batch_id is prepared to be processed...")
+            print(x_batch[1])
+            print("size batch x:")
+            for element in x_batch[0]:
+                print(element.shape)
+
+            print("sizes batch y:")
+            for language_id, target in y_batch[0].items():
+                for target_id, content in target.items():
+                    print(content[2])
+
+            print("")
 
         #it contains the actuall value of x
         x_batch = x_batch[0]

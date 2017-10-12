@@ -29,7 +29,13 @@ eval2000_dirs="/path/to/LDC2002S09/hub5e_00 /path/to/LDC2002T43"
 
 #acoustic model parameters
 am_nlayer=4
+
+am_nproj=60
+am_ninitproj=80
+am_nfinalproj=100
+
 am_ncell_dim=320
+
 am_model=deepbilstm
 am_window=3
 am_norm=false
@@ -99,7 +105,7 @@ if [ $stage -le 4 ]; then
   echo =====================================================================
 
 
-  dir=exp/train_phn_l${am_nlayer}_c${am_ncell_dim}_m${am_model}_w${am_window}_n${am_norm}
+  dir=exp/train_phn_l${am_nlayer}_c${am_ncell_dim}_m${am_model}_w${am_window}_n${am_norm}_p${am_nproj}_ip${am_ninitproj}_fp${am_ninitproj}
 
   mkdir -p $dir
 
@@ -112,8 +118,7 @@ if [ $stage -le 4 ]; then
   python ./local/swbd1_prepare_phn_dict_tf.py --phn_lexicon ./data/local/dict_phn/lexicon.txt --text_file ./data/train_dev/text --output_units ./data/local/dict_phn/units.txt --output_labels $dir/labels.cv --ignore_noises || exit 1
 
   # Train the network with CTC. Refer to the script for details about the arguments
-  steps/train_ctc_tf.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size 16 --learn_rate 0.005 --half_after 6 --model $am_model --window $am_window --continue_ckpt ./exp/train_phn_l4_c320_mdeepbilstm_w3_nfalse/model/epoch09.ckpt  --norm $am_norm data/train_nodup data/train_dev $dir || exit 1;
-
+  steps/train_ctc_tf.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size 16 --learn_rate 0.005 --half_after 6 --model $am_model --window $am_window --ninitproj $am_ninitproj --nproj $am_nproj --nfinalproj $am_nfinalproj --norm $am_norm data/train_nodup data/train_dev $dir || exit 1;
 
   echo =====================================================================
   echo "                   Decoding eval200 using AM                      "

@@ -21,7 +21,7 @@ stage=4
 #acoustic model parameters
 am_nlayer=4
 am_ncell_dim=320
-am_model=arc_net
+am_model=arc_net_video
 am_window=3
 am_norm=false
 
@@ -55,7 +55,7 @@ if [ $stage -le 4 ]; then
   echo generating train labels
   all_language=("./data_video_ml/articulators/")
 
-  steps/train_ctc_tf_video_ml.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size 16 --learn_rate 0.02 --half_after 6 --model $am_model --window $am_window --norm $am_norm "${all_language[@]}" $dir || exit 1;
+  steps/train_ctc_tf_video_ml.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size 1 --learn_rate 0.02 --debug true --half_after 6 --model $am_model --window $am_window --norm $am_norm "${all_language[@]}" $dir || exit 1;
 
 
 fi

@@ -7,13 +7,14 @@
 stage=1
 
 # Set paths to various datasets
-swbd=/path/to/LDC97S62
+#swbd=/path/to/LDC97S62
+swbd=/data/ASR4/babel/ymiao/CTS/LDC97S62
 fisher_dirs="/path/to/LDC2004T19/fe_03_p1_tran/ /path/to/LDC2005T19/fe_03_p2_tran/" # Set to "" if you don't have the fisher corpus
 eval2000_dirs="/path/to/LDC2002S09/hub5e_00 /path/to/LDC2002T43"
 
 # CMU Rocks
-#fisher_dirs="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/ /data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
-#eval2000_dirs="/data/ASR4/babel/ymiao/CTS/LDC2002S09/hub5e_00 /data/ASR4/babel/ymiao/CTS/LDC2002T43"
+fisher_dirs="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/ /data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
+eval2000_dirs="/data/ASR4/babel/ymiao/CTS/LDC2002S09/hub5e_00 /data/ASR4/babel/ymiao/CTS/LDC2002T43"
 
 . parse_options.sh
 
@@ -31,7 +32,7 @@ if [ $stage -le 1 ]; then
   utils/ctc_compile_dict_token.sh --dict-type "char" --space-char "<space>" \
     data/local/dict_char data/local/lang_char_tmp data/lang_char || exit 1;
 
-  # Train and compile LMs. 
+  # Train and compile LMs.
   local/swbd1_train_lms.sh data/local/train/text data/local/dict_char/lexicon.txt data/local/lm $fisher_dirs || exit 1;
 
   # Compile the language-model FST and the final decoding graph TLG.fst
@@ -39,6 +40,8 @@ if [ $stage -le 1 ]; then
 
   # Data preparation for the eval2000 set
   local/eval2000_data_prep.sh $eval2000_dirs
+
+  exit
 fi
 
 if [ $stage -le 2 ]; then

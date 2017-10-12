@@ -72,6 +72,9 @@ int main(int argc, char *argv[]) {
     Net net;
     net.Read(model_filename, true);
 
+    // Set the network to testmode -- basically prevents dropout.
+    net.SetTestMode();
+
     // Load the counts of the labels/targets, will be used to scale the softmax-layer
     // outputs for ASR decoding
     ClassPrior class_prior(prior_opts);

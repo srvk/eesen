@@ -4,7 +4,7 @@
 #PBS -j oe
 #PBS -o log
 #PBS -d .
-#PBS -N how_to_concat_direct
+#PBS -N how_to_concat_char_count
 #PBS -V
 #PBS -l walltime=48:00:00
 #PBS -l nodes=1:ppn=1
@@ -42,22 +42,22 @@ nhidden=200              # cells in each layer and direction
 nproj=100
 sat_nlayer=2
 
-dir=exp/train_am_char_l${nlayer}_c${nhidden}_p${nproj}_sat_l${sat_nlayer}_direct
+dir=exp/train_am_char_480h2_l${nlayer}_c${nhidden}_p${nproj}_sat_l${sat_nlayer}_char_count_concat_direct
 
 mkdir -p $dir
 
 echo generating train labels...
 
-python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_tr95/text --input_units ./data/local/dict_char/units.txt --output_labels $dir/labels.tr --lower_case
+#python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_tr95/text --input_units ./data/local/dict_char/units.txt --output_labels $dir/labels.tr --lower_case
 
 echo generating cv labels...
 
-python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_cv05/text --input_units ./data/local/dict_char/units.txt --output_labels $dir/labels.cv --lower_case
+#python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_cv05/text --input_units ./data/local/dict_char/units.txt --output_labels $dir/labels.cv --lower_case
 
 # Train the network with CTC. Refer to the script for details about the arguments
-steps/train_ctc_tf.sh --learn-rate 0.01 --half_after 6  --nlayer $nlayer --nproj $nproj --nhidden $nhidden --batch_size 16 --sat_type concat --sat_stage train_direct --force_lr_epoch_ckpt true --continue_ckpt ./exp/train_am_char_l5_c200_p100/model/epoch08.ckpt --sat_path /data/ASR5/abhinav5/PlacesAlexNet_480h/final_feats  --max_iters 25 --sat_nlayer 2 ./data/train_tr95_fbank/ ./data/train_cv05_fbank/ $dir || exit 1;
+#steps/train_ctc_tf.sh --learn-rate 0.01 --half_after 6  --nlayer $nlayer --nproj $nproj --nhidden $nhidden --batch_size 16 --sat_type concat --sat_stage train_direct --force_lr_epoch_ckpt true --continue_ckpt ./exp/train_am_char_l5_c200_p100/model/epoch08.ckpt --sat_path /data/ASR5/abhinav5/PlacesAlexNet_480h/final_feats  --max_iters 25 --sat_nlayer 2 ./data/train_tr95_fbank/ ./data/train_cv05_fbank/ $dir || exit 1;
+#./data/adatped_vectors/PlacesAlexNet_480h.txt
 
-
-
+steps/train_ctc_tf.sh --learn-rate 0.02 --half_after 6  --nlayer $nlayer --nproj $nproj --nhidden $nhidden --batch_size 16 --sat_type concat --sat_stage train_direct --sat_path ./data/adatped_vectors/char_counts.txt  --max_iters 25 --sat_nlayer 2 ./data/train_480h_tr95_2/ ./data/train_480h_cv05/ $dir || exit 1;
 
 

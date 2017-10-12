@@ -16,8 +16,11 @@ train_opts="--store_model --lstm_type=cudnn --augment"
 model="deepbilstm"
 nlayer=5
 nhidden=320
+
 nproj=0
 nfinalproj=0
+ninitproj=0
+
 norm=false
 
 #speaker adaptation configuration
@@ -65,7 +68,9 @@ dir=$3
 
 #creating tmp directory (concrete tmp path is defined in path.sh)
 tmpdir=`mktemp -d`
-trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; rm -r $tmpdir" EXIT ERR
+
+trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" ERR
+trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
 
 #checking folders
 for f in $data_tr/feats.scp $data_cv/feats.scp; do
@@ -125,6 +130,13 @@ if [[ $continue_ckpt != "" ]]; then
 else
     continue_ckpt=""
 fi
+
+if [ $ninitproj -gt 0 ]; then
+    ninitproj="--ninitproj $nfinalproj"
+else
+    ninitproj=""
+fi
+
 
 if [ $nfinalproj -gt 0 ]; then
     nfinalproj="--nfinalproj $nfinalproj"

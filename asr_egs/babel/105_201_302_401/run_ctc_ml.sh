@@ -4,7 +4,7 @@
 #PBS -j oe
 #PBS -o log
 #PBS -d .
-#PBS -N babel_ml_l6_c360_p0w3_f122
+#PBS -N babel_ml_l6_c360_p0w3_0_padml
 #PBS -V
 #PBS -l walltime=48:00:00
 #PBS -l nodes=1:ppn=1
@@ -106,14 +106,18 @@ if [ $stage -le 4 ]; then
 
   #dir=exp/train_char_phn_ml_l${am_nlayer}_c${am_ncell_dim}_m${am_model}_w${am_window}_n${am_norm}_p${am_projection}_fp_${am_finalprojection}_shared
 
-  dir=exp/train_char_phn_ml_l${am_nlayer}_c${am_ncell_dim}_m${am_model}_w${am_window}_n${am_norm}_p${am_projection}_swbd
+  dir=exp/train_char_phn_ml_l${am_nlayer}_c${am_ncell_dim}_m${am_model}_w${am_window}_n${am_norm}_p${am_projection}_padml
 
   mkdir -p $dir
-  all_language=("data_ml/105-turkish-flp" "data_ml/201-haitian-flp" "data_ml/302-kazakh-flp" "data_ml/401-mongolian-flp" "data_ml/english_swbd/")
+  #all_language=("data_ml/105-turkish-flp" "data_ml/201-haitian-flp" "data_ml/302-kazakh-flp" "data_ml/401-mongolian-flp" "data_ml/english_swbd/")
 
+  all_language=("data_ml/105-turkish-flp" "data_ml/201-haitian-flp" "data_ml/302-kazakh-flp" "data_ml/401-mongolian-flp" "data_ml/padding/104-pashto" "data_ml/padding/106-tagalog" "data_ml/padding/204-tamil" "data_ml/padding/307-amharic")
+
+#"data_ml/201-haitian-flp" "data_ml/302-kazakh-flp" "data_ml/401-mongolian-flp"
   steps/train_ctc_tf_ml.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size  16 --nproj $am_projection --nfinalproj $am_finalprojection --window $am_window --learn_rate 0.02 --half_after 4 --model $am_model --norm  $am_norm "${all_language[@]}" $dir || exit 1;
 
-  #--continue_ckpt exp/train_char_phn_ml_l6_c360_mdeepbilstm_w3_nfalse_p0_fp_1220.02/model/epoch08.ckpt 
+  #--continue_ckpt exp/train_char_phn_ml_l6_c360_mdeepbilstm_w3_nfalse_p0_fp_1220.02/model/epoch08.ckpt
 fi
+
 
 

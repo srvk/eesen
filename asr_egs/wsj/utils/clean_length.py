@@ -1,6 +1,6 @@
-from fileutils.kaldi import read_scp_info_dic
-from fileutils.kaldi import read_scp_info
-from fileutils.kaldi import readScp
+from utils.fileutils.kaldi import read_scp_info_dic
+from utils.fileutils.kaldi import read_scp_info
+from utils.fileutils.kaldi import readScp
 import argparse
 import sys
 

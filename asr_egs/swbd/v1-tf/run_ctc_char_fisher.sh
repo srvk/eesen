@@ -22,7 +22,7 @@
            ## This relates to the queue.
 . ./path.sh
 
-stage=2
+stage=1
 
 fisher_dirs="/path/to/LDC2004T19/fe_03_p1_tran/ /path/to/LDC2005T19/fe_03_p2_tran/" # Set to "" if you don't have the fisher corpus
 eval2000_dirs="/path/to/LDC2002S09/hub5e_00 /path/to/LDC2002T43"
@@ -61,14 +61,21 @@ dir_lm=exp/train_lm_char_l${lm_nlayer}_c${lm_ncell_dim}_e${lm_embed_size}_d${lm_
 fisher_text_dir="./data/fisher/"
 
 
-fisher_dirs="/pylon2/ir3l68p/metze/LDC2004T19 /pylon2/ir3l68p/metze/LDC2005T19 /pylon2/ir3l68p/metze/LDC2004S13 /pylon2/ir3l68p/metze/LDC2005S13"
+#fisher_dirs="/pylon2/ir3l68p/metze/LDC2004T19 /pylon2/ir3l68p/metze/LDC2005T19 /pylon2/ir3l68p/metze/LDC2004S13 /pylon2/ir3l68p/metze/LDC2005S13"
+fisher_dirs="/data/MM1/corpora/LDC2004T19 /data/MM1/corpora/LDC2005T19 /data/MM1/corpora/LDC2004S13 /data/MM1/corpora/LDC2005S13"
+
 
 if [ $stage -le 1 ]; then
   echo =====================================================================
   echo "                       Data Preparation                            "
   echo =====================================================================
 
+
+  echo holaaaaaaaa
+
   local/fisher_data_prep.sh $fisher_dirs
+
+  exit
 
   utils/subset_data_dir.sh data/train_all
    #/export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 /export/corpora3/LDC/LDC2004S13 /export/corpora3/LDC/LDC2005S13

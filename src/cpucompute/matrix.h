@@ -123,6 +123,8 @@ class MatrixBase {
   void SetRandn();
   /// Sets to numbers uniformly distributed on (0, 1)
   void SetRandUniform();
+  /// Similar to SetRandUniform() but keeps all cols identical to each other (row val changes)
+  void SetRandUniformCol();
 
   /*  Copying functions.  These do not resize the matrix! */
 

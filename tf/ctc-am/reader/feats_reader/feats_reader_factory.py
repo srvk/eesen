@@ -1,6 +1,7 @@
 import sys
 
-from reader.feats_reader.feats_reader_kaldi import FeatsReaderKaldi
+from .feats_reader_kaldi import FeatsReaderKaldi
+#from .feats_reader_video import FeatsReaderVideo
 from utils.fileutils import debug
 
 

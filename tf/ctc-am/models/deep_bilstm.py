@@ -177,7 +177,17 @@ class DeepBidirRNN:
         nlayer = config[constants.CONF_TAGS.NLAYERS]
         clip = config[constants.CONF_TAGS.CLIP]
         nproj = config[constants.CONF_TAGS.NPROJ]
-        finalfeatproj = config[constants.CONF_TAGS.FINAL_NPROJ]
+
+        if(constants.CONF_TAGS.INIT_NPROJ in config):
+            init_nproj = config[constants.CONF_TAGS.INIT_NPROJ]
+        else:
+            init_nproj = 0
+
+        if(constants.CONF_TAGS.FINAL_NPROJ in config):
+            finalfeatproj = config[constants.CONF_TAGS.FINAL_NPROJ]
+        else:
+            finalfeatproj = 0
+
         batch_norm = config[constants.CONF_TAGS.BATCH_NORM]
         lstm_type = config[constants.CONF_TAGS.LSTM_TYPE]
         grad_opt = config[constants.CONF_TAGS.GRAD_OPT]
@@ -240,9 +250,9 @@ class DeepBidirRNN:
             outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
 
 
-        if featproj > 0:
+        if init_nproj > 0:
             outputs = tf.contrib.layers.fully_connected(
-                activation_fn = None, inputs = outputs, num_outputs = featproj,
+                activation_fn = None, inputs = outputs, num_outputs = init_nproj,
                 scope = "input_fc", biases_initializer = tf.contrib.layers.xavier_initializer())
 
         if lstm_type == "cudnn":
@@ -284,11 +294,15 @@ class DeepBidirRNN:
                 for target_id, num_targets in language_target_dict.items():
 
                     scope="output_fc_"+language_id+"_"+target_id
+
                     logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs,
                                                               num_outputs=num_targets,
                                                               scope = scope,
                                                               biases_initializer = tf.contrib.layers.xavier_initializer(),
                                                               trainable=self.is_trainable_sat)
+                    if batch_norm:
+                        logit = tf.contrib.layers.batch_norm(logit, scope = scope+"_bn", center=True, scale=True, decay=0.9,
+                                                             is_training=self.is_training_ph, updates_collections=None)
 
                     loss = tf.nn.ctc_loss(labels=self.labels[count], inputs=logit, sequence_length=self.seq_len)
                     tmp_cost.append(loss)

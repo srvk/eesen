@@ -912,6 +912,52 @@ void CuVectorBase<Real>::AddColSumMat(Real alpha,
   }
 }
 
+template<typename Real>
+void CuVectorBase<Real>::ApplySqrt(Real epsilon) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    dim3 dimBlock(CU1DBLOCK, 1);
+    dim3 dimGrid(n_blocks(dim_, CU1DBLOCK));
+    MatrixDim d = {1, dim_, dim_};
+
+    cuda_sqrt_elements(dimGrid, dimBlock, data_, epsilon, d);
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    printf("SqrtElements not inplemented on CPU");
+    exit(-101);
+    //Vec().SqrtElements();
+  }
+}
+
+
+template<typename Real>
+void CuVectorBase<Real>::InvertElements() {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    dim3 dimBlock(CU1DBLOCK, 1);
+    dim3 dimGrid(n_blocks(dim_, CU1DBLOCK));
+    MatrixDim d = {1, dim_, dim_};
+
+    cuda_invert_elements(dimGrid, dimBlock, data_, d);
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    printf("InvertElements not inplemented on CPU");
+    exit(-101);
+    //Vec().InvertElements();
+  }
+}
 
 template
 void CuVectorBase<float>::CopyToVec(VectorBase<float> *dst) const;

@@ -40,7 +40,7 @@ Net::Net(const Net& other) {
   backpropagate_buf_.resize(NumLayers()+1);
   // copy train opts
   SetTrainOptions(other.opts_);
-  Check(); 
+  Check();
 }
 
 Net & Net::operator = (const Net& other) {
@@ -53,7 +53,7 @@ Net & Net::operator = (const Net& other) {
   propagate_buf_.resize(NumLayers()+1);
   backpropagate_buf_.resize(NumLayers()+1);
   // copy train opts
-  SetTrainOptions(other.opts_); 
+  SetTrainOptions(other.opts_);
   Check();
   return *this;
 }
@@ -68,20 +68,20 @@ void Net::Propagate(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *out)
   KALDI_ASSERT(NULL != out);
 
   if (NumLayers() == 0) {
-    (*out) = in; // copy 
-    return; 
+    (*out) = in; // copy
+    return;
   }
 
   // we need at least L+1 input buffers
   KALDI_ASSERT((int32)propagate_buf_.size() >= NumLayers()+1);
-  
+
   propagate_buf_[0].Resize(in.NumRows(), in.NumCols());
   propagate_buf_[0].CopyFromMat(in);
 
   for(int32 i=0; i<(int32)layers_.size(); i++) {
     layers_[i]->Propagate(propagate_buf_[i], &propagate_buf_[i+1]);
   }
-  
+
   (*out) = propagate_buf_[layers_.size()];
 }
 
@@ -100,7 +100,7 @@ void Net::Backpropagate(const CuMatrixBase<BaseFloat> &out_diff, CuMatrix<BaseFl
                               backpropagate_buf_[i+1], &backpropagate_buf_[i]);
     if (layers_[i]->IsTrainable()) {
       TrainableLayer *tl = dynamic_cast<TrainableLayer*>(layers_[i]);
-      tl->Update(propagate_buf_[i], backpropagate_buf_[i+1]);
+      tl->Update(propagate_buf_[i], backpropagate_buf_[i+1], update_algorithm);
     }
   }
   // eventually export the derivative
@@ -110,10 +110,10 @@ void Net::Backpropagate(const CuMatrixBase<BaseFloat> &out_diff, CuMatrix<BaseFl
 void Net::Feedforward(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
   KALDI_ASSERT(NULL != out);
 
-  if (NumLayers() == 0) { 
+  if (NumLayers() == 0) {
     out->Resize(in.NumRows(), in.NumCols());
-    out->CopyFromMat(in); 
-    return; 
+    out->CopyFromMat(in);
+    return;
   }
 
   if (NumLayers() == 1) {
@@ -173,7 +173,7 @@ void Net::RemoveLayer(int32 layer) {
   // create training buffers,
   propagate_buf_.resize(NumLayers()+1);
   backpropagate_buf_.resize(NumLayers()+1);
-  // 
+  //
   Check();
 }
 
@@ -185,7 +185,7 @@ void Net::GetParams(Vector<BaseFloat>* wei_copy) const {
   for(int32 i=0; i<layers_.size(); i++) {
     if(layers_[i]->IsTrainable()) {
       TrainableLayer& tl = dynamic_cast<TrainableLayer&>(*layers_[i]);
-      Vector<BaseFloat> c_params; 
+      Vector<BaseFloat> c_params;
       tl.GetParams(&c_params);
       wei_copy->Range(pos,c_params.Dim()).CopyFromVec(c_params);
       pos += c_params.Dim();
@@ -223,7 +223,7 @@ void Net::Init(const std::string &file) {
     KALDI_ASSERT(is.good());
     std::getline(is, conf_line); // get a line from config file,
     if (conf_line == "") continue;
-    KALDI_VLOG(1) << conf_line; 
+    KALDI_VLOG(1) << conf_line;
     std::istringstream(conf_line) >> std::ws >> token; // get 1st token,
     if (token == "<Nnet>" || token == "</Nnet>") continue; // ignored tokens,
     AppendLayer(Layer::Init(conf_line+"\n"));
@@ -292,7 +292,7 @@ void Net::Read(std::istream &is, bool binary) {
   backpropagate_buf_.resize(NumLayers()+1);
   // reset learn rate
   opts_.learn_rate = 0.0;
-  
+
   Check(); //check consistency (dims...)
 }
 
@@ -329,7 +329,7 @@ void Net::Write(std::ostream &os, bool binary) const {
   for(int32 i=0; i<NumLayers(); i++) {
     layers_[i]->Write(os, binary);
   }
-  WriteToken(os, binary, "</Nnet>");  
+  WriteToken(os, binary, "</Nnet>");
   if(binary == false) os << std::endl;
 }
 
@@ -359,12 +359,12 @@ std::string Net::Info() const {
   ostr << "num-layers " << NumLayers() << std::endl;
   ostr << "input-dim " << InputDim() << std::endl;
   ostr << "output-dim " << OutputDim() << std::endl;
-  ostr << "number-of-parameters " << static_cast<float>(NumParams())/1e6 
+  ostr << "number-of-parameters " << static_cast<float>(NumParams())/1e6
        << " millions" << std::endl;
   // topology & weight stats
   for (int32 i = 0; i < NumLayers(); i++) {
-    ostr << "layer " << i+1 << " : " 
-         << Layer::TypeToMarker(layers_[i]->GetType()) 
+    ostr << "layer " << i+1 << " : "
+         << Layer::TypeToMarker(layers_[i]->GetType())
          << ", input-dim " << layers_[i]->InputDim()
          << ", output-dim " << layers_[i]->OutputDim()
          << ", " << layers_[i]->Info() << std::endl;
@@ -377,8 +377,8 @@ std::string Net::InfoGradient() const {
   // gradient stats
   ostr << "### Gradient stats :\n";
   for (int32 i = 0; i < NumLayers(); i++) {
-    ostr << "Layer " << i+1 << " : " 
-         << Layer::TypeToMarker(layers_[i]->GetType()) 
+    ostr << "Layer " << i+1 << " : "
+         << Layer::TypeToMarker(layers_[i]->GetType())
          << ", " << layers_[i]->InfoGradient() << std::endl;
   }
   return ostr.str();
@@ -389,6 +389,46 @@ void Net::Scale(BaseFloat scale) {
     if (layers_[i]->IsTrainable()) {
       TrainableLayer *tl = dynamic_cast<TrainableLayer*>(layers_[i]);
       tl->Scale(scale);
+    }
+  }
+}
+
+void Net::SetTestMode() {
+  for(int32 i=0; i < (int32)layers_.size(); i++) {
+    if (layers_[i]->IsBiLstm(layers_[i]->GetTypeNonParal())) {
+        KALDI_LOG << "Setting TestMode for layer " << i;
+        layers_[i]->SetTestMode();
+    }
+  }
+}
+
+void Net::SetTrainMode() {
+  for(int32 i=0; i < (int32)layers_.size(); i++) {
+    if (layers_[i]->IsBiLstm(layers_[i]->GetTypeNonParal())) {
+        KALDI_LOG << "Setting TrainMode for layer " << i;
+        layers_[i]->SetTrainMode();
+    }
+  }
+}
+
+void Net::ChangeDropoutParameters(BaseFloat forward_dropout,
+                                  bool fw_step_dropout,
+                                  bool fw_sequence_dropout,
+
+                                  bool rnndrop ,
+                                  bool no_mem_loss_dropout,
+                                  BaseFloat recurrent_dropout,
+                                  bool recurrent_step_dropout,
+                                  bool recurrent_sequence_dropout,
+
+                                  bool twiddleforward) {
+  for(int32 i=0; i < (int32)layers_.size(); i++) {
+    if (layers_[i]->IsBiLstm(layers_[i]->GetTypeNonParal())) {
+        KALDI_LOG << "Changing dropout params for layer " << i;
+        layers_[i]->ChangeDropoutParameters(forward_dropout, fw_step_dropout, fw_sequence_dropout,
+                                            rnndrop, no_mem_loss_dropout, recurrent_dropout,
+                                            recurrent_step_dropout, recurrent_sequence_dropout,
+                                            twiddleforward);
     }
   }
 }
@@ -438,6 +478,22 @@ void Net::Destroy() {
   backpropagate_buf_.resize(0);
 }
 
+void Net::SetUpdateAlgorithm(std::string opt) {
+  if (opt.compare("SGD")==0) {
+    KALDI_LOG << "Selecting SGD with momentum as optimization algorithm.";
+    update_algorithm=sgd_update;
+  }else if (opt.compare("Adagrad")==0) {
+    KALDI_LOG << "Selecting Adagrad as optimization algorithm.";
+    update_algorithm=adagrad_update;
+  }else if (opt.compare("RMSProp")==0) {
+    KALDI_LOG << "Selecting RMSProp as optimization algorithm.";
+    update_algorithm=rmsprop_update;
+  }else{
+    KALDI_ERR << "This optimization algorithm is unsupported: " << opt;
+    KALDI_LOG << "Selecting SGD with momentum as optimization algorithm.";
+    update_algorithm=sgd_update;
+  }
+}
 
 void Net::SetTrainOptions(const NetTrainOptions& opts) {
   opts_ = opts;

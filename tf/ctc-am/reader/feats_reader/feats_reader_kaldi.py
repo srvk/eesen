@@ -81,7 +81,7 @@ class FeatsReaderKaldi(FeatsReader):
 
     def __create_ordered_batches_all_languages(self, feat_dict_info_languages, lstm_type, batch_size):
 
-        all_ziped_batches = []
+        all_zipped_batches = []
         #https://stackoverflow.com/questions/7529376/pythonic-way-to-mix-two-lists
 
         for language, feat_dict_info in feat_dict_info_languages.items():
@@ -90,12 +90,12 @@ class FeatsReaderKaldi(FeatsReader):
 
 
             #coloring every batch with its language
-            batch_id_language_c=zip(batch_id_language, [language]*len(batch_id_language))
+            batch_id_language_c=list(zip(batch_id_language, [language]*len(batch_id_language)))
 
-            all_ziped_batches=all_ziped_batches+list(zip(batch_x_language, batch_id_language_c))
+            all_zipped_batches=all_zipped_batches+list(zip(batch_x_language, batch_id_language_c))
 
         #unzip
-        batch_x, batch_id = zip(*all_ziped_batches)
+        batch_x, batch_id = list(zip(*all_zipped_batches))
 
         return batch_x, batch_id
 
@@ -104,6 +104,7 @@ class FeatsReaderKaldi(FeatsReader):
         feat_dict_info_languages = {}
 
         for language, scp_path in self._language_augment_scheme.items():
+
             print("preparing dictionary for "+language+"...\n")
             feat_dict_info_languages[language] = read_scp_info(scp_path[0])
             if(len(feat_dict_info_languages[language]) == 0):

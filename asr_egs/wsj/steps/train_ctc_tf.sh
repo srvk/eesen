@@ -216,7 +216,7 @@ for f in $tmpdir/*.tr; do
 	python ./utils/clean_length.py --scp_in  $tmpdir/train_local.scp --labels $f --subsampling 3 --scp_out $tmpdir/train_local.scp
 done
 
-for f in $dir/*.cv; do
+for f in $tmpdir/*.cv; do
 
     echo ""
     echo cleaning cv set $(basename $f)...

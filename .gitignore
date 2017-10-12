@@ -50,4 +50,9 @@ data_ml/
 log/
 random_exp/
 random_scripts/
+videos_local/
+tmp/
+data_ml_11/
+data_video_ml/
+data_videos_ml/
 results/

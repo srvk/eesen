@@ -54,12 +54,12 @@ class Train():
 
             lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
 
-            if(alpha > 0):
+            if(alpha > 1):
                 if(self.__config[constants.CONF_TAGS.FORCE_LR_EPOCH_CKPT]):
                     lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
-                    alpha=0
+                    alpha=1
                     self.__ter_buffer = [float('inf'), float('inf')]
-                    best_epoch=0
+                    best_epoch=1
                 else:
                     lr_rate = self.__compute_new_lr_rate(alpha)
 
@@ -126,26 +126,15 @@ class Train():
 
         avg_ters = self.__compute_avg_ters(cv_ters)
 
-        udpate_lr=True
-
-        print("checking parameters...")
-
-        # for idx, element in enumerate(self.__ter_buffer):
-        #     if (element > avg_ters):
-        #         print("Epoch "+str(epoch)+": did improve over epoch "+str(epoch -idx - 1))
-        #         udpate_lr=False
-        #     else:
-        #         print("Epoch "+str(epoch)+": did not improve over epoch "+str(epoch -idx - 1))
-
-        if (self.__ter_buffer[1] > avg_ters):
-            print("Epoch "+str(epoch)+": did improve over epoch "+str(epoch - 1))
-            udpate_lr=False
+        if (best_avg_ters > avg_ters):
+            print("Improved ter by %.1f%% over previous optimum %.1f%% in epoch %d, not updating learning rate" % (100.0*(best_avg_ters-avg_ters), 100.0*self.__ter_buffer[1], best_epoch))
+            update_lr=False
         else:
-            print("Epoch "+str(epoch)+": did not improve over epoch "+str(epoch - 1))
-            udpate_lr=True
+            print("ter worsened by %.1f%% from previous optimum %.1f%% in epoch %d, updating learning rate" % (100.0*(avg_ters-best_avg_ters), 100.0*self.__ter_buffer[1], best_epoch))
+            update_lr=True
 
         # if epoch > self.__config[constants.CONF_TAGS.HALF_AFTER]:
-        if udpate_lr:
+        if update_lr:
 
             #print("updating learning rate...")
 
@@ -173,7 +162,7 @@ class Train():
 
             #if lr_rate != new_lr_rate:
 
-            print("about to restore variables from "+str(best_epoch)+" epoch")
+            print("about to restore model from "+str(best_epoch)+" epoch")
             epoch_name = "/epoch%02d.ckpt" % (best_epoch)
             best_epoch_path = self.__config[constants.CONF_TAGS.MODEL_DIR] + epoch_name
 
@@ -188,7 +177,7 @@ class Train():
             best_epoch = epoch
 
         self.__ter_buffer[0]=self.__ter_buffer[1]
-        self.__ter_buffer[0]=avg_ters
+        self.__ter_buffer[1]=avg_ters
 
         return lr_rate, best_avg_ters, best_epoch
 
@@ -396,7 +385,7 @@ class Train():
 
     def __restore_weights(self):
 
-        alpha = 0
+        alpha = 1
         best_avg_ters = float('Inf')
 
         if self.__config[constants.CONF_TAGS.CONTINUE_CKPT]:

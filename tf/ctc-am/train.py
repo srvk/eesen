@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-this project has been wrtien following this naming convention:
+this project has been written following this naming convention:
 
 https://google.github.io/styleguide/pyguide.html#naming
 plus mutable vars in function (that are actually changes m_*)
@@ -49,7 +49,7 @@ def main_parser():
     parser.add_argument('--diff_num_target_ckpt', default=False, action='store_true', help='change the number of targets after retaking training')
     parser.add_argument('--force_lr_epoch_ckpt', default=False, action='store_true', help='force to start for epoch 0 with the learning rate specified in flags')
 
-    #augment arugments
+    #augment arguments
     parser.add_argument('--augment', default=False, dest='augment', action='store_true', help='do internal data augmentation')
     parser.add_argument('--window', default=3, type=int, help='how many frames will concatenate')
     parser.add_argument('--subsampling', default=3, type=int, help='how much subsampling will you apply')
@@ -203,7 +203,6 @@ def create_global_config(args):
 
     return config
 
-
 def update_conf_import(config, args):
 
     if(args.data_dir):
@@ -331,7 +330,7 @@ def main():
                                                              config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_SATGE]+"_"+
                                                              str(config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.NUM_SAT_LAYERS]))
 
-        #checking that all sets are consitent
+        #checking that all sets are consistent
         set_checkers.check_sets_training(cv_x, cv_y, tr_x, tr_y, tr_sat, cv_sat)
 
         data = (cv_x, tr_x, cv_y, tr_y, cv_sat, tr_sat)
@@ -344,7 +343,7 @@ def main():
         data = (cv_x, tr_x, cv_y, tr_y)
         config[constants.CONF_TAGS.MODEL_DIR] = os.path.join(config[constants.CONF_TAGS.TRAIN_DIR],
                                                              constants.DEFAULT_NAMES.MODEL_DIR_NAME)
-        #checking that all sets are consitent
+        #checking that all sets are consistent
         set_checkers.check_sets_training(cv_x, cv_y, tr_x, tr_y)
 
     #create folder for storing experiment
@@ -353,7 +352,7 @@ def main():
 
     pickle.dump(config, open(os.path.join(config[constants.CONF_TAGS.MODEL_DIR], "config.pkl"), "wb"))
 
-    #start the acutal training
+    #start the actual training
     eesen=Eesen()
 
     print(80 * "-")

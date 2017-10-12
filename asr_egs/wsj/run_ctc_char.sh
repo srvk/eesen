@@ -6,7 +6,7 @@ stage=1
 wsj0=/path/to/LDC93S6B
 wsj1=/path/to/LDC94S13B
 
-. parse_options.sh
+. utils/parse_options.sh
 
 if [ $stage -le 1 ]; then
   echo =====================================================================

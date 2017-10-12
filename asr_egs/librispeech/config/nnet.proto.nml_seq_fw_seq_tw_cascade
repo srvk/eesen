@@ -1,0 +1,8 @@
+<Nnet>
+<BiLstmParallel> <InputDim> 360 <CellDim> 640 <ParamRange> 0.1 <LearnRateCoef> 1.0 <MaxGrad> 50.0 <FgateBias> 1.0 <RecurrentDropoutFactor> 0.2 <RecurrentTimeStepDropout> T <RNNDrop> T
+<BiLstmParallel> <InputDim> 640 <CellDim> 640 <ParamRange> 0.1 <LearnRateCoef> 1.0 <MaxGrad> 50.0 <FgateBias> 1.0 <RecurrentDropoutFactor> 0.2 <RecurrentTimeStepDropout> T <RNNDrop> T
+<BiLstmParallel> <InputDim> 640 <CellDim> 640 <ParamRange> 0.1 <LearnRateCoef> 1.0 <MaxGrad> 50.0 <FgateBias> 1.0 <RecurrentDropoutFactor> 0.2 <RecurrentTimeStepDropout> T <RNNDrop> T
+<BiLstmParallel> <InputDim> 640 <CellDim> 640 <ParamRange> 0.1 <LearnRateCoef> 1.0 <MaxGrad> 50.0 <FgateBias> 1.0 <RecurrentDropoutFactor> 0.2 <RecurrentTimeStepDropout> T <RNNDrop> T
+<AffineTransform> <InputDim> 640 <OutputDim> 44 <ParamRange> 0.1
+<Softmax> <InputDim> 44 <OutputDim> 44
+</Nnet>

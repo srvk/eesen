@@ -147,6 +147,7 @@ void RandGauss2(float *a, float *b, RandomState *state)
   KALDI_ASSERT(b);
   float u1 = RandUniform(state);
   float u2 = RandUniform(state);
+  if (u1 <= 0.0) u1 = u1 + FLT_EPSILON;
   u1 = sqrtf(-2.0f * logf(u1));
   u2 =  2.0f * M_PI * u2;
   *a = u1 * cosf(u2);

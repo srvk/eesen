@@ -1,7 +1,7 @@
 import numpy, os
 import struct
 import functools
-from smart_open import smart_open
+from .smart_open import smart_open
 
 def readString(f):
     s = ""

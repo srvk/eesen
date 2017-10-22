@@ -234,7 +234,6 @@ done
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
 echo "TRAINING STARTS [$cur_time]"
 
-
 $train_tool $train_opts --lr_rate $learn_rate --batch_size $batch_size --l2 $l2 \
     --nhidden $nhidden --nlayer $nlayer $ninitproj $nproj $nfinalproj $ckpt $max_iters \
     --train_dir $dir --data_dir $tmpdir --half_after $half_after $sat_stage $sat_type $sat_nlayer $debug --model $model --window $window $norm $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt  || exit 1;

@@ -28,19 +28,36 @@ elif [[ `uname -n` =~ instance ]]; then
   export BABEL_DATA=/data/MM3/babel-corpus
 
 elif [[ `uname -n` =~ bridges ]]; then
-  # PSC Bridges cluster
-  module load atlas
-  module load cuda
-  module load gcc/6.3.0
 
+
+  # PSC Bridges cluster
+  #module load atlas
+  ##module load cuda
+  ##module loaf cuda/8.0RC
+  ##module cuda/7.5
+  #module cuda/9.0RC
+
+  #module load gcc/6.3.0
+
+  export PYTHONPATH=/pylon2/ir3l68p/sanabria/eesen/tf/ctc-am
 
   export EESEN_ROOT=/pylon2/ir3l68p/metze/eesen/
-  export PATH=$PWD/utils/:$EESEN_ROOT/src/netbin:$EESEN_ROOT/src/featbin:$EESEN_ROOT/src/decoderbin:$EESEN_ROOT/src/fstbin:$EESEN_ROOT/tools/openfst/bin:$EESEN_ROOT/tools/sph2pipe_v2.5:$EESEN_ROOT/../kaldi/src/featbin:$EESEN_ROOT/../sox-14.4.2/src:$PWD:$PATH
+  export PATH=$PATH:$PWD/utils/:$EESEN_ROOT/src/netbin:$EESEN_ROOT/src/featbin:$EESEN_ROOT/src/decoderbin:$EESEN_ROOT/src/fstbin:$EESEN_ROOT/tools/openfst/bin:$EESEN_ROOT/tools/sph2pipe_v2.5:$EESEN_ROOT/../kaldi/src/featbin:$EESEN_ROOT/../sox-14.4.2/src:$PWD
+
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/packages/cuda/8.0/lib64/:/opt/packages/cuda/8.0/extras/:/opt/packages/cuda/8.0/include/:/opt/packages/cuda/8.0/targets/x86_64-linux/lib/stubs/:/opt/packages/cuda/8.0/doc/man/man7/
+
 
   #export TMPDIR=/pylon1/ir3l68p/metze
   export TMPDIR=$SCRATCH
   #export TMPDIR=.
   export BABEL_DATA=/pylon2/ir3l68p/metze/babel-corpus
+
+  unset CUDA_VISIBLE_DEVICES
+  unset GPU_DEVICE_ORDINAL
+  #export CUDA_VISIBLE_DEVICES=0
+
+
+
 
 elif [[ `uname -n` =~ comet* ]]; then
   # SDSC Comet cluster
@@ -54,6 +71,8 @@ elif [[ `uname -n` =~ comet* ]]; then
   export PATH=./local:./utils:./steps:$PATH
   [ -d /scratch/${USER}/${SLURM_JOBID} ] && export TMPDIR=/scratch/${USER}/${SLURM_JOBID}
   export BABEL_DATA=/oasis/projects/nsf/cmu131/fmetze/babel-corpus
+
+  export PYTHONPATH=/pylon2/ir3l68p/sanabria/eesen/tf/ctc-am
 
 elif [[ `uname -n` =~ islpc* ]]; then
   # islpc-cluster
@@ -103,7 +122,7 @@ else
   #export PATH=$PWD/meine:$PWD/utils/:$KALDI_ROOT/tools/sph2pipe_v2.5/:$KALDI_ROOT/src/bin:$KALDI_ROOT/tools/openfst/bin:$KALDI_ROOT/src/fstbin/:$KALDI_ROOT/src/gmmbin/:$KALDI_ROOT/src/featbin/:$KALDI_ROOT/src/lm/:$KALDI_ROOT/src/sgmmbin/:$KALDI_ROOT/src/sgmm2bin/:$KALDI_ROOT/src/fgmmbin/:$KALDI_ROOT/src/latbin/:$KALDI_ROOT/src/nnetbin:$KALDI_ROOT/src/nnet2bin/:$KALDI_ROOT/src/kwsbin:$PWD:$PATH
 
 
-  
+
 
   #export PATH="/home/fmetze/tools/eesen/src/netbin/:/home/fmetze/tools/eesen/src/decoderbin/:/home/fmetze/tools/eesen/src/fstbin/:/home/fmetze/tools/eesen/src/featbin/:/data/ASR4/babel/sctk-2.4.0/bin/:$PATH"
 

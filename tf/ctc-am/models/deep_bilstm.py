@@ -41,10 +41,10 @@ class DeepBidirRNN:
                                 params=cudnn_params)
                             outputs = tf.contrib.layers.fully_connected(
                                 activation_fn = None, inputs = outputs,
-                                num_outputs = nproj, scope = "projection")
+                                num_outputs = nproj, scope = "intermediate_projection")
 
                             if(batch_norm):
-                                outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
+                                outputs = tf.contrib.layers.batch_norm(outputs, scope = "bn", center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
 
                             ninput = nproj
                 else:
@@ -61,7 +61,7 @@ class DeepBidirRNN:
                             input_h=input_h, input_c=input_c,params=cudnn_params)
 
                     if(batch_norm):
-                        outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
+                        outputs = tf.contrib.layers.batch_norm(outputs, scope = "bn", center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
 
         return outputs
 
@@ -247,13 +247,13 @@ class DeepBidirRNN:
             outputs = self.my_sat_module(config, outputs, sat_t)
 
         if batch_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs, center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
+            outputs = tf.contrib.layers.batch_norm(outputs, scope = "bn", center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
 
 
         if init_nproj > 0:
             outputs = tf.contrib.layers.fully_connected(
                 activation_fn = None, inputs = outputs, num_outputs = init_nproj,
-                scope = "input_fc", biases_initializer = tf.contrib.layers.xavier_initializer())
+                scope = "init_projection", biases_initializer = tf.contrib.layers.xavier_initializer())
 
         if lstm_type == "cudnn":
             outputs = self.my_cudnn_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj,  "cudnn_lstm", batch_norm, self.is_training)
@@ -266,7 +266,7 @@ class DeepBidirRNN:
         if finalfeatproj > 0:
             outputs = tf.contrib.layers.fully_connected(
                 activation_fn = None, inputs = outputs, num_outputs = finalfeatproj,
-                scope = "input_fc", biases_initializer = tf.contrib.layers.xavier_initializer())
+                scope = "final_projection", biases_initializer = tf.contrib.layers.xavier_initializer())
 
         with tf.variable_scope("optimizer"):
             optimizer = None

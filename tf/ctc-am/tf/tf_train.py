@@ -67,9 +67,7 @@ class Train():
             for epoch in range(alpha, self.__config[constants.CONF_TAGS.NEPOCH]):
 
                 #log start
-                print(80 * "-")
-                print("Epoch "+str(epoch)+" starting ... ( lr_rate: "+str(lr_rate)+")")
-                print(80 * "-")
+                self.__info("Epoch %d starting, learning rate: %.4g" % (epoch, lr_rate))
 
                 #start timer...
                 tic = time.time()
@@ -88,8 +86,6 @@ class Train():
                 #update lr_rate if needed
                 lr_rate, best_avg_ters, best_epoch = self.__update_lr_rate(epoch, cv_ters, best_avg_ters, best_epoch, saver, lr_rate)
 
-                print("Epoch "+str(epoch)+" done.")
-                print(80 * "-")
                 #change set if needed (mix augmentation)
                 self.__update_sets(tr_x, tr_y, tr_sat)
 
@@ -130,10 +126,10 @@ class Train():
         avg_ters = self.__compute_avg_ters(cv_ters)
 
         if (best_avg_ters > avg_ters):
-            print("Improved ter by %.1f%% over previous minimum %.1f%% in epoch %d, not updating learning rate" % (100.0*(best_avg_ters-avg_ters), 100.0*self.__ter_buffer[1], best_epoch))
+            print("ter down %.1f%% from %.1f%% in epoch %d, not updating learning rate" % (100.0*(best_avg_ters-avg_ters), 100.0*self.__ter_buffer[1], best_epoch))
             update_lr=False
         else:
-            print("ter worsened by %.1f%% from previous minimum %.1f%% in epoch %d, updating learning rate" % (100.0*(avg_ters-best_avg_ters), 100.0*self.__ter_buffer[1], best_epoch))
+            print("ter up by %.1f%% from %.1f%% in epoch %d, updating learning rate" % (100.0*(avg_ters-best_avg_ters), 100.0*self.__ter_buffer[1], best_epoch))
             update_lr=True
 
         # if epoch > self.__config[constants.CONF_TAGS.HALF_AFTER]:
@@ -486,7 +482,7 @@ class Train():
 
     def __generate_logs(self, cv_ters, cv_cost, ncv, train_ters, train_cost, ntrain, epoch, lr_rate, tic):
 
-        self.__info("Epoch %d finished in %.0f minutes, learning rate: %.4g" % (epoch, (time.time() - tic)/60.0, lr_rate))
+        self.__info("Epoch %d finished in %.0f minutes" % (epoch, (time.time() - tic)/60.0))
 
         with open("%s/epoch%02d.log" % (self.__config["model_dir"], epoch), 'w') as fp:
             fp.write("Time: %.0f minutes, lrate: %.4g\n" % ((time.time() - tic)/60.0, lr_rate))
@@ -500,7 +496,7 @@ class Train():
                     if(len(target_scheme) > 1):
                         print("\tTarget: %s" % (target_id))
                         fp.write("\tTarget: %s" % (target_id))
-                    print("\t\t Train    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost[language_id][target_id], 100.0*train_ters[language_id][target_id], ntrain[language_id]))
+                    print("\t\tTrain    cost: %.1f, ter: %.1f%%, #example: %d" % (train_cost[language_id][target_id], 100.0*train_ters[language_id][target_id], ntrain[language_id]))
                     print("\t\t"+constants.LOG_TAGS.VALIDATE+" cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost[language_id][target_id], 100.0*cv_ter, ncv[language_id]))
                     fp.write("\t\tTrain    cost: %.1f, ter: %.1f%%, #example: %d\n" % (train_cost[language_id][target_id], 100.0*train_ters[language_id][target_id], ntrain[language_id]))
                     fp.write("\t\t"+constants.LOG_TAGS.VALIDATE+" cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost[language_id][target_id], 100.0*cv_ter, ncv[language_id]))

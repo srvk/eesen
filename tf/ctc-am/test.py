@@ -76,7 +76,7 @@ def main_parser():
 
     #io options
     parser.add_argument('--data_dir', default = "", help = "like data_dir for training script")
-    parser.add_argument('--results_dir', default = "log", help='log and results dir')
+    parser.add_argument('--results_dir', default = "/tmp", help='log and results dir')
     parser.add_argument('--save_every_batch', default = -1, type=int, help='log and results dir')
     parser.add_argument('--online_storage', default = False, action='store_true', help='online storage (for big datasets to not explode in memory)')
 
@@ -144,12 +144,12 @@ def check_paths(args):
 
     if(os.path.exists(args.results_dir)):
         print("cleaning dir...")
-        for f in os.listdir(args.results_dir):
-            print("deleteting "+f+" ...")
-            if (os.path.isfile(os.path.join(args.results_dir, f))):
-                os.remove(os.path.join(args.results_dir, f))
-            else:
-                shutil.rmtree(os.path.join(args.results_dir, f))
+        #for f in os.listdir(args.results_dir):
+        #    print("deleteting "+f+" ...")
+        #    if (os.path.isfile(os.path.join(args.results_dir, f))):
+        #        os.remove(os.path.join(args.results_dir, f))
+        #    else:
+        #        shutil.rmtree(os.path.join(args.results_dir, f))
     else:
         print("results_dir ("+str(args.result_dirs)+") does not exist")
         print(debug.get_debug_info())

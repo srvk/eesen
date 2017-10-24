@@ -207,6 +207,11 @@ else
     cp $dir/labels*.cv $tmpdir/ || exit 1
 fi
 
+# Compute the occurrence counts of labels in the label sequences.
+# These counts will be used to derive prior probabilities of the labels.
+awk '{line=$0; gsub(" "," 0 ",line); print line " 0";}' $tmpdir/labels.tr | \
+  analyze-counts --verbose=1 --binary=false ark:- $dir/label.counts || exit 1
+
 echo ""
 echo cleaning train set ...
 echo ""

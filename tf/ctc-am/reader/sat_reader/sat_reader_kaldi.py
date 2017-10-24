@@ -2,7 +2,7 @@ import sys
 import constants
 import numpy as np
 from utils.fileutils import debug
-from sat_reader import SatReader
+from reader.sat_reader.sat_reader import SatReader
 
 from utils.fileutils.kaldi import readMatrixByOffset
 from utils.fileutils.kaldi import read_scp_info_dic

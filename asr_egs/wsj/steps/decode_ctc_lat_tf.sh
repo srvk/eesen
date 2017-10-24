@@ -107,20 +107,22 @@ if [ ! -f $tmpdir/labels.cv ]; then
     cp $tmpdir/labels.cv $tmpdir/labels.tr
 
     # copy features
-    copy-feats "${feats}" ark,scp:$tmpdir/f.ark,$tmpdir/cv_local.scp
+    copy-feats "${feats}" ark,scp:$tmpdir/f.ark,$tmpdir/test_local.scp
 
     # let's call tensorflow, output will be in tmpdir
-    python -m main --eval --augment --eval_model $mdl \
-	   --data_dir $tmpdir --counts_file $label_counts || exit 1;
-
-    rm -f $tmpdir/f.ark
+    #python -m main --eval --augment --eval_model $mdl \
+    #	   --data_dir $tmpdir --counts_file $label_counts || exit 1;
+    python -m test --data_dir $tmpdir --results_dir $tmpdir --trained_weights $mdl \
+	   --train_config `dirname $mdl`/config.pkl
+    # && rm -f $tmpdir/f.ark
 else
     echo Assuming data is already in $tmpdir
 fi
 
 # Decode for each of the acoustic scales
 $cmd JOB=1:$nj $dir/log/decode.JOB.log \
-  utils/filter_scp.pl $sdata/JOB/feats.scp $tmpdir/log_like.scp \| sort -k 1 \| copy-feats scp:- ark:- \| \
+  utils/filter_scp.pl $sdata/JOB/feats.scp $tmpdir/logit_no_target_name.scp \| sort -k 1 \| \
+  python utils/nnet.py --label-counts $label_counts $label_scales $temperature $blank_scale $noise_scale \| \
   latgen-faster  --max-active=$max_active --max-mem=$max_mem --beam=$beam --lattice-beam=$lattice_beam \
   --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
   $graphdir/TLG.fst ark:- "ark:|gzip -c > $dir/lat.JOB.gz" || \

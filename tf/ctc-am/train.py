@@ -60,7 +60,7 @@ def main_parser():
     #TODO this should be done through a model manager
     parser.add_argument('--model', default="deepbilstm", help = "model: achen, bilstm, achen_sum")
     parser.add_argument('--nproj', default = 0, type=int, help='dimension of projection units, set to 0 if no projection needed')
-    parser.add_argument('--ninitproj', default = 0, type=int, help='dimension of the initial projection layer, if 0 no final projection layer will be added')
+    parser.add_argument('--ninitproj', default = 0, type=int, help='dimension of the initial projection layer, if 0 no initial projection layer will be added')
     parser.add_argument('--nfinalproj', default = 0, type=int, help='dimension of the final projection layer, if 0 no final projection layer will be added')
 
     parser.add_argument('--l2', default = 0.0, type=float, help='l2 normalization')

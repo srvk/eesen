@@ -20,8 +20,9 @@ max_mem=50000000 # approx. limit to memory consumption during minimization in by
 mdl=final.nnet
 scoredir=
 label_counts=
+label_scales=
 blank_scale=
-block_softmax=
+noise_scale=
 temperature=
 
 skip_scoring=false # whether to skip WER scoring
@@ -62,9 +63,10 @@ sdata=$data/split$nj;
 thread_string=
 [ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 [ -z "$label_counts" ] && label_counts=${srcdir}/label.counts
-[ -n "$block_softmax" ] && block_softmax="--blockid=${block_softmax}"
-[ -n "$blank_scale" ] && blank_scale="--blank-scale=${blank_scale}"
-[ -n "$temperature" ] && temperature="--temperature=${temperature}"
+[ -n "$label_scales" ] && label_scales="--label-scales ${label_scales}"
+[ -n "$blank_scale" ] && blank_scale="--blank-scale ${blank_scale}"
+[ -n "$noise_scale" ] && noise_scale="--noise-scale ${blank_scale}"
+[ -n "$temperature" ] && temperature="--temperature ${temperature}"
 
 [ -z "$add_deltas" ] && add_deltas=`cat $srcdir/add_deltas 2>/dev/null`
 [ -z "$norm_vars" ] && norm_vars=`cat $srcdir/norm_vars 2>/dev/null`

@@ -62,14 +62,14 @@ def readMatrixShape(f):
     return nRows, nCols
 
 def writeString(f, s):
-    f.write(s + " ")
+    f.write((s+" ").encode('utf-8'))
 
 def writeInteger(f, a):
     s = struct.pack("<i", a)
-    f.write(chr(len(s)) + s)
+    f.write(chr(len(s)).encode('utf-8') + s)
 
 def writeMatrix(f, data):
-    f.write("\0B")      # Binary data header
+    f.write('\0B'.encode('utf-8'))      # Binary data header
     if str(data.dtype) == "float64":
         writeString(f, "DM")
         writeInteger(f, data.shape[0])

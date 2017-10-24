@@ -120,8 +120,8 @@ class Test():
                     for target_id, _ in target_scheme.items():
                         test_costs[language_id][target_id] = test_costs[language_id][target_id] / float(ntest[language_id])
 
-                for language_id, target_scheme in test_ters.iteritems():
-                    for target_id, cv_ter in target_scheme.iteritems():
+                for language_id, target_scheme in test_ters.items():
+                    for target_id, cv_ter in target_scheme.items():
                         test_ters[language_id][target_id] = cv_ter/float(ntest_labels[language_id][target_id])
 
 
@@ -311,7 +311,8 @@ class Test():
         for utt_id, _ in S.items():
 
             #computing minimum L
-            min_length = sys.maxint
+            min_length = sys.maxsize
+            #sys.maxint
             for utt_prob in S[utt_id]:
                 if(utt_prob.shape[0] < min_length):
                     min_length = utt_prob.shape[0]
@@ -366,12 +367,12 @@ class Test():
         test_ters = {}
         ntest_labels = {}
 
-        for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
+        for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
             ntest[language_id] = 0
             test_cost[language_id] = {}
             test_ters[language_id] = {}
             ntest_labels[language_id] = {}
-            for target_id, _ in target_scheme.iteritems():
+            for target_id, _ in target_scheme.items():
                 test_ters[language_id][target_id] = 0
                 test_cost[language_id][target_id] = 0
                 ntest_labels[language_id][target_id] = 0
@@ -386,14 +387,14 @@ class Test():
         log_likes = {}
         logits = {}
 
-        for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
+        for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
             batches_id[language_id] = []
             soft_probs[language_id] = {}
             soft_probs[language_id] = {}
             log_soft_probs[language_id] = {}
             log_likes[language_id] = {}
             logits[language_id] = {}
-            for target_id, _ in target_scheme.iteritems():
+            for target_id, _ in target_scheme.items():
                 soft_probs[language_id][target_id] = []
                 log_soft_probs[language_id][target_id] = []
                 log_likes[language_id][target_id]=[]
@@ -404,7 +405,7 @@ class Test():
     def __print_logs(self, config, test_cost, test_ters, ntest, tic):
 
         print("Test time: %.0f minutes\n" % ((time.time() - tic)/60.0))
-        for language_id, target_scheme in test_ters.iteritems():
+        for language_id, target_scheme in test_ters.items():
             if(len(test_ters) > 1):
                 fp = open(os.path.join(config[constants.CONFIG_TAGS_TEST.RESULTS_DIR],"test.log"), "w")
                 fp.write("Test time: %.0f minutes\n" % ((time.time() - tic)/60.0))
@@ -414,7 +415,7 @@ class Test():
             else:
                 fp = open(os.path.join(config[constants.CONFIG_TAGS_TEST.RESULTS_DIR],"test.log"), "w")
 
-            for target_id,  test_ter in target_scheme.iteritems():
+            for target_id,  test_ter in target_scheme.items():
                 if(len(target_scheme) > 1):
                     print("\tTarget: %s" % (target_id))
                     fp.write("\tTarget: %s" % (target_id))
@@ -425,7 +426,7 @@ class Test():
 
     def __store_results(self, config, uttids, soft_probs, log_soft_probs, log_likes, logits):
 
-        for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
+        for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
             if(len(config[constants.CONF_TAGS.LANGUAGE_SCHEME]) > 1):
                 results_dir = os.path.join(config[constants.CONFIG_TAGS_TEST.RESULTS_DIR], language_id)
             else:
@@ -433,7 +434,7 @@ class Test():
             if not os.path.exists(results_dir):
                 os.makedirs(results_dir)
 
-            for target_id, _ in target_scheme.iteritems():
+            for target_id, _ in target_scheme.items():
 
                     if(config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
                         writeScp(os.path.join(results_dir, "log_like_"+target_id+".scp"), uttids[language_id][target_id],
@@ -455,10 +456,10 @@ class Test():
         #https://stackoverflow.com/questions/835092/python-dictionary-are-keys-and-values-always-the-same-order
         #TODO although this should be changed for now is a workaround
 
-        for idx_lan, (language_id, target_scheme) in enumerate(config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems()):
+        for idx_lan, (language_id, target_scheme) in enumerate(config[constants.CONF_TAGS.LANGUAGE_SCHEME].items()):
             if(ybatch[1] == language_id):
 
-                for idx_tar, (target_id, _) in enumerate(target_scheme.iteritems()):
+                for idx_tar, (target_id, _) in enumerate(target_scheme.items()):
                     #note that ybatch[0] contains targets and ybathc[1] contains language_id
                     m_acum_ters[language_id][target_id] += batch_ters[idx_lan][idx_tar]
                     m_acum_labels[language_id][target_id] += self.__get_label_len(ybatch[0][language_id][target_id])
@@ -523,7 +524,7 @@ class Test():
                 for targets_id, batch_targets in batch_targets.items():
                     y_batch_list.append(batch_targets)
 
-            for language_id, language_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].iteritems():
+            for language_id, language_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
                 if (language_id == y_batch[1]):
                     index_correct_lan = current_lan_index
                 current_lan_index += 1

@@ -26,7 +26,7 @@ noise_scale=
 temperature=
 
 skip_scoring=false # whether to skip WER scoring
-scoring_opts="--min-acwt 5 --max-acwt 10 --acwt-factor 0.1"
+scoring_opts="--min-acwt 5 --max-acwt 15 --acwt-factor 0.1"
 
 # feature configurations; will be read from the training dir if not provided
 norm_vars=

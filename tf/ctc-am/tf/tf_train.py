@@ -21,8 +21,6 @@ class Train():
         self.max_targets_layers = 0
         self.__ter_buffer = [float('inf'), float('inf')]
 
-        self.last_mult_lr_rate = 0
-
         for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
                 if(self.max_targets_layers < len(target_scheme)):
                     self.max_targets_layers = len(target_scheme)
@@ -120,28 +118,24 @@ class Train():
             return self.__config[constants.CONF_TAGS.LR_RATE]
 
 
-
+    # TODO: we should really only use compute_lr_rate OR update_lr_rate - this is confusing
     def __update_lr_rate(self, epoch, cv_ters, best_avg_ters, best_epoch, saver, lr_rate):
 
         avg_ters = self.__compute_avg_ters(cv_ters)
 
-        if (best_avg_ters > avg_ters):
-            print("ter down %.1f%% from %.1f%% in epoch %d, not updating learning rate" % (100.0*(best_avg_ters-avg_ters), 100.0*self.__ter_buffer[1], best_epoch))
-            update_lr=False
+        if (epoch < self.__config[constants.CONF_TAGS.HALF_AFTER] or lr_rate <= self.__config[constants.CONF_TAGS.MIN_LR_RATE]):
+            print("not updating learning rate, parameters", self.__config[constants.CONF_TAGS.HALF_AFTER], self.__config[constants.CONF_TAGS.MIN_LR_RATE])
+
+        elif (best_avg_ters > avg_ters):
+            print("not updating learning rate, ter down %.1f%% from epoch %d" % (100.0*(best_avg_ters-avg_ters), best_epoch))
+
         else:
-            print("ter up by %.1f%% from %.1f%% in epoch %d, updating learning rate" % (100.0*(avg_ters-best_avg_ters), 100.0*self.__ter_buffer[1], best_epoch))
-            update_lr=True
+            lr_rate = lr_rate * self.__config[constants.CONF_TAGS.HALF_RATE]
+            if (lr_rate < self.__config[constants.CONF_TAGS.MIN_LR_RATE]):
+                lr_rate = self.__config[constants.CONF_TAGS.MIN_LR_RATE]
 
-        # if epoch > self.__config[constants.CONF_TAGS.HALF_AFTER]:
-        if update_lr:
+            print("ter up by %.1f%% from %.1f%% in epoch %d, updating learning rate to %.4g" % (100.0*(avg_ters-best_avg_ters), 100.0*self.__ter_buffer[1], best_epoch, lr_rate))
 
-            print("updating learning rate...")
-
-            print("from: "+str(lr_rate))
-
-            lr_rate = lr_rate / 2
-
-            print("to: "+str(lr_rate))
             #new_lr_rate = self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"]) // self.__config["half_period"]))
             #new_lr_rate = self.__config["lr_rate"] * (self.__config["half_rate"] ** ((epoch - self.__config["half_after"])))
             #lr_rate = new_lr_rate
@@ -158,15 +152,11 @@ class Train():
             #new_lr_rate = self.__config[constants.CONF_TAGS.LR_RATE] * (self.__config[constants.CONF_TAGS.HALF_RATE] ** (diff_epoch))
                          # * (self.__config[constants.CONF_TAGS.HALF_RATE] ** (diff_epoch))
 
-
-            #if lr_rate != new_lr_rate:
-
-            print("about to restore model from "+str(best_epoch)+" epoch")
             epoch_name = "/epoch%02d.ckpt" % (best_epoch)
             best_epoch_path = self.__config[constants.CONF_TAGS.MODEL_DIR] + epoch_name
 
             if(os.path.isfile(best_epoch_path+".index")):
-                print("epoch "+str(best_epoch)+" found. ")
+                print("restoring model from epoch "+str(best_epoch))
                 saver.restore(self.__sess, "%s/epoch%02d.ckpt" % (self.__config["model_dir"], best_epoch))
             else:
                 print("epoch "+str(best_epoch)+" NOT found. restoring can not be done. ("+best_epoch_path+")")
@@ -183,7 +173,7 @@ class Train():
     def __update_sets(self, m_tr_x, m_tr_y, m_tr_sat):
 
         print(80 * "-")
-        print("checking update of epoch...")
+        #print("checking update of epoch...")
         #this is fundamentally wrong
         if(self.__check_needed_mix_augmentation(m_tr_x)):
             dic_sources={}
@@ -210,7 +200,8 @@ class Train():
             #reorganize label lm_reader (augmentation might change the order)
             m_tr_y.update_batches_id(m_tr_x.get_batches_id())
         else:
-            print("augmentation is not needed.")
+            pass
+            #print("augmentation is not needed.")
 
     print(80 * "-")
 
@@ -474,7 +465,7 @@ class Train():
 
             print(80 * "-")
 
-        #we want to store everyhting
+        #we want to store everything
         saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH])
 
 

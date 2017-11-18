@@ -2,7 +2,10 @@ import os
 import constants
 import sys
 import shutil
-import h5py
+try:
+    import h5py
+except:
+    pass
 
 import time
 from itertools import islice

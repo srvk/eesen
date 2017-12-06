@@ -654,8 +654,10 @@ if [ "`uname`" == "Darwin"  ]; then
   fi
   # posix_memalign and gcc -rdynamic options not present on OS X 10.5.*
   osx_ver=`sw_vers | grep ProductVersion | awk '{print $2}' | awk '{split($0,a,"\."); print a[1] "." a[2]; }'`
-  echo "Configuring for OS X version $osx_ver ..."
-  if [ "$osx_ver" == "10.5" ]; then
+  echo "Configuring for macOS version $osx_ver ..."
+  if [ "$osx_ver" == "10.0" ] || [ "$osx_ver" == "10.1" ] || [ "$osx_ver" == "10.2" ] || [ "$osx_ver" == "10.3" ] || [ "$osx_ver" == "10.4" ]; then
+    failure "macOS version must be at least 10.5"
+  elif [ "$osx_ver" == "10.5" ]; then
     check_exists makefiles/darwin_10_5.mk
     cat makefiles/darwin_10_5.mk >> config.mk
   elif [ "$osx_ver" == "10.6" ]; then
@@ -673,11 +675,11 @@ if [ "`uname`" == "Darwin"  ]; then
   elif [ "$osx_ver" == "10.10" ]; then
     check_exists makefiles/darwin_10_10.mk
     cat makefiles/darwin_10_10.mk >> config.mk
-  elif [ "$osx_ver" == "10.11" ]; then
+  elif [[ "$osx_ver" == 10.* ]]; then
     check_exists makefiles/darwin_10_11.mk
     cat makefiles/darwin_10_11.mk >> config.mk
   else 
-    failure "OS X version '$osx_ver' not supported"
+    failure "macOS version '$osx_ver' not supported"
   fi
   echo "Configuration succeeded for platform Darwin."
   exit_success;

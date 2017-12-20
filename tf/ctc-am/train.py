@@ -354,7 +354,7 @@ def main():
     if not os.path.exists(config[constants.CONF_TAGS.MODEL_DIR]):
         os.makedirs(config[constants.CONF_TAGS.MODEL_DIR])
 
-    pickle.dump(config, open(os.path.join(config[constants.CONF_TAGS.MODEL_DIR], "config.pkl"), "wb"))
+    pickle.dump(config, open(os.path.join(config[constants.CONF_TAGS.MODEL_DIR], "config.pkl"), "wb"), protocol=2)
 
     #start the actual training
     eesen=Eesen()

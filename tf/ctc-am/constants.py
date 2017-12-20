@@ -63,6 +63,7 @@ class CONF_TAGS:
     #runtime arguments
     NEPOCH="nepoch"
     LR_RATE="lr_rate"
+    MIN_LR_RATE="min_lr_rate"
     HALF_PERIOD="half_period"
     HALF_RATE="half_rate"
     HALF_AFTER="half_after"

@@ -17,11 +17,9 @@ model="deepbilstm"
 nlayer=5
 nhidden=320
 
-nproj=0
-nfinalproj=0
-ninitproj=0
-
-norm=false
+nproj=""
+nfinalproj=
+ninitproj=""
 
 #speaker adaptation configuration
 sat_type=""
@@ -31,11 +29,8 @@ sat_nlayer=2
 continue_ckpt_sat=false
 
 #training configuration
-batch_size=16
-learn_rate=0.02
-l2=0.0001
-max_iters=25
-half_after=6
+nepoch=""
+lr_rate=""
 debug=false
 
 #continue training
@@ -43,8 +38,9 @@ continue_ckpt=""
 diff_num_target_ckpt=false
 force_lr_epoch_ckpt=false
 
-#augmentation argument
-window=3
+#training options
+deduplicate=true
+subsampling_default=3
 
 ## End configuration section
 
@@ -100,23 +96,16 @@ fi
 
 ## Adjust parameter variables
 
-if $force_lr_epoch_ckpt; then
-    force_lr_epoch_ckpt="--force_lr_epoch_ckpt"
-else
-    force_lr_epoch_ckpt=""
-fi
-
 if $debug; then
     debug="--debug"
 else
     debug=""
 fi
 
-if $norm ; then
-
-      norm="--batch_norm"
+if $force_lr_epoch_ckpt; then
+    force_lr_epoch_ckpt="--force_lr_epoch_ckpt"
 else
-      norm=
+    force_lr_epoch_ckpt=""
 fi
 
 if $diff_num_target_ckpt; then
@@ -131,26 +120,38 @@ else
     continue_ckpt=""
 fi
 
-if [ $ninitproj -gt 0 ]; then
+if [ -n "$ninitproj" ]; then
     ninitproj="--ninitproj $ninitproj"
-else
-    ninitproj=""
 fi
 
-if [ $nfinalproj -gt 0 ]; then
+if [ -n "$nfinalproj" ]; then
     nfinalproj="--nfinalproj $nfinalproj"
-else
-    nfinalproj=""
 fi
 
-if [ $nproj -gt 0 ]; then
+if [ -n "$nproj" ]; then
     nproj="--nproj $nproj"
-else
-    nproj=""
 fi
 
-if [ -n "$max_iters" ]; then
-    max_iters="--nepoch $max_iters"
+if [ -n "$nepoch" ]; then
+    nepoch="--nepoch $nepoch"
+fi
+
+if [ -n "$lr_rate" ]; then
+    lr_rate="--lr_rate $lr_rate"
+fi
+
+if [ -n "$deduplicate" ]; then
+    deduplicate="--deduplicate"
+else
+    deduplicate=""
+fi
+
+subsampling=`echo $train_opts | sed 's/.*--subsampling \([0-9]*\).*/\1/'`
+if [[ "$subsampling" == [0-9]* ]]; then
+    #this is needed for the filtering - let's hope this value is correct
+    :
+else
+    subsampling=3
 fi
 
 
@@ -222,7 +223,8 @@ for f in $tmpdir/*.tr; do
 	echo cleaning train set $(basename $f)...
 	echo ""
 
-	python ./utils/clean_length.py --scp_in  $tmpdir/train_tmp.scp --labels $f --subsampling 3 --scp_out $tmpdir/train_local.scp
+	python ./utils/clean_length.py --scp_in  $tmpdir/train_tmp.scp --labels $f \
+	       --subsampling $subsampling --scp_out $tmpdir/train_local.scp $deduplicate
 done
 
 for f in $tmpdir/*.cv; do
@@ -231,7 +233,8 @@ for f in $tmpdir/*.cv; do
     echo cleaning cv set $(basename $f)...
     echo ""
 
-    python ./utils/clean_length.py --scp_in  $tmpdir/cv_tmp.scp --labels $f --subsampling 3 --scp_out $tmpdir/cv_local.scp
+    python ./utils/clean_length.py --scp_in  $tmpdir/cv_tmp.scp --labels $f \
+	   --subsampling $subsampling --scp_out $tmpdir/cv_local.scp
 
 done
 
@@ -239,9 +242,9 @@ done
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
 echo "TRAINING STARTS [$cur_time]"
 
-$train_tool $train_opts --lr_rate $learn_rate --batch_size $batch_size --l2 $l2 \
-    --nhidden $nhidden --nlayer $nlayer $ninitproj $nproj $nfinalproj $ckpt $max_iters \
-    --train_dir $dir --data_dir $tmpdir --half_after $half_after $sat_stage $sat_type $sat_nlayer $debug --model $model --window $window $norm $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt  || exit 1;
+$train_tool $train_opts \
+    --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $lr_rate \
+    --train_dir $dir --data_dir $tmpdir $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt  || exit 1;
 
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
 echo "TRAINING ENDS [$cur_time]"

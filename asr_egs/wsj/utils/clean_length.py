@@ -13,7 +13,8 @@ def main_parser():
     parser = argparse.ArgumentParser(description='deletes the utterances that have more labels than frames')
     parser.add_argument('--scp_in', type=str, help='path to input scp file to be cleaned', required=True)
     parser.add_argument('--labels', type=str, help='path to labels files (txt)', required=True)
-    parser.add_argument('--subsampling', type=int, default=0, help='augmentation subsampling that will be posteriorly applied ', required=True)
+    parser.add_argument('--deduplicate', default=False, help='keep duplicates or not', required=False, action='store_true')
+    parser.add_argument('--subsampling', type=int, default=3, help='how much subsampling to take into account', required=False)
     parser.add_argument('--scp_out',type=str, help = 'path to input scp output file', required=True)
 
     return parser
@@ -23,10 +24,17 @@ args = parser.parse_args()
 
 #reading labels file
 labels_dict = {}
+labels_tcid = {}
 with open(args.labels, "r") as f:
     for line in f:
         tokens = line.strip().split()
-        labels_dict[tokens[0]] = len(tokens[1:])
+        key = tokens[0]
+        trl = ''.join(map(str, tokens[1:]))
+        if args.deduplicate and trl in labels_tcid:
+            labels_dict[key] = 0
+        else:
+            labels_tcid[trl] = key
+            labels_dict[key] = len(tokens)-1
 
 #reading scp textfile
 dict_text={}
@@ -61,7 +69,7 @@ with open(args.scp_out, "w") as f:
 
 
 
-print("cleaning done:")
+print("cleaning done: "+args.scp_out)
 print("original scp length: " +str(original_scp_len))
 print("scp deleted: "+str(original_scp_len-new_len))
 print("final scp length: "+str(new_len))

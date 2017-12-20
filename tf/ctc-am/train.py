@@ -73,9 +73,10 @@ def main_parser():
     #runtime arguments
     parser.add_argument('--nepoch', default = 30, type=int, help='#epoch')
     parser.add_argument('--lr_rate', default = 0.03, type=float, help='learning rate')
-    parser.add_argument('--half_period', default = 10, type=int, help='half period in epoch of learning rate')
+    parser.add_argument('--min_lr_rate', default = 0.0005, type=float, help='minimal learning rate')
+    parser.add_argument('--half_period', default = 4, type=int, help='half period in epoch of learning rate')
     parser.add_argument('--half_rate', default = 0.5, type=float, help='halving factor')
-    parser.add_argument('--half_after', default = 0, type=int, help='halving becomes enabled after this many epochs')
+    parser.add_argument('--half_after', default = 8, type=int, help='halving becomes enabled after this many epochs')
 
     #sat arguments
     parser.add_argument('--sat_type', default = constants.SAT_TYPE.UNADAPTED, help='apply and train a sat layer')
@@ -179,6 +180,7 @@ def create_global_config(args):
         #runtime arguments
         constants.CONF_TAGS.NEPOCH: args.nepoch,
         constants.CONF_TAGS.LR_RATE: args.lr_rate,
+        constants.CONF_TAGS.MIN_LR_RATE: args.min_lr_rate,
         constants.CONF_TAGS.HALF_PERIOD: args.half_period,
         constants.CONF_TAGS.HALF_RATE: args.half_rate,
         constants.CONF_TAGS.HALF_AFTER: args.half_after,
@@ -220,6 +222,9 @@ def update_conf_import(config, args):
 
     if(config[constants.CONF_TAGS.LR_RATE] != args.lr_rate):
         config[constants.CONF_TAGS.LR_RATE] = args.lr_rate
+
+    if(config[constants.CONF_TAGS.MIN_LR_RATE] != args.min_lr_rate):
+        config[constants.CONF_TAGS.MIN_LR_RATE] = args.min_lr_rate
 
 def import_config(args):
 

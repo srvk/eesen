@@ -32,11 +32,11 @@ class DeepBidirRNN:
                 for i in range(nlayer):
                     with tf.variable_scope("layer%d" % i):
                         cudnn_model = tf.contrib.cudnn_rnn.CudnnLSTM(1, nhidden, ninput, direction = 'bidirectional')
-                        params_size_t = cudnn_model.params_size()
+                        #params_size_t = cudnn_model.params_size()
                         input_h = tf.zeros([2, batch_size, nhidden], dtype = tf.float32, name = "init_lstm_h")
                         input_c = tf.zeros([2, batch_size, nhidden], dtype = tf.float32, name = "init_lstm_c")
                         bound = tf.sqrt(6. / (nhidden + nhidden))
-                        cudnn_params = tf.Variable(tf.random_uniform([params_size_t], -bound, bound), validate_shape = False, name = "params", trainable=self.is_trainable_sat)
+                        cudnn_params = tf.Variable(tf.random_uniform([cudnn_model.params_size()], -bound, bound), validate_shape = False, name = "params", trainable=self.is_trainable_sat)
                         #TODO is_training=is_training should be changed!
                         outputs, _output_h, _output_c = cudnn_model(is_training=is_training,
                             input_data=outputs, input_h=input_h, input_c=input_c,
@@ -45,24 +45,29 @@ class DeepBidirRNN:
                             activation_fn = None, inputs = outputs,
                             num_outputs = nproj, scope = "intermediate_projection")
 
+                        if batch_norm:
+                            outputs = tf.contrib.layers.batch_norm(outputs,
+                            scope = "bn", center=True, scale=True, decay=0.9,
+                            is_training=self.is_training_ph, updates_collections=None)
+
                         ninput = nproj
             else:
                 cudnn_model = tf.contrib.cudnn_rnn.CudnnLSTM(nlayer, nhidden, nfeat, direction = 'bidirectional')
-                params_size_t = cudnn_model.params_size()
+                #params_size_t = cudnn_model.params_size()
                 input_h = tf.zeros([nlayer * 2, batch_size, nhidden], dtype = tf.float32, name = "init_lstm_h")
                 input_c = tf.zeros([nlayer * 2, batch_size, nhidden], dtype = tf.float32, name = "init_lstm_c")
                 bound = tf.sqrt(6. / (nhidden + nhidden))
 
-                cudnn_params = tf.Variable(tf.random_uniform([params_size_t], -bound, bound),
+                cudnn_params = tf.Variable(tf.random_uniform([cudnn_model.params_size()], -bound, bound),
                     validate_shape = False, name = "params", trainable=self.is_trainable_sat)
 
                 outputs, _output_h, _output_c = cudnn_model(is_training=is_training,input_data=outputs,
                     input_h=input_h, input_c=input_c,params=cudnn_params)
 
-            if batch_norm:
-                outputs = tf.contrib.layers.batch_norm(outputs,
-                    scope = "bn", center=True, scale=True, decay=0.9,
-                    is_training=self.is_training_ph, updates_collections=None)
+                if batch_norm:
+                    outputs = tf.contrib.layers.batch_norm(outputs,
+                        scope = "bn", center=True, scale=True, decay=0.9,
+                        is_training=self.is_training_ph, updates_collections=None)
 
         return outputs
 

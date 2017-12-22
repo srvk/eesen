@@ -61,19 +61,19 @@ def write_mat_stdout(m, key=IS_EMPTY):
         #
         #m=numpy.roll(m,-1,axis=0)
         #
-        if str_or_bytes(key) != IS_EMPTY: sys.stdout.buffer.write(str_or_bytes(key)+IS_SPACE)
-        sys.stdout.buffer.write(str_or_bytes('\x00'+'B'))  # we write binary!
+        if str_or_bytes(key) != IS_EMPTY: sys.stdout.write(str_or_bytes(key)+IS_SPACE)
+        sys.stdout.write(str_or_bytes('\x00'+'B'))  # we write binary!
         # Data-type,
-        if   m.dtype == 'float32': sys.stdout.buffer.write(FLOAT_MAT)
-        elif m.dtype == 'float64': sys.stdout.buffer.write(DOUBLE_MAT)
+        if   m.dtype == 'float32': sys.stdout.write(FLOAT_MAT)
+        elif m.dtype == 'float64': sys.stdout.write(DOUBLE_MAT)
         else: raise MatrixDataTypeError
         # Dims,
-        sys.stdout.buffer.write(IS_EOL)
-        sys.stdout.buffer.write(struct.pack('I',m.shape[0]))  # rows
-        sys.stdout.buffer.write(IS_EOL)
-        sys.stdout.buffer.write(struct.pack('I',m.shape[1]))  # cols
+        sys.stdout.write(IS_EOL)
+        sys.stdout.write(struct.pack('I',m.shape[0]))  # rows
+        sys.stdout.write(IS_EOL)
+        sys.stdout.write(struct.pack('I',m.shape[1]))  # cols
         # Data,
-        sys.stdout.buffer.write(m.tobytes())
+        sys.stdout.write(m.tobytes())
     finally:
         pass
 

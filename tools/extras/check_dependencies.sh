@@ -34,6 +34,9 @@ for f in make gcc automake libtool autoconf patch grep bzip2 gzip git; do
     echo "$0: $f is not installed."
     add_packages $f $f $f
   fi
+	if [[ $f == libtool ]]; then
+		add_packages libtool-bin libtool-bin libtool-bin
+	fi
 done
 
 if ! which svn >&/dev/null; then

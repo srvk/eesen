@@ -20,7 +20,7 @@ fisher_dirs="/path/to/LDC2004T19/fe_03_p1_tran/ /path/to/LDC2005T19/fe_03_p2_tra
 eval2000_dirs="/path/to/LDC2002S09/hub5e_00 /path/to/LDC2002T43"
 
 # CMU Rocks
-#swbd=/data/ASR4/babel/ymiao/CTS/LDC97S62
+swbd=/data/ASR4/babel/ymiao/CTS/LDC97S62
 #fisher_dirs="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/ /data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
 #eval2000_dirs="/data/ASR4/babel/ymiao/CTS/LDC2002S09/hub5e_00 /data/ASR4/babel/ymiao/CTS/LDC2002T43"
 
@@ -53,20 +53,20 @@ dir_lm=exp/train_lm_char_l${lm_nlayer}_c${lm_ncell_dim}_e${lm_embed_size}_d${lm_
 fisher_text_dir="./data/fisher/"
 
 
-#if [ $stage -le 1 ]; then
-  #echo =====================================================================
-  #echo "                       Data Preparation                            "
-  #echo =====================================================================
+if [ $stage -le 1 ]; then
+  echo =====================================================================
+  echo "                       Data Preparation                            "
+  echo =====================================================================
 
-  ## Use the same datap prepatation script from Kaldi
-  #local/swbd1_data_prep.sh $swbd  || exit 1;
+  # Use the same datap prepatation script from Kaldi
+  local/swbd1_data_prep.sh $swbd  || exit 1;
 
-  ## Represent word spellings using a dictionary-like format
-  #local/swbd1_prepare_char_dict.sh || exit 1;
+  # Represent word spellings using a dictionary-like format
+  local/swbd1_prepare_char_dict.sh || exit 1;
 
-  ## Data preparation for the eval2000 set
-  #local/eval2000_data_prep.sh $eval2000_dirs
-#fi
+  # Data preparation for the eval2000 set
+  local/eval2000_data_prep.sh $eval2000_dirs
+fi
 
 
 if [ $stage -le 2 ]; then
@@ -77,25 +77,25 @@ if [ $stage -le 2 ]; then
   fbankdir=fbank_pitch
 
   # Generate the fbank features; by default 40-dimensional fbanks on each frame
-  steps/make_fbank.sh --cmd "$train_cmd" --nj 32 data_pitch/train exp/make_fbank_pitch/train $fbankdir || exit 1;
-  steps/compute_cmvn_stats.sh data_pitch/train exp/make_fbank_pitch/train $fbankdir || exit 1;
-  utils/fix_data_dir.sh data_pitch/train || exit;
+  steps/make_fbank.sh --cmd "$train_cmd" --nj 32 data/train exp/make_fbank_pitch/train $fbankdir || exit 1;
+  steps/compute_cmvn_stats.sh data/train exp/make_fbank_pitch/train $fbankdir || exit 1;
+  utils/fix_data_dir.sh data/train || exit;
 
-  steps/make_fbank.sh --cmd "$train_cmd" --nj 10 data_pitch/eval2000 exp/make_fbank_pitch/eval2000 $fbankdir || exit 1;
-  steps/compute_cmvn_stats.sh data_pitch/eval2000 exp/make_fbank_pitch/eval2000 $fbankdir || exit 1;
-  utils/fix_data_dir.sh data_pitch/eval2000 || exit;
+  steps/make_fbank.sh --cmd "$train_cmd" --nj 10 data/eval2000 exp/make_fbank_pitch/eval2000 $fbankdir || exit 1;
+  steps/compute_cmvn_stats.sh data/eval2000 exp/make_fbank_pitch/eval2000 $fbankdir || exit 1;
+  utils/fix_data_dir.sh data/eval2000 || exit;
 
   # Use the first 4k sentences as dev set, around 5 hours
-  utils/subset_data_dir.sh --first data_pitch/train 4000 data_pitch/train_dev
+  utils/subset_data_dir.sh --first data/train 4000 data/train_dev
   n=$[`cat data/train/segments | wc -l` - 4000]
-  utils/subset_data_dir.sh --last data_pitch/train $n data_pitch/train_nodev
+  utils/subset_data_dir.sh --last data/train $n data/train_nodev
 
   # Create a smaller training set by selecting the first 100k utterances, around 110 hours
-  utils/subset_data_dir.sh --first data_pitch/train_nodev 100000 data_pitch/train_100k
-  local/remove_dup_utts.sh 200 data_pitch/train_100k data_pitch/train_100k_nodup
+  utils/subset_data_dir.sh --first data/train_nodev 100000 data/train_100k
+  local/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup
 
   # Finally the full training set, around 286 hours
-  local/remove_dup_utts.sh 300 data_pitch/train_nodev data_pitch/train_nodup
+  local/remove_dup_utts.sh 300 data/train_nodev data/train_nodup
 fi
 
 exit

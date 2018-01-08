@@ -24,13 +24,10 @@
 
 stage=1
 
-fisher_dirs="/path/to/LDC2004T19/fe_03_p1_tran/ /path/to/LDC2005T19/fe_03_p2_tran/" # Set to "" if you don't have the fisher corpus
-eval2000_dirs="/path/to/LDC2002S09/hub5e_00 /path/to/LDC2002T43"
-
 # CMU Rocks
-#swbd=/data/ASR4/babel/ymiao/CTS/LDC97S62
-#fisher_dirs="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/ /data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
-#eval2000_dirs="/data/ASR4/babel/ymiao/CTS/LDC2002S09/hub5e_00 /data/ASR4/babel/ymiao/CTS/LDC2002T43"
+swbd=/data/ASR4/babel/ymiao/CTS/LDC97S62
+fisher_dirs="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/ /data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
+eval2000_dirs="/data/ASR4/babel/ymiao/CTS/LDC2002S09/hub5e_00 /data/ASR4/babel/ymiao/CTS/LDC2002T43"
 
 . parse_options.sh
 
@@ -70,23 +67,19 @@ if [ $stage -le 1 ]; then
   echo "                       Data Preparation                            "
   echo =====================================================================
 
+  #data prep for fisher (./data/train_fisher)
+  tmpfisher=`mktemp -d`
+  local/fisher_data_prep.sh --dir ./data/train_fisher/ --local-dir $tmpfisher $fisher_dirs
+  rm -r $tmpfisher
+  rm ./data/train_fisher/spk2gender
 
-  echo holaaaaaaaa
-
-  local/fisher_data_prep.sh $fisher_dirs
-
-  exit
-
-  utils/subset_data_dir.sh data/train_all
-   #/export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 /export/corpora3/LDC/LDC2004S13 /export/corpora3/LDC/LDC2005S13
-
-  # Use the same datap prepatation script from Kaldi
+  #data prep for normal swbd (./data/train/)
   local/swbd1_data_prep.sh $swbd  || exit 1;
 
   # Represent word spellings using a dictionary-like format
   local/swbd1_prepare_char_dict.sh || exit 1;
 
-  # Data preparation for the eval2000 set
+  # Data preparation for the eval2000 set (./data/eval2000/)
   local/eval2000_data_prep.sh $eval2000_dirs
 fi
 
@@ -96,23 +89,21 @@ if [ $stage -le 2 ]; then
   echo "                    FBank Feature Generation                       "
   echo =====================================================================
 
+  #extract fisher
   fbankdir=fbank
 
-  utils/fix_data_dir.sh data/train_all
-
-  # Generate the fbank features; by default 40-dimensional fbanks on each frame
-  steps/make_fbank_pitch.sh --cmd "$train_cmd" --nj 16 data/train_all exp/make_fbank/train_all $fbankdir || exit 1;
-  steps/compute_cmvn_stats.sh data/train_all exp/make_fbank/train_all $fbankdir || exit 1;
-  utils/fix_data_dir.sh data/train_all || exit;
+  # FISHER: Generate the fbank features + pitch; by default 40-dimensional fbanks on each frame
+  steps/make_fbank_pitch.sh --cmd "$train_cmd" --nj 16 data/train_fisher/ exp/make_fbank/train_fisher/ $fbankdir || exit 1;
+  steps/compute_cmvn_stats.sh data/train_fisher exp/make_fbank/train_fisher $fbankdir || exit 1;
+  utils/fix_data_dir.sh data/train_fisher || exit;
 
 
-  exit
-
-  # Generate the fbank features; by default 40-dimensional fbanks on each frame
+  # SWBD: Generate the fbank features + pitch; by default 40-dimensional fbanks on each frame
   steps/make_fbank_pitch.sh --cmd "$train_cmd" --nj 32 data/train exp/make_fbank/train $fbankdir || exit 1;
   steps/compute_cmvn_stats.sh data/train exp/make_fbank/train $fbankdir || exit 1;
   utils/fix_data_dir.sh data/train || exit;
 
+  # EVAL2000: Generate the fbank features + pitch; by default 40-dimensional fbanks on each frame
   steps/make_fbank_pitch.sh --cmd "$train_cmd" --nj 10 data/eval2000 exp/make_fbank/eval2000 $fbankdir || exit 1;
   steps/compute_cmvn_stats.sh data/eval2000 exp/make_fbank/eval2000 $fbankdir || exit 1;
   utils/fix_data_dir.sh data/eval2000 || exit;
@@ -122,12 +113,23 @@ if [ $stage -le 2 ]; then
   n=$[`cat data/train/segments | wc -l` - 4000]
   utils/subset_data_dir.sh --last data/train $n data/train_nodev
 
-  # Create a smaller training set by selecting the first 100k utterances, around 110 hours
-  utils/subset_data_dir.sh --first data/train_nodev 100000 data/train_100k
-  local/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup
+  # FISHER: limiting any utterance to be repeated 300 times as max
+  local/remove_dup_utts.sh 300 data/train_fisher data/train_fisher_nodup
 
-  # Finally the full training set, around 286 hours
+  # SWBD: limiting any utterance to be repeated 300 times as max
   local/remove_dup_utts.sh 300 data/train_nodev data/train_nodup
+
+  # merge two datasets into one
+  mkdir -p data/train_all
+  for f in spk2utt utt2spk wav.scp text segments reco2file_and_channel; do
+        cat data/train_fisher_nodup/$f data/train_nodup/$f > data/train_all/$f
+  done
+
+   #Finally, we can use the following sets:
+   #./data/train_all: training set
+   #./data/train_dev: development set
+   #./data/eval2000: test set
+
 fi
 
 if [ $stage -le 3 ]; then
@@ -135,19 +137,18 @@ if [ $stage -le 3 ]; then
   echo "                Training AM with the Full Set                      "
   echo =====================================================================
 
-
   mkdir -p $dir_am
 
   echo generating train labels...
 
-  python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_nodup/text --output_units ./data/local/dict_char/units.txt --output_labels $dir_am/labels.tr --lower_case --ignore_noises || exit 1
+  python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_all/text --output_units ./data/local/dict_char/units.txt --output_labels $dir_am/labels.tr --lower_case --ignore_noises || exit 1
 
   echo generating cv labels...
 
   python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_dev/text --input_units ./data/local/dict_char/units.txt --output_labels $dir_am/labels.cv || exit 1
 
   # Train the network with CTC. Refer to the script for details about the arguments
-  steps/train_ctc_tf.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size 16 --learn_rate 0.005 --half_after 6 --model $am_model --window $am_window --continue_ckpt ./exp/train_char_l4_c320_mdeepbilstm_w3_nfalse/model/epoch09.ckpt --norm $am_norm data/train_nodup data/train_dev $dir_am || exit 1;
+  steps/train_ctc_tf.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size 16 --learn_rate 0.005 --half_after 6 --model $am_model --window $am_window --continue_ckpt ./exp/train_char_l4_c320_mdeepbilstm_w3_nfalse/model/epoch09.ckpt --norm $am_norm data/train_all data/train_dev $dir_am || exit 1;
 
 fi
 

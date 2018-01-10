@@ -239,10 +239,19 @@ class Train():
 
         if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] \
                 != constants.SAT_TYPE.UNADAPTED:
-            p = Process(target = run_reader_queue, args = (data_queue, tr_x , tr_y, self.__config["do_shuf"], False, tr_sat))
-        else:
-            p = Process(target = run_reader_queue, args = (data_queue, tr_x, tr_y, self.__config["do_shuf"], False))
+            p = Process(target = run_reader_queue, args = (data_queue, tr_x , tr_y,
+                                                           self.__config[constants.CONF_TAGS.DO_SHUF],
+                                                           self.__config[constants.CONF_TAGS.DEBUG],
+                                                           self.__config[constants.CONF_TAGS.RANDOM_SEED] + epoch,
+                                                           tr_sat))
 
+        else:
+            p = Process(target = run_reader_queue, args = (data_queue,
+                                                           tr_x,
+                                                           tr_y,
+                                                           self.__config[constants.CONF_TAGS.DO_SHUF],
+                                                           self.__config[constants.CONF_TAGS.DEBUG],
+                                                           self.__config[constants.CONF_TAGS.RANDOM_SEED] + epoch))
         #start queue ...
         p.start()
 
@@ -311,10 +320,17 @@ class Train():
         if self.__config[constants.CONF_TAGS.SAT_CONF][constants.CONF_TAGS.SAT_TYPE] \
                 != constants.SAT_TYPE.UNADAPTED:
             p = Process(target = run_reader_queue, args = (data_queue, cv_x , cv_y,
-                                                           self.__config[constants.CONF_TAGS.DO_SHUF], False, cv_sat))
+                                                           self.__config[constants.CONF_TAGS.DO_SHUF],
+                                                           False,
+                                                           0,
+                                                           cv_sat))
         else:
-            p = Process(target = run_reader_queue, args = (data_queue, cv_x, cv_y,
-                                                           self.__config[constants.CONF_TAGS.DO_SHUF], False))
+            p = Process(target = run_reader_queue, args = (data_queue,
+                                                           cv_x,
+                                                           cv_y,
+                                                           self.__config[constants.CONF_TAGS.DO_SHUF],
+                                                           0,
+                                                           False))
 
         #starting the queue...
         p.start()

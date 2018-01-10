@@ -299,7 +299,12 @@ class DeepBidirRNN:
             with tf.variable_scope(constants.SCOPES.OUTPUT):
                 for target_id, num_targets in language_target_dict.items():
 
-                    scope="output_fc_"+language_id+"_"+target_id
+                    scope = "output_fc"
+
+                    if(len(language_scheme.items()) > 1):
+                        scope=scope+"_"+language_id
+                    if(len(language_target_dict.items()) > 1):
+                        scope=scope+"_"+target_id
 
                     logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs,
                                                               num_outputs=num_targets,
@@ -339,11 +344,16 @@ class DeepBidirRNN:
                 == constants.SAT_SATGES.TRAIN_SAT:
                 var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=constants.SCOPES.SPEAKER_ADAPTAION)
             else:
-                var_list = self.get_variables_by_lan(language_id)
+                if(len(language_scheme.items()) > 1):
+                    var_list = self.get_variables_by_lan(language_id)
+                else:
+                    var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+
 
             if(self.is_training):
                 print(80 * "-")
-                print("for language: "+language_id)
+                if(len(language_scheme.items()) > 1):
+                    print("for language: "+language_id)
                 print("following variables will be optimized: ")
                 print(80 * "-")
                 for var in var_list:

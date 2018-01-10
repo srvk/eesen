@@ -3,9 +3,13 @@ import random
 
 #TODO we should do something like: def run_reader_queue(queue, do_shuf, reader_x=None, reader_y=None, reader_sat=None):
 #TODO after changing this signature all calls have to be made using the key_id of argument
-def run_reader_queue(queue, reader_x, reader_y, do_shuf, is_debug, reader_sat= None):
+
+def run_reader_queue(queue, reader_x, reader_y, do_shuf, is_debug, seed, reader_sat= None):
+
+    random.seed(seed)
 
     idx_shuf = list(range(reader_x.get_num_batches()))
+
     if do_shuf:
         random.shuffle(idx_shuf)
 

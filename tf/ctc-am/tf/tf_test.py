@@ -473,7 +473,6 @@ class Test():
         m_acum_samples[ybatch[1]] += batch_size
 
 
-
     #important to note that shuf = False (to be able to reuse uttid)
     def __generate_queue (self, config, data):
 
@@ -484,17 +483,17 @@ class Test():
         if test_y:
             if test_sat:
                 #x, y, sat
-                process = Process(target= run_reader_queue, args= (data_queue, test_x, test_y, False, False, test_sat))
+                process = Process(target= run_reader_queue, args= (data_queue, test_x, test_y, False, False, 0, test_sat))
             else:
                 #x, y
-                process = Process(target = run_reader_queue, args= (data_queue, test_x, test_y, False, False, None))
+                process = Process(target = run_reader_queue, args= (data_queue, test_x, test_y, False, False, 0, None))
         else:
             if test_sat:
                 #x, sat
-                process = Process(target = run_reader_queue, args= (data_queue, test_x, None, False, False, test_sat))
+                process = Process(target = run_reader_queue, args= (data_queue, test_x, None, False, False, 0, test_sat))
             else:
                 #x
-                process =  Process(target = run_reader_queue, args = (data_queue, test_x, None, False, False, None))
+                process =  Process(target = run_reader_queue, args = (data_queue, test_x, None, False, False, 0, None))
 
         return process, data_queue, test_x
 

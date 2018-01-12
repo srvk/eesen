@@ -65,8 +65,7 @@ dir=$3
 #creating tmp directory (concrete tmp path is defined in path.sh)
 tmpdir=`mktemp -d`
 
-trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" ERR
-trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
+trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" ERR EXIT
 
 #checking folders
 for f in $data_tr/feats.scp $data_cv/feats.scp; do
@@ -147,6 +146,7 @@ else
 fi
 
 subsampling=`echo $train_opts | sed 's/.*--subsampling \([0-9]*\).*/\1/'`
+
 if [[ "$subsampling" == [0-9]* ]]; then
     #this is needed for the filtering - let's hope this value is correct
     :

@@ -121,7 +121,7 @@ if [ $stage -le 2 ]; then
 
   # merge two datasets into one
   mkdir -p data/train_all
-  for f in spk2utt utt2spk wav.scp text segments reco2file_and_channel; do
+  for f in spk2utt utt2spk wav.scp text segments reco2file_and_channel feats.scp cmvn.scp; do
         cat data/train_fisher_nodup/$f data/train_nodup/$f > data/train_all/$f
   done
 

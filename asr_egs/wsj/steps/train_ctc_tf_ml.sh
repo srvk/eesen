@@ -16,9 +16,15 @@ train_opts="--store_model --lstm_type=cudnn --augment"
 model="deepbilstm"
 nlayer=5
 nhidden=320
-nproj=0
 nfinalproj=0
 norm=false
+
+nproj=""
+nfinalproj=
+ninitproj=""
+
+
+
 
 #speaker adaptation configuration
 sat_type=""
@@ -61,12 +67,17 @@ unset "all_lan[${#all_lan[@]}-1]"
 
 #creating tmp directory (concrete tmp path is defined in path.sh)
 tmpdir=`mktemp -d`
-trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" ERR
-trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
-
+trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" ERR EXIT
 
 
 ## Adjust parameter variables
+
+
+if $debug; then
+    debug="--debug"
+else
+    debug=""
+fi
 
 if $force_lr_epoch_ckpt; then
     force_lr_epoch_ckpt="--force_lr_epoch_ckpt"
@@ -74,10 +85,8 @@ else
     force_lr_epoch_ckpt=""
 fi
 
-if $debug; then
-    debug="--debug"
-else
-    debug=""
+if [ -n "$ninitproj" ]; then
+    ninitproj="--ninitproj $ninitproj"
 fi
 
 if $norm ; then
@@ -166,7 +175,7 @@ for language_dir in "${all_lan[@]}"; do
 
     echo copying training features ...
 
-    cv_folder=$(ls $language_dir | grep \_cv)
+    cv_folder=$(ls $language_dir | grep \_dev)
 
     if [ -z "$cv_folder" ]; then
 	echo "no training folder found for language: $language_name ($language_dir)"
@@ -182,7 +191,7 @@ for language_dir in "${all_lan[@]}"; do
     copy-feats "$feats_cv" ark,scp:$tmpdir/$language_name/cv.ark,$tmpdir/$language_name/cv_local.scp || exit 1;
 
 
-    tr_folder=$(ls $language_dir | grep \_tr)
+    tr_folder=$(ls $language_dir | grep \_nodup)
 
     if [ -z "$tr_folder" ]; then
 	echo "no training folder found for language: $language_name ($language_dir)"
@@ -199,7 +208,7 @@ for language_dir in "${all_lan[@]}"; do
     copy-feats "$feats_tr" ark,scp:$tmpdir/$language_name/train.ark,$tmpdir/$language_name/train_local.scp || exit 1;
 
 
-    labels_tr=$(ls $language_dir | grep labels | grep \.tr)
+    labels_tr=$(ls $language_dir | grep labels | grep \.tr.gz)
 
     if [ -z "$labels_tr" ]; then
 	echo "no training labels found: $language_name ($language_dir)"
@@ -207,7 +216,7 @@ for language_dir in "${all_lan[@]}"; do
 	exit
     fi
 
-    labels_cv=$(ls $language_dir | grep labels | grep \.cv)
+    labels_cv=$(ls $language_dir | grep labels | grep \.cv.gz)
 
     if [ -z "$labels_tr" ]; then
 	echo "no training labels found: $language_name ($language_dir)"
@@ -217,8 +226,8 @@ for language_dir in "${all_lan[@]}"; do
 
     echo copying labels ...
 
-    cp $language_dir/labels.tr $tmpdir/$language_name/ || exit 1
-    cp $language_dir/labels.cv $tmpdir/$language_name/ || exit 1
+    gzip -cd  $language_dir/labels.tr.gz > $tmpdir/$language_name/labels.tr || exit 1
+    gzip -cd  $language_dir/labels.cv.gz > $tmpdir/$language_name/labels.cv || exit 1
 
     echo cleaning train set ...
 
@@ -244,7 +253,7 @@ echo "TRAINING STARTS [$cur_time]"
 
 
 $train_tool $train_opts --lr_rate $learn_rate --batch_size $batch_size --l2 $l2 \
-    --nhidden $nhidden --nlayer $nlayer $nproj  $nfinalproj $ckpt $max_iters \
+    --nhidden $nhidden $ninitproj $nproj $nfinalproj --nlayer $nlayer $nproj  $nfinalproj $ckpt $max_iters \
     --train_dir $dir --data_dir $tmpdir --half_after $half_after $sat_stage $sat_type $sat_nlayer $debug --model $model $window $norm $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt $import_config  || exit 1;
 
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`

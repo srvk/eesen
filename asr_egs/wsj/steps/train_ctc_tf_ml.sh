@@ -67,7 +67,7 @@ unset "all_lan[${#all_lan[@]}-1]"
 
 #creating tmp directory (concrete tmp path is defined in path.sh)
 tmpdir=`mktemp -d`
-trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" ERR EXIT
+trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir &" ERR EXIT
 
 
 ## Adjust parameter variables
@@ -246,11 +246,13 @@ echo ""
 echo final distribution of data_dir:
 echo ""
 
+#path were cache cuda binaries will be compiled and stored
+export CUDA_CACHE_PATH=$tmpdir
+
 find $tmpdir
 
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
 echo "TRAINING STARTS [$cur_time]"
-
 
 $train_tool $train_opts --lr_rate $learn_rate --batch_size $batch_size --l2 $l2 \
     --nhidden $nhidden $ninitproj $nproj $nfinalproj --nlayer $nlayer $nproj  $nfinalproj $ckpt $max_iters \

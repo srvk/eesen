@@ -17,7 +17,11 @@ class Train():
         self.__config = config
         self.__model = create_model(config)
 
+        # config = tf.ConfigProto()
+        # config.gpu_options.allow_growth = True
+        # self.__sess = tf.Session(config=config)
         self.__sess = tf.Session()
+
         self.max_targets_layers = 0
         self.__ter_buffer = [float('inf'), float('inf')]
 

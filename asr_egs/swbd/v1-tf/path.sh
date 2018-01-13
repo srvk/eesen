@@ -74,25 +74,33 @@ elif [[ `uname -n` =~ comet* ]]; then
 
   export PYTHONPATH=/pylon2/ir3l68p/sanabria/eesen/tf/ctc-am
 
+
 elif [[ `uname -n` =~ islpc* ]]; then
+
   # islpc-cluster
-  export LD_LIBRARY_PATH=/usr/local/cuda-8.0/lib64:$LD_LIBRARY_PATH
+  #export LD_LIBRARY_PATH=/usr/local/cuda-8.0/lib64:$LD_LIBRARY_PATH
   export BABEL_DATA=/data/MM3/babel-corpus
   #export PYTHONPATH=/data/ASR5/fmetze/asr-test/lorelei-audio/egs/asr/s5c/201-haitian-flp:
   #export PYTHONPATH=./eesen-tf/tf/ctc-train:./eesen-tf/tf/ctc-decode/code:./eesen-tf/tf/rnn-lm/code:/data/MM23/sdalmia/lorelei-audio/egs/asr/s5c/307-amharic-flp-tf-epitran
-  export PYTHONPATH=/data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/tf/ctc-am:/data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/tf/char-rnn-lm/
+  export PYTHONPATH=/data/ASR5/ramons_2/sinbad_projects/eesen_new/tf/ctc-am
   #export PYTHONPATH=/data/ASR5/fmetze/eesen-tf/tf/ctc-train:/data/ASR5/fmetze/eesen-tf/tf/rnn-lm/code:/data/ASR5/fmetze/eesen-tf/tf/ctc-decode/code
   #export EESEN_ROOT=/data/ASR5/fmetze/eesen-block-copy
   export EESEN_ROOT=/data/MM23/sdalmia/eesen
   export PATH=$PWD/utils/:$EESEN_ROOT/src/netbin:$EESEN_ROOT/src/featbin:$EESEN_ROOT/src/decoderbin:$EESEN_ROOT/src/fstbin:$EESEN_ROOT/tools/openfst/bin:$EESEN_ROOT/tools/sph2pipe_v2.5:/data/ASR5/fmetze/kaldi-latest/src/latbin:/data/ASR5/fmetze/kaldi-latest/src/featbin:$PATH
   #source ~/tf/bin/activate
 
+  #source /data/ASR5/ramons_2/sinbad_projects/myenvs/tf12_p35_islpc/bin/activate
+  #source /data/ASR5/ramons_2/sinbad_projects/myenvs/keras20/bin/activate
+
   unset CUDA_VISIBLE_DEVICES
   unset GPU_DEVICE_ORDINAL
-
+  #export CUDA_VISIBLE_DEVICES=1
   if [ "$(lsof -n -w -t /dev/nvidia0)" != "" ]; then
           kill -9 $(lsof -n -w -t /dev/nvidia0)
   fi
+  export LD_LIBRARY_PATH="/usr/local/cuda-8.0/lib64/"
+
+  #export CUDA_VISIBLE_DEVICES=1
 
 else
   # CMU Rocks cluster
@@ -113,9 +121,14 @@ else
   export BABEL_DATA=/data/MM23/sdalmia/eval_lorelei/il5_tig_set1_tts
   export KALDI_ROOT=/data/ASR1/tools/kaldi
   export EESEN_ROOT=/data/MM23/sdalmia/eesen
+
   #export PYTHONPATH=/data/ASR5/fmetze/asr-test/lorelei-audio/egs/asr/s5c/201-haitian-flp:/data/ASR5/fmetze/eesen-tf/tf/tf1
   #export PYTHONPATH=./eesen-tf/tf/ctc-train:./eesen-tf/tf/ctc-decode/code:./eesen-tf/tf/rnn-lm/code
-  export PYTHONPATH=/data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/tf/ctc-am:/data/ASR5/ramons_2/sinbad_projects/youtube_project/am/eesen_20170714/tf/char-rnn-lm/
+
+  #current version
+  #export PYTHONPATH=/data/ASR5/ramons_2/sinbad_projects/eesen_new/tf/ctc-am
+  #old version
+  export PYTHONPATH=/data/ASR5/ramons_2/sinbad_projects/eesen/tf/ctc-am
 
   #. /export/babel/data/software/env.sh
   export PATH=$PWD/utils/:$EESEN_ROOT/src/netbin:$EESEN_ROOT/src/featbin:$EESEN_ROOT/src/decoderbin:$EESEN_ROOT/src/fstbin:$EESEN_ROOT/tools/openfst/bin:$EESEN_ROOT/tools/sph2pipe_v2.5:/home/fmetze/tools/kaldi/src/bin:/data/ASR5/fmetze/kaldi-latest/src/latbin:$PATH
@@ -133,10 +146,9 @@ else
   export PATH=/data/ASR5/ramons_2/tools/anaconda2/bin:$PATH
   source activate tensorflow_gpu_1_2
 
-  if [ "$(lsof -n -w -t /dev/nvidia`qstat -n $PBS_JOBID|awk 'END {split ($NF, a, "/"); printf ("%s\n", a[2])}'`)" != "" ]; then
-    kill -9 $(lsof -n -w -t /dev/nvidia`qstat -n $PBS_JOBID|awk 'END {split ($NF, a, "/"); printf ("%s\n", a[2])}'`)
-  fi
-
+  #if [ "$(lsof -n -w -t /dev/nvidia`qstat -n $PBS_JOBID|awk 'END {split ($NF, a, "/"); printf ("%s\n", a[2])}'`)" != "" ]; then
+    #kill -9 $(lsof -n -w -t /dev/nvidia`qstat -n $PBS_JOBID|awk 'END {split ($NF, a, "/"); printf ("%s\n", a[2])}'`)
+  #fi
 fi
 
 [ -f ${EESEN_ROOT}/tools/env.sh ] && . ${EESEN_ROOT}/tools/env.sh

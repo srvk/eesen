@@ -65,7 +65,7 @@ dir=$3
 #creating tmp directory (concrete tmp path is defined in path.sh)
 tmpdir=`mktemp -d`
 
-trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" ERR EXIT
+trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir &" ERR EXIT
 
 #checking folders
 for f in $data_tr/feats.scp $data_cv/feats.scp; do
@@ -237,6 +237,9 @@ for f in $tmpdir/*.cv; do
 	   --subsampling $subsampling --scp_out $tmpdir/cv_local.scp
 
 done
+
+#path were cache cuda binaries will be compiled and stored
+export CUDA_CACHE_PATH=$tmpdir
 
 
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`

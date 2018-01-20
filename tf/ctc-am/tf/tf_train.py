@@ -64,7 +64,8 @@ class Train():
                     self.__ter_buffer = [float('inf'), float('inf')]
                     best_epoch=1
                 else:
-                    lr_rate = self.__compute_new_lr_rate(alpha)
+                    lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
+                    #lr_rate = self.__compute_new_lr_rate(alpha)
 
             for epoch in range(alpha, self.__config[constants.CONF_TAGS.NEPOCH]):
 

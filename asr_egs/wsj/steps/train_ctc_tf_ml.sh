@@ -175,7 +175,7 @@ for language_dir in "${all_lan[@]}"; do
 
     echo copying training features ...
 
-    cv_folder=$(ls $language_dir | grep \_dev)
+    cv_folder=$(ls $language_dir | grep \_cv)
 
     if [ -z "$cv_folder" ]; then
 	echo "no training folder found for language: $language_name ($language_dir)"
@@ -191,7 +191,7 @@ for language_dir in "${all_lan[@]}"; do
     copy-feats "$feats_cv" ark,scp:$tmpdir/$language_name/cv.ark,$tmpdir/$language_name/cv_local.scp || exit 1;
 
 
-    tr_folder=$(ls $language_dir | grep \_nodup)
+    tr_folder=$(ls $language_dir | grep \_tr)
 
     if [ -z "$tr_folder" ]; then
 	echo "no training folder found for language: $language_name ($language_dir)"
@@ -208,15 +208,15 @@ for language_dir in "${all_lan[@]}"; do
     copy-feats "$feats_tr" ark,scp:$tmpdir/$language_name/train.ark,$tmpdir/$language_name/train_local.scp || exit 1;
 
 
-    labels_tr=$(ls $language_dir | grep labels | grep \.tr.gz)
+    labels_tr=$(ls $language_dir | grep labels | grep \.tr)
 
     if [ -z "$labels_tr" ]; then
 	echo "no training labels found: $language_name ($language_dir)"
-	echo "training dir should have \".cv\""
+	echo "training dir should have \".tr\""
 	exit
     fi
 
-    labels_cv=$(ls $language_dir | grep labels | grep \.cv.gz)
+    labels_cv=$(ls $language_dir | grep labels | grep \.cv)
 
     if [ -z "$labels_tr" ]; then
 	echo "no training labels found: $language_name ($language_dir)"
@@ -226,8 +226,8 @@ for language_dir in "${all_lan[@]}"; do
 
     echo copying labels ...
 
-    gzip -cd  $language_dir/labels.tr.gz > $tmpdir/$language_name/labels.tr || exit 1
-    gzip -cd  $language_dir/labels.cv.gz > $tmpdir/$language_name/labels.cv || exit 1
+    cp $language_dir/labels.tr $tmpdir/$language_name/ || exit 1
+    cp $language_dir/labels.cv $tmpdir/$language_name/ || exit 1
 
     echo cleaning train set ...
 

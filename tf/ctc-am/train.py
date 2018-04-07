@@ -70,13 +70,16 @@ def main_parser():
     parser.add_argument('--batch_norm', default = False, dest='batch_norm', action='store_true', help='add batch normalization to FC layers')
     parser.add_argument('--grad_opt', default = "grad", help='optimizer: grad, adam, momentum, cuddnn only work with grad')
 
-    #runtime arguments
+    #training runtime arguments
     parser.add_argument('--nepoch', default = 30, type=int, help='#epoch')
     parser.add_argument('--lr_rate', default = 0.03, type=float, help='learning rate')
     parser.add_argument('--min_lr_rate', default = 0.0005, type=float, help='minimal learning rate')
     parser.add_argument('--half_period', default = 4, type=int, help='half period in epoch of learning rate')
     parser.add_argument('--half_rate', default = 0.5, type=float, help='halving factor')
     parser.add_argument('--half_after', default = 8, type=int, help='halving becomes enabled after this many epochs')
+    parser.add_argument('--dropout', default = 0.0, type=float, help='dropout, when set to 0, dropout is disabled, when set to 0.1 10% of the frames will be dropped out')
+    parser.add_argument('--clip_norm', default = False, action='store_true', help='clip the gradient by norm')
+    parser.add_argument('--kl_weight', default = 0.0, type=float, help='weight for label smoothing using kl divergence')
 
     #sat arguments
     parser.add_argument('--sat_type', default = constants.SAT_TYPE.UNADAPTED, help='apply and train a sat layer')
@@ -177,13 +180,16 @@ def create_global_config(args):
         constants.CONF_TAGS.BATCH_SIZE: args.batch_size,
         constants.CONF_TAGS.DO_SHUF: args.do_shuf,
 
-        #runtime arguments
+        #training runtime arguments
         constants.CONF_TAGS.NEPOCH: args.nepoch,
         constants.CONF_TAGS.LR_RATE: args.lr_rate,
         constants.CONF_TAGS.MIN_LR_RATE: args.min_lr_rate,
         constants.CONF_TAGS.HALF_PERIOD: args.half_period,
         constants.CONF_TAGS.HALF_RATE: args.half_rate,
         constants.CONF_TAGS.HALF_AFTER: args.half_after,
+        constants.CONF_TAGS.DROPOUT: args.dropout,
+        constants.CONF_TAGS.CLIP_NORM: args.clip_norm,
+        constants.CONF_TAGS.KL_WEIGHT: args.kl_weight,
 
         #architecture arguments
         #TODO this can be joined with one argument

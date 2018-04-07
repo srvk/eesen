@@ -9,6 +9,7 @@ print(sys.version)
 print("now:", time.strftime("%a %Y-%m-%d %H:%M:%S"))
 try:
     print("tf:", tf.__version__)
+    print("env:", sys.executable)
     print("cwd:", os.getcwd())
     f=os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
     print("library:", f)

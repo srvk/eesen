@@ -1,8 +1,8 @@
-from models.achen import *
-from models.achen_conv import *
-from models.achen_sum import *
-from models.convnet import *
-from models.deep_bilstm import *
+from models_16.achen import *
+from models_16.achen_conv import *
+from models_16.achen_sum import *
+from models_16.convnet import *
+from models_16.deep_bilstm import *
 #from models.arcnet_video import *
 
 

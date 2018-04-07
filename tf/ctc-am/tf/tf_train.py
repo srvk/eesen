@@ -1,6 +1,11 @@
 from multiprocessing import Process, Queue
 import sys
-from models.model_factory import create_model
+import tensorflow as tf
+if(tf.__version__ == "1.6.0"):
+    from models_16.model_factory import create_model
+else:
+    from models.model_factory import create_model
+
 import os, re, time, random
 import tensorflow as tf
 import pdb
@@ -17,9 +22,9 @@ class Train():
         self.__config = config
         self.__model = create_model(config)
 
-        # config = tf.ConfigProto()
-        # config.gpu_options.allow_growth = True
-        # self.__sess = tf.Session(config=config)
+        config = tf.ConfigProto()
+        #config.gpu_options.allow_growth = True
+        self.__sess = tf.Session(config=config)
         self.__sess = tf.Session()
 
         self.max_targets_layers = 0
@@ -273,18 +278,18 @@ class Train():
             feed, batch_size, index_correct_lan = self.__prepare_feed(data, lr_rate)
 
 
-            batch_cost, batch_ters, _  = self.__sess.run([self.__model.debug_costs[index_correct_lan],
+            batch_cost, batch_edit_distance, _  = self.__sess.run([self.__model.debug_costs[index_correct_lan],
                                                        self.__model.ters[index_correct_lan],
                                                        self.__model.opt[index_correct_lan]],
                                                     feed)
 
             #updating values...
-            self.__update_counters(train_ters, train_cost, ntrain, ntr_labels, batch_ters, batch_cost, batch_size, data[1])
+            self.__update_counters(train_ters, train_cost, ntrain, ntr_labels, batch_edit_distance, batch_cost, batch_size, data[1])
 
             #print if in debug mode
             if self.__config[constants.CONF_TAGS.DEBUG] == True:
 
-                self.__print_counts_debug(epoch, batch_counter, tr_x.get_num_batches(), batch_cost, batch_size, batch_ters, data_queue)
+                self.__print_counts_debug(epoch, batch_counter, tr_x.get_num_batches(), batch_cost, batch_size, batch_edit_distance, data_queue)
                 batch_counter += 1
         p.join()
         p.terminate()

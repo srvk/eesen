@@ -20,7 +20,7 @@ fisher_dirs="/path/to/LDC2004T19/fe_03_p1_tran/ /path/to/LDC2005T19/fe_03_p2_tra
 eval2000_dirs="/path/to/LDC2002S09/hub5e_00 /path/to/LDC2002T43"
 
 # CMU Rocks
-swbd=/data/ASR4/babel/ymiao/CTS/LDC97S62
+#swbd=/data/ASR4/babel/ymiao/CTS/LDC97S62
 #fisher_dirs="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/ /data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
 #eval2000_dirs="/data/ASR4/babel/ymiao/CTS/LDC2002S09/hub5e_00 /data/ASR4/babel/ymiao/CTS/LDC2002T43"
 
@@ -53,20 +53,20 @@ dir_lm=exp/train_lm_char_l${lm_nlayer}_c${lm_ncell_dim}_e${lm_embed_size}_d${lm_
 fisher_text_dir="./data/fisher/"
 
 
-if [ $stage -le 1 ]; then
-  echo =====================================================================
-  echo "                       Data Preparation                            "
-  echo =====================================================================
+#if [ $stage -le 1 ]; then
+  #echo =====================================================================
+  #echo "                       Data Preparation                            "
+  #echo =====================================================================
 
-  # Use the same datap prepatation script from Kaldi
-  local/swbd1_data_prep.sh $swbd  || exit 1;
+  ## Use the same datap prepatation script from Kaldi
+  #local/swbd1_data_prep.sh $swbd  || exit 1;
 
-  # Represent word spellings using a dictionary-like format
-  local/swbd1_prepare_char_dict.sh || exit 1;
+  ## Represent word spellings using a dictionary-like format
+  #local/swbd1_prepare_char_dict.sh || exit 1;
 
-  # Data preparation for the eval2000 set
-  local/eval2000_data_prep.sh $eval2000_dirs
-fi
+  ## Data preparation for the eval2000 set
+  #local/eval2000_data_prep.sh $eval2000_dirs
+#fi
 
 
 if [ $stage -le 2 ]; then
@@ -77,28 +77,26 @@ if [ $stage -le 2 ]; then
   fbankdir=fbank_pitch
 
   # Generate the fbank features; by default 40-dimensional fbanks on each frame
-  steps/make_fbank.sh --cmd "$train_cmd" --nj 32 data/train exp/make_fbank_pitch/train $fbankdir || exit 1;
-  steps/compute_cmvn_stats.sh data/train exp/make_fbank_pitch/train $fbankdir || exit 1;
-  utils/fix_data_dir.sh data/train || exit;
+  steps/make_fbank.sh --cmd "$train_cmd" --nj 32 data_pitch/train exp/make_fbank_pitch/train $fbankdir || exit 1;
+  steps/compute_cmvn_stats.sh data_pitch/train exp/make_fbank_pitch/train $fbankdir || exit 1;
+  utils/fix_data_dir.sh data_pitch/train || exit;
 
-  steps/make_fbank.sh --cmd "$train_cmd" --nj 10 data/eval2000 exp/make_fbank_pitch/eval2000 $fbankdir || exit 1;
-  steps/compute_cmvn_stats.sh data/eval2000 exp/make_fbank_pitch/eval2000 $fbankdir || exit 1;
-  utils/fix_data_dir.sh data/eval2000 || exit;
+  steps/make_fbank.sh --cmd "$train_cmd" --nj 10 data_pitch/eval2000 exp/make_fbank_pitch/eval2000 $fbankdir || exit 1;
+  steps/compute_cmvn_stats.sh data_pitch/eval2000 exp/make_fbank_pitch/eval2000 $fbankdir || exit 1;
+  utils/fix_data_dir.sh data_pitch/eval2000 || exit;
 
   # Use the first 4k sentences as dev set, around 5 hours
-  utils/subset_data_dir.sh --first data/train 4000 data/train_dev
+  utils/subset_data_dir.sh --first data_pitch/train 4000 data_pitch/train_dev
   n=$[`cat data/train/segments | wc -l` - 4000]
-  utils/subset_data_dir.sh --last data/train $n data/train_nodev
+  utils/subset_data_dir.sh --last data_pitch/train $n data_pitch/train_nodev
 
   # Create a smaller training set by selecting the first 100k utterances, around 110 hours
-  utils/subset_data_dir.sh --first data/train_nodev 100000 data/train_100k
-  local/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup
+  utils/subset_data_dir.sh --first data_pitch/train_nodev 100000 data_pitch/train_100k
+  local/remove_dup_utts.sh 200 data_pitch/train_100k data_pitch/train_100k_nodup
 
   # Finally the full training set, around 286 hours
-  local/remove_dup_utts.sh 300 data/train_nodev data/train_nodup
+  local/remove_dup_utts.sh 300 data_pitch/train_nodev data_pitch/train_nodup
 fi
-
-exit
 
 if [ $stage -le 3 ]; then
   echo =====================================================================
@@ -117,7 +115,7 @@ if [ $stage -le 3 ]; then
   python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_dev/text --input_units ./data/local/dict_char/units.txt --output_labels $dir_am/labels.cv || exit 1
 
   # Train the network with CTC. Refer to the script for details about the arguments
-  steps/train_ctc_tf.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size 16 --learn_rate 0.005 --half_after 6 --model $am_model --window $am_window --continue_ckpt ./exp/train_char_l4_c320_mdeepbilstm_w3_nfalse/model/epoch09.ckpt --norm $am_norm data/train_nodup data/train_dev $dir_am || exit 1;
+  steps/train_ctc_tf.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size 16 --lr_rate 0.005 --half_after 6 --model $am_model --window $am_window --norm $am_norm data/train_nodup data/train_dev $dir_am || exit 1;
 
 fi
 
@@ -142,88 +140,3 @@ if [ $stage -le 4 ]; then
   exit
 fi
 
-if [ $stage -le 5 ]; then
-  echo =====================================================================
-  echo "             Char RNN LM Training with the Full Set                "
-  echo =====================================================================
-
-  mkdir -p $dir_lm
-  mkdir -p ./data/local/dict_char_lm/
-
-  echo ""
-  echo creating labels files from train...
-  echo ""
-
-  python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_nodup/text --input_units ./data/local/dict_char/units.txt --output_units ./data/local/dict_char_lm/units.txt --output_labels $dir_lm/labels.tr --lm
-
-  echo ""
-  echo creating word list from train...
-  echo ""
-
-  python ./local/swbd1_prepare_word_list_tf.py --text_file ./data/train_nodup/text --output_word_list $dir_lm/words.tr --ignore_noises
-
-
-  echo ""
-  echo creating labels files from cv...
-  echo ""
-
-  python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_dev/text --input_units ./data/local/dict_char_lm/units.txt --output_labels $dir_lm/labels.cv --lm
-
-  echo ""
-  echo creating word list from cv...
-  echo ""
-
-  python ./local/swbd1_prepare_word_list_tf.py --text_file ./data/train_dev/text --output_word_list $dir_lm/words.cv --ignore_noises
-
-  echo ""
-  echo generating fisher_data...
-  echo ""
-
-  ./local/swbd1_create_fisher_text.sh ./data/fisher/ $fisher_dir_a $fisher_dir_b
-
-
-  echo ""
-  echo creating labels files from fisher...
-  echo ""
-
-  python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/fisher/text --input_units ./data/local/dict_char_lm/units.txt --output_labels $dir_lm/labels.fisher --lm
-
-  echo ""
-  echo creating word list from fisher...
-  echo ""
-
-  python ./local/swbd1_prepare_word_list_tf.py --text_file ./data/fisher/text --output_word_list $dir_lm/words.fisher --ignore_noises
-
-
-  echo ""
-  echo fusing swbd data with fisher data...
-  echo ""
-
-  cat $dir_lm/labels.fisher >> $dir_lm/labels.tr
-
-  echo ""
-  echo fusing words files...
-  echo ""
-
-  cat $dir_lm/words.fisher > $dir_lm/words
-  cat $dir_lm/words.cv >> $dir_lm/words
-  cat $dir_lm/words.tr >> $dir_lm/words
-
-  echo ""
-  echo training with full swbd text...
-  echo ""
-
-  #./steps/train_char_lm.sh --train_dir $dir --nembed $lm_embed_size --nlayer $lm_nlayer --nhidden $lm_ncell_dim --batch_size $lm_batch_size --nepoch 100 --train_labels $dir/labels.tr --cv_labels $dir/labels.cv --drop_out $lm_drop_out --optimizer ${lm_optimizer}
-
-fi
-
-if [ $stage -le 6 ]; then
-  echo =====================================================================
-  echo "             	Decode Eval 2000 (AM + (char) LM)                  "
-  echo =====================================================================
-
-  mkdir -p $dir_lm/results/
-
-  ./steps/decode_ctc_am_char_rnn_tf.sh --lm_config $dir_lm/model/config.pkl --units_file data/local/dict_char_lm/units.txt --results_filename $dir_lm/results/eval2000_result.stm  --lm_weights_ckpt  $dir_lm/model/epoch14.ckpt --lm_config $dir_lm/model/config.pkl --ctc_probs $dir_am/results/epoch09/soft_prob_no_target_name.scp --lexicon_file $dir_lm/words --beam_size 10 --insertion_bonus 0.6 --decoding_strategy beam_search --blank_scaling 1 --lm_weight 1.5
-
-fi

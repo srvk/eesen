@@ -4,6 +4,7 @@ class MODEL_NAME:
     ACHEN_SUM="achen_sum"
     ACHEN_CONV="achen_conv"
     DEEP_BILSTM="deepbilstm"
+    DEEP_BILSTM_RELU="deepbilstmrelu"
     ARCNET="arc_net"
     ARCNET_VIDEO="arc_net_video"
     CONVNET="conv_net"
@@ -60,13 +61,16 @@ class CONF_TAGS:
     LANGUAGE_SCHEME = "target_scheme"
     INPUT_FEATS_DIM = "input_feats_dim"
 
-    #runtime arguments
+    #training runtime arguments
     NEPOCH="nepoch"
     LR_RATE="lr_rate"
     MIN_LR_RATE="min_lr_rate"
     HALF_PERIOD="half_period"
     HALF_RATE="half_rate"
     HALF_AFTER="half_after"
+    DROPOUT="drop_out"
+    CLIP_NORM="clip_norm"
+    KL_WEIGHT="kl_weight"
 
     #training conf
     RANDOM_SEED="random_seed"

@@ -18,4 +18,4 @@ NOTE:
 - these take a *long* time to run.
 
 For dropout and max perturbation, please cite:
-- "Improving LSTM-CTC based ASR performance in domains with limited training data", Jajadev Billa (https://arxiv.org/pdf/1707.00722.pdf)
+- "Improving LSTM-CTC based ASR performance in domains with limited training data", Jayadev Billa (https://arxiv.org/pdf/1707.00722.pdf)

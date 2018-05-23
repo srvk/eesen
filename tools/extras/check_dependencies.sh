@@ -33,6 +33,9 @@ for f in make gcc automake libtool autoconf patch grep bzip2 gzip git; do
   if ! which $f >&/dev/null; then
     echo "$0: $f is not installed."
     add_packages $f $f $f
+    if [[ $f == libtool ]]; then
+      add_packages libtool-bin libtool-bin libtool-bin
+    fi
   fi
 done
 
@@ -55,11 +58,13 @@ if which python >&/dev/null ; then
     else
       echo "$0: python 2.7 is not installed"
       add_packages python2.7 python2.7 python2.7
+      add_packages python-pip python-pip python-pip
     fi
   fi
 else
   echo "$0: python 2.7 is not installed"
   add_packages python2.7 python2.7 python2.7
+  add_packages python-pip python-pip python-pip
 fi
 
 printed=false

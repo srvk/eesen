@@ -175,6 +175,6 @@ def writeScp(filename, uttids, pointers):
     Takes a list of utterance IDs and a list of strings in the format "filename:offset",
       and writes them to a Kaldi script file.
     """
-    with smart_open(filename, "w") as f:
+    with smart_open(filename, "a+") as f:
         for uttid, pointer in zip(uttids, pointers):
             f.write("%s %s\n" % (uttid, pointer))

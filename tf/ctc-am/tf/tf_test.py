@@ -62,7 +62,7 @@ class Test():
 
             batch_counter = 0
             total_number_batches = len(test_x.get_batches_id())
-            save_counter = 0
+
             while True:
 
                 data = data_queue.get()
@@ -111,8 +111,7 @@ class Test():
                         if(config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF][constants.AUGMENTATION.SUBSAMPLING] > 0):
                             batches_id = self.__average_over_augmented_data(config, batches_id, soft_probs, log_soft_probs, log_likes, logits)
 
-                        self.__store_results(config, batches_id, soft_probs, log_soft_probs, log_likes, logits, save_counter)
-                        save_counter+=1
+                        self.__store_results(config, batches_id, soft_probs, log_soft_probs, log_likes, logits)
                         del soft_probs, log_soft_probs, log_likes, logits
                         soft_probs, log_soft_probs, log_likes, logits, batches_id = self.__create_result_containers(config)
                 batch_counter += 1
@@ -142,7 +141,7 @@ class Test():
 
                     batches_id = self.__average_over_augmented_data(config, batches_id, soft_probs, log_soft_probs, log_likes, logits)
 
-                self.__store_results(config, batches_id, soft_probs, log_soft_probs, log_likes, logits, save_counter)
+                self.__store_results(config, batches_id, soft_probs, log_soft_probs, log_likes, logits)
 
 
     def __prepare_request_list(self, config):
@@ -434,7 +433,7 @@ class Test():
             fp.close()
 
 
-    def __store_results(self, config, uttids, soft_probs, log_soft_probs, log_likes, logits, save_counter):
+    def __store_results(self, config, uttids, soft_probs, log_soft_probs, log_likes, logits):
 
         for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
             if(len(config[constants.CONF_TAGS.LANGUAGE_SCHEME]) > 1):
@@ -445,19 +444,18 @@ class Test():
                 os.makedirs(results_dir)
 
             for target_id, _ in target_scheme.items():
-                    save_id = "." + str(save_counter)
                     if(config[constants.CONFIG_TAGS_TEST.USE_PRIORS]):
-                        writeScp(os.path.join(results_dir, "log_like_"+target_id+save_id+".scp"), uttids[language_id][target_id],
-                                 writeArk(os.path.join(results_dir, "log_like_"+target_id+save_id+".ark"), log_likes[language_id][target_id], uttids[language_id][target_id]))
+                        writeScp(os.path.join(results_dir, "log_like_"+target_id+".scp"), uttids[language_id][target_id],
+                                 writeArk(os.path.join(results_dir, "log_like_"+target_id+".ark"), log_likes[language_id][target_id], uttids[language_id][target_id]))
 
-                    writeScp(os.path.join(results_dir, "soft_prob_"+target_id+save_id+".scp"), uttids[language_id][target_id],
-                             writeArk(os.path.join(results_dir, "soft_prob_"+target_id+save_id+".ark"), soft_probs[language_id][target_id], uttids[language_id][target_id]))
+                    writeScp(os.path.join(results_dir, "soft_prob_"+target_id+".scp"), uttids[language_id][target_id],
+                             writeArk(os.path.join(results_dir, "soft_prob_"+target_id+".ark"), soft_probs[language_id][target_id], uttids[language_id][target_id]))
 
-                    writeScp(os.path.join(results_dir, "log_soft_prob_"+target_id+save_id+".scp"), uttids[language_id][target_id],
-                             writeArk(os.path.join(results_dir, "log_soft_prob_"+target_id+save_id+".ark"), log_soft_probs[language_id][target_id], uttids[language_id][target_id]))
+                    writeScp(os.path.join(results_dir, "log_soft_prob_"+target_id+".scp"), uttids[language_id][target_id],
+                             writeArk(os.path.join(results_dir, "log_soft_prob_"+target_id+".ark"), log_soft_probs[language_id][target_id], uttids[language_id][target_id]))
 
-                    writeScp(os.path.join(results_dir, "logit_"+target_id+save_id+".scp"), uttids[language_id][target_id],
-                             writeArk(os.path.join(results_dir, "logit_"+target_id+save_id+".ark"), logits[language_id][target_id], uttids[language_id][target_id]))
+                    writeScp(os.path.join(results_dir, "logit_"+target_id+".scp"), uttids[language_id][target_id],
+                             writeArk(os.path.join(results_dir, "logit_"+target_id+".ark"), logits[language_id][target_id], uttids[language_id][target_id]))
 
 
     def __update_counters(self, config, batch_size, m_acum_samples, ybatch, m_acum_labels, batch_ters, m_acum_ters, batch_cost, m_acum_cost):

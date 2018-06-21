@@ -30,15 +30,6 @@ elif [[ `uname -n` =~ instance ]]; then
 elif [[ `uname -n` =~ bridges ]]; then
 
 
-  # PSC Bridges cluster
-  #module load atlas
-  ##module load cuda
-  ##module loaf cuda/8.0RC
-  ##module cuda/7.5
-  #module cuda/9.0RC
-
-  #module load gcc/6.3.0
-
   export PYTHONPATH=/pylon2/ir3l68p/sanabria/eesen/tf/ctc-am
 
   export EESEN_ROOT=/pylon2/ir3l68p/metze/eesen/
@@ -79,7 +70,7 @@ elif [[ `uname -n` =~ islpc* ]]; then
 
   # islpc-cluster
   export BABEL_DATA=/data/MM3/babel-corpus
-  export PYTHONPATH=/data/ASR5/ramons_2/sinbad_projects/eesen_new/tf-exp/ctc-am
+  export PYTHONPATH=/data/ASR5/ramons_2/sinbad_projects/eesen_new/tf/ctc-am
   export EESEN_ROOT=/data/MM23/sdalmia/eesen
   export PATH=$PWD/utils/:$EESEN_ROOT/src/netbin:$EESEN_ROOT/src/featbin:$EESEN_ROOT/src/decoderbin:$EESEN_ROOT/src/fstbin:$EESEN_ROOT/tools/openfst/bin:$EESEN_ROOT/tools/sph2pipe_v2.5:/data/ASR5/fmetze/kaldi-latest/src/latbin:/data/ASR5/fmetze/kaldi-latest/src/featbin:$PATH
 
@@ -88,12 +79,11 @@ elif [[ `uname -n` =~ islpc* ]]; then
     export LD_LIBRARY_PATH="/data/ASR5/ramons_2/sinbad_projects/cudnn/cudnn-9.0-linux-x64-v7/lib64/:/usr/local/cuda-9.0/lib64/"
 
   else
-    #this works with: 33, 34, 35, 36
-   source /data/ASR5/ramons_2/sinbad_projects/myenvs/tf18_p27_islpc/bin/activate
-  export LD_LIBRARY_PATH="/data/ASR5/ramons_2/sinbad_projects/cudnn/cudnn-9.0-linux-x64-v7/lib64/:/usr/local/cuda-9.0/lib64/"
+    #this works with: 33, 34, 35
+   source /data/ASR5/ramons_2/sinbad_projects/myenvs/tf16_p27_islpc/bin/activate
+  export LD_LIBRARY_PATH="/data/ASR5/ramons_2/sinbad_projects/cudnn/cudnn-9.1-linux-x64-v7.1/cuda/lib64/:/usr/local/cuda-9.1/lib64/"
 
   fi
-
 
 else
   # CMU Rocks cluster
@@ -105,16 +95,13 @@ else
   [ -n "$PBS_JOBID" ] && export THEANO_FLAGS="device=`qstat -n $PBS_JOBID | tail -n 1 | sed 's|.*/|gpu|g'`"
 
   export TMPDIR=/scratch
-
   export BABEL_DATA=/data/MM23/sdalmia/eval_lorelei/il5_tig_set1_tts
   export KALDI_ROOT=/data/ASR1/tools/kaldi
   export EESEN_ROOT=/data/MM23/sdalmia/eesen
-
   export PYTHONPATH=/data/ASR5/ramons_2/sinbad_projects/eesen/tf/ctc-am
 
   #. /export/babel/data/software/env.sh
   export PATH=$PWD/utils/:$EESEN_ROOT/src/netbin:$EESEN_ROOT/src/featbin:$EESEN_ROOT/src/decoderbin:$EESEN_ROOT/src/fstbin:$EESEN_ROOT/tools/openfst/bin:$EESEN_ROOT/tools/sph2pipe_v2.5:/home/fmetze/tools/kaldi/src/bin:/data/ASR5/fmetze/kaldi-latest/src/latbin:$PATH
-
   export PATH=/data/ASR5/ramons_2/tools/anaconda2/bin:$PATH
   source activate tensorflow_gpu_1_2
 

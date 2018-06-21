@@ -4,7 +4,34 @@ from utils.fileutils import debug
 import sys
 
 
-class DeepBidirRNNRelu:
+class DeepBidirRNN:
+
+    def kl_divergence_with_logits(self, q_logits, num_targets):
+        """Returns weighted KL divergence between distributions q and p.
+        https://github.com/tensorflow/models/blob/master/research/adversarial_text/adversarial_losses.py
+        Args:
+          q_logits: logits for 1st argument of KL divergence shape
+                    [batch_size, num_timesteps, num_classes]
+          p_logits: logits for 2nd argument of KL divergence with same shape q_logits.
+          weights: 1-D float tensor with shape [batch_size, num_timesteps].
+                   Elements should be 1.0 only on end of sequences
+        Returns:
+          KL: float scalar.
+        """
+        p_logits = tf.fill(
+            tf.shape(q_logits), float(1.0/float(num_targets)), name="homogenousdistribution")
+
+        p_logits = tf.transpose(p_logits, (1, 0, 2), name = "feat_transpose")
+
+        q_logits = tf.transpose(q_logits, (1, 0, 2), name = "feat_transpose")
+
+        q = tf.nn.softmax(q_logits)
+        kl = tf.reduce_sum(
+            q * (tf.nn.log_softmax(q_logits) - p_logits), -1)
+
+
+        return kl
+
 
     def length(self, sequence):
         with tf.variable_scope("seq_len"):
@@ -14,63 +41,54 @@ class DeepBidirRNNRelu:
         return length
 
 
-    #def my_cnn (self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope, batch_norm, is_training = True):
-
-    #    if(nlayer > 0 ):
-
-
-    def my_cudnn_lstm(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope, batch_norm, is_training = True):
+    def my_cudnn_lstm(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope, batch_norm, dropout, is_training = True):
         """
         outputs: time, batch_size, feat_dim
         """
         if (nlayer == 0):
-            exit()
-
+            sys.exit()
+            
         with tf.variable_scope(scope):
             if (nproj > 0):
                 ninput = nfeat
                 for i in range(nlayer):
                     with tf.variable_scope("layer%d" % i):
-                        cudnn_model = tf.contrib.cudnn_rnn.CudnnLSTM(1, nhidden, ninput, direction = 'bidirectional')
-                        #params_size_t = cudnn_model.params_size()
-                        input_h = tf.zeros([2, batch_size, nhidden], dtype = tf.float32, name = "init_lstm_h")
-                        input_c = tf.zeros([2, batch_size, nhidden], dtype = tf.float32, name = "init_lstm_c")
-                        bound = tf.sqrt(6. / (nhidden + nhidden))
 
-                        cudnn_params = tf.Variable(tf.random_uniform([cudnn_model.params_size()], -bound, bound), validate_shape = False, name = "params", trainable=self.is_trainable_sat)
+                        cudnn_model = tf.contrib.cudnn_rnn.CudnnLSTM(1,
+                                                                     nhidden,
+                                                                     'linear_input',
+                                                                     'bidirectional',
+                                                                     dropout,
+                                                                     kernel_initializer=tf.contrib.layers.xavier_initializer(),
+                                                                     bias_initializer=tf.contrib.layers.xavier_initializer())
 
-                        #TODO is_training=is_training should be changed!
-                        outputs, _output_h, _output_c = cudnn_model(is_training=is_training,
-                            input_data=outputs, input_h=input_h, input_c=input_c,
-                            params=cudnn_params)
 
-                        if batch_norm:
-                            outputs = tf.contrib.layers.batch_norm(outputs,
-                            scope = "bn", center=True, scale=True, decay=0.9,
-                            is_training=self.is_training_ph, updates_collections=None)
+                        outputs, _output_h = cudnn_model(outputs, None, True)
 
+                        #biases initialized in 0 (default)
+                        #weights initialized with xavier (default)
                         outputs = tf.contrib.layers.fully_connected(
-                            activation_fn = tf.nn.relu, inputs = outputs,
-                            num_outputs = nproj, scope = "intermediate_projection")
+                            activation_fn=None,
+                            inputs=outputs,
+                            num_outputs=nproj,
+                            scope="intermediate_projection")
+
 
                         if batch_norm:
                             outputs = tf.contrib.layers.batch_norm(outputs,
                             scope = "bn", center=True, scale=True, decay=0.9,
                             is_training=self.is_training_ph, updates_collections=None)
 
-                        ninput = nproj
             else:
-                cudnn_model = tf.contrib.cudnn_rnn.CudnnLSTM(nlayer, nhidden, nfeat, direction = 'bidirectional')
-                #params_size_t = cudnn_model.params_size()
-                input_h = tf.zeros([nlayer * 2, batch_size, nhidden], dtype = tf.float32, name = "init_lstm_h")
-                input_c = tf.zeros([nlayer * 2, batch_size, nhidden], dtype = tf.float32, name = "init_lstm_c")
-                bound = tf.sqrt(6. / (nhidden + nhidden))
+                cudnn_model = tf.contrib.cudnn_rnn.CudnnLSTM(nlayer,
+                                                             nhidden,
+                                                             'linear_input',
+                                                             'bidirectional',
+                                                             dropout,
+                                                             kernel_initializer=tf.contrib.layers.xavier_initializer(),
+                                                             bias_initializer=tf.contrib.layers.xavier_initializer())
 
-                cudnn_params = tf.Variable(tf.random_uniform([cudnn_model.params_size()], -bound, bound),
-                    validate_shape = False, name = "params", trainable=self.is_trainable_sat)
-
-                outputs, _output_h, _output_c = cudnn_model(is_training=is_training,input_data=outputs,
-                    input_h=input_h, input_c=input_c,params=cudnn_params)
+                outputs, _output_h = cudnn_model(outputs, None, True)
 
                 if batch_norm:
                     outputs = tf.contrib.layers.batch_norm(outputs,
@@ -81,7 +99,7 @@ class DeepBidirRNNRelu:
 
     def my_fuse_block_lstm(self, outputs, batch_size, nlayer, nhidden, nfeat, nproj, scope):
         """
-        outputs: time, batch_size, feat_dim
+        output: time, batch_size, feat_dim
         """
         with tf.variable_scope(scope):
             for i in range(nlayer):
@@ -191,6 +209,16 @@ class DeepBidirRNNRelu:
         nlayer = config[constants.CONF_TAGS.NLAYERS]
         clip = config[constants.CONF_TAGS.CLIP]
         nproj = config[constants.CONF_TAGS.NPROJ]
+        dropout = config[constants.CONF_TAGS.DROPOUT]
+        clip_norm = config[constants.CONF_TAGS.CLIP_NORM]
+        kl_weight = config[constants.CONF_TAGS.KL_WEIGHT]
+
+        batch_norm = config[constants.CONF_TAGS.BATCH_NORM]
+        lstm_type = config[constants.CONF_TAGS.LSTM_TYPE]
+        grad_opt = config[constants.CONF_TAGS.GRAD_OPT]
+
+        tf.set_random_seed(config[constants.CONF_TAGS.RANDOM_SEED])
+
 
         if(constants.CONF_TAGS.INIT_NPROJ in config):
             init_nproj = config[constants.CONF_TAGS.INIT_NPROJ]
@@ -201,10 +229,6 @@ class DeepBidirRNNRelu:
             finalfeatproj = config[constants.CONF_TAGS.FINAL_NPROJ]
         else:
             finalfeatproj = 0
-
-        batch_norm = config[constants.CONF_TAGS.BATCH_NORM]
-        lstm_type = config[constants.CONF_TAGS.LSTM_TYPE]
-        grad_opt = config[constants.CONF_TAGS.GRAD_OPT]
 
         if(constants.CONFIG_TAGS_TEST in config):
             self.is_training = False
@@ -260,37 +284,58 @@ class DeepBidirRNNRelu:
 
             outputs = self.my_sat_module(config, outputs, sat_t)
 
+        if batch_norm:
+            outputs = tf.contrib.layers.batch_norm(outputs, scope = "bn", center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
+
 
         if init_nproj > 0:
             outputs = tf.contrib.layers.fully_connected(
-                activation_fn=tf.nn.relu, inputs = outputs, num_outputs = init_nproj,
-                scope = "init_projection", biases_initializer = tf.contrib.layers.xavier_initializer())
-
-	    if batch_norm:
-		outputs = tf.contrib.layers.batch_norm(outputs, scope = "bn", center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
-
+                activation_fn = None, inputs = outputs, num_outputs = init_nproj,
+                scope = "init_projection")
 
         if lstm_type == "cudnn":
-            outputs = self.my_cudnn_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj,  "cudnn_lstm", batch_norm, self.is_training)
-
+            outputs = self.my_cudnn_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj,  "cudnn_lstm", batch_norm, dropout, self.is_training)
         elif lstm_type == "fuse":
             outputs = self.my_fuse_block_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "fuse_lstm")
         else:
             outputs = self.my_native_lstm(outputs, batch_size, nlayer, nhidden, nfeat, nproj, "native_lstm")
 
 
+
+        #we should first verify this....
+        #T time
+        #B batch
+        #D dimension of the output
+        # (T,B,D) => (B,T,D)
+
+        attention_size=3
+        with tf.variable_scope("attention"):
+            w_omega = tf.Variable(tf.random_normal([hidden_size, attention_size], stddev=0.1))
+            b_omega = tf.Variable(tf.random_normal([attention_size], stddev=0.1))
+            u_omega = tf.Variable(tf.random_normal([attention_size], stddev=0.1))
+
+        with tf.name_scope('v'):
+            # Applying fully connected layer with non-linear activation to each of the B*T timestamps;
+            #  the shape of `v` is (B,T,D)*(D,A)=(B,T,A), where A=attention_size
+            v = tf.tanh(tf.tensordot(inputs, w_omega, axes=1) + b_omega)
+
+        # For each of the timestamps its vector of size A from `v` is reduced with `u` vector
+        vu = tf.tensordot(v, u_omega, axes=1, name='vu')  # (B,T) shape
+        alphas = tf.nn.softmax(vu, name='alphas')  # (B,T) shape
+
+        # Output of (Bi-)RNN is reduced with attention vector; the result has (B,D) shape
+        outputs = tf.reduce_sum(inputs * tf.expand_dims(alphas, -1), 1)
+
+
+
         if finalfeatproj > 0:
             outputs = tf.contrib.layers.fully_connected(
-                activation_fn = tf.nn.relu, inputs = outputs, num_outputs = finalfeatproj,
-                scope = "final_projection", biases_initializer = tf.contrib.layers.xavier_initializer())
-
-	    if batch_norm:
-		outputs = tf.contrib.layers.batch_norm(outputs, scope = "bn", center=True, scale=True, decay=0.9, is_training=self.is_training_ph, updates_collections=None)
-
+                activation_fn = None, inputs = outputs, num_outputs = finalfeatproj,
+                scope = "final_projection")
 
         with tf.variable_scope("optimizer"):
             optimizer = None
-            # TODO: cudnn only supports grad, add check for this
+            # TODO: cudnn only supports grad, but I think that adam should also work
             if grad_opt == "grad":
                 optimizer = tf.train.GradientDescentOptimizer(self.lr_rate)
             elif grad_opt == "adam":
@@ -308,7 +353,8 @@ class DeepBidirRNNRelu:
         for language_id, language_target_dict in language_scheme.items():
 
 
-            tmp_cost, tmp_debug_cost, tmp_ter, tmp_logits, tmp_softmax_probs, tmp_log_softmax_probs, tmp_log_likelihoods = [], [], [], [], [], [], []
+            tmp_ctc_cost, tmp_debug_cost, tmp_ter, tmp_logits, tmp_softmax_probs, tmp_log_softmax_probs, tmp_log_likelihoods = [], [], [], [], [], [], []
+            tmp_kl_cost = []
 
             with tf.variable_scope(constants.SCOPES.OUTPUT):
                 for target_id, num_targets in language_target_dict.items():
@@ -320,18 +366,28 @@ class DeepBidirRNNRelu:
                     if(len(language_target_dict.items()) > 1):
                         scope=scope+"_"+target_id
 
+                    if batch_norm:
+                        outputs = tf.contrib.layers.batch_norm(outputs, scope = scope+"_bn", center=True, scale=True, decay=0.9,
+                                                             is_training=self.is_training_ph, updates_collections=None)
+
+
                     logit = tf.contrib.layers.fully_connected(activation_fn = None, inputs = outputs,
                                                               num_outputs=num_targets,
                                                               scope = scope,
                                                               biases_initializer = tf.contrib.layers.xavier_initializer(),
                                                               trainable=self.is_trainable_sat)
-                    if batch_norm:
-                        logit = tf.contrib.layers.batch_norm(logit, scope = scope+"_bn", center=True, scale=True, decay=0.9,
-                                                             is_training=self.is_training_ph, updates_collections=None)
 
-                    loss = tf.nn.ctc_loss(labels=self.labels[count], inputs=logit, sequence_length=self.seq_len)
-                    tmp_cost.append(loss)
-                    tmp_debug_cost.append(tf.reduce_mean(loss))
+                    #######
+                    #here logits: time, batch, num_classes+1
+                    #######
+
+                    kl_loss = self.kl_divergence_with_logits(logit, num_targets)
+
+                    ctc_loss = tf.nn.ctc_loss(labels=self.labels[count], inputs=logit, sequence_length=self.seq_len)
+
+                    tmp_kl_cost.append(kl_loss)
+                    tmp_ctc_cost.append(ctc_loss)
+                    tmp_debug_cost.append(tf.reduce_mean(ctc_loss))
 
                     decoded, log_prob = tf.nn.ctc_greedy_decoder(logit, self.seq_len)
 
@@ -350,6 +406,8 @@ class DeepBidirRNNRelu:
 
                     log_likelihood = log_softmax_prob - tf.log(self.priors[count])
                     tmp_log_likelihoods.append(log_likelihood)
+
+
 
                     count=count+1
 
@@ -382,20 +440,26 @@ class DeepBidirRNNRelu:
                 regularized_loss = tf.add_n([tf.nn.l2_loss(v) for v in var_list])
 
             #reduce the mean of all targets of current language(language_id)
-            tmp_cost = tf.reduce_mean(tmp_cost) + l2 * regularized_loss
+            tmp_ctc_cost = tf.reduce_mean(tmp_ctc_cost) + l2 * regularized_loss
 
+            tmp_final_cost = (1-kl_weight)*tf.reduce_mean(tmp_ctc_cost)-(kl_weight*tf.reduce_mean(tmp_kl_cost))+(l2 * regularized_loss)
 
             self.debug_costs.append(tmp_debug_cost)
-            self.costs.append(tmp_cost)
+            self.costs.append(tmp_final_cost)
             self.ters.append(tmp_ter)
             self.logits.append(tmp_logits)
             self.softmax_probs.append(tmp_softmax_probs)
+
             self.log_softmax_probs.append(tmp_log_softmax_probs)
             self.log_likelihoods.append(tmp_log_likelihoods)
 
-            gvs = optimizer.compute_gradients(tmp_cost, var_list=var_list)
+            #gvs = optimizer.compute_gradients(tmp_ctc_cost, var_list=var_list)
+            gvs = optimizer.compute_gradients(tmp_final_cost, var_list=var_list)
 
-            capped_gvs = [(tf.clip_by_value(grad, -clip, clip), var) for grad, var in gvs]
+            if(clip_norm):
+                capped_gvs = [(tf.clip_by_norm(grad, clip), var) for grad, var in gvs]
+            else:
+                capped_gvs = [(tf.clip_by_value(grad, -clip, clip), var) for grad, var in gvs]
 
             #at end  of the day we will decide whch optimizer to call:
             #each one will optimize over all targets of the selected language (correct idx)

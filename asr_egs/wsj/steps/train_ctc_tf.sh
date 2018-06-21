@@ -14,6 +14,7 @@ train_opts="--store_model --lstm_type=cudnn --augment"
 
 #network architecture
 model="deepbilstm"
+
 nlayer=5
 nhidden=320
 
@@ -31,7 +32,10 @@ continue_ckpt_sat=false
 #training configuration
 nepoch=""
 lr_rate=""
+dropout=""
+kl_weight=""
 debug=false
+half_after=""
 
 #continue training
 continue_ckpt=""
@@ -42,16 +46,23 @@ force_lr_epoch_ckpt=false
 deduplicate=true
 subsampling_default=3
 
+if $deduplicate; then
+    deduplicate="--deduplicate"
+else
+    deduplicate=""
+fi
+
 ## End configuration section
 
 echo "$0 $@"  # Print the command line for logging
 
-[ -f path.sh ] && . ./path.sh;
+#[ -f path.sh ] && . ./path.sh;
 
 . utils/parse_options.sh || exit 1;
 
 #checking number of arguments
 if [ $# != 3 ]; then
+   echo $1
    echo "Usage: $0 <data-tr> <data-cv> <exp-dir>"
    echo " e.g.: $0 data/train_tr data/train_cv exp/train_phn"
    exit 1;
@@ -71,26 +82,6 @@ trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r
 for f in $data_tr/feats.scp $data_cv/feats.scp; do
   [ ! -f $f ] && echo `basename "$0"`": no such file $f" && exit 1;
 done
-
-#multitarget training check
-
-train_labels=$(ls $dir | grep labels | grep tr)
-
-if [ -z "$train_labels" ]; then
-    echo "no training labels found in: $dir"
-    echo "training dir should have \"labels*.tr\""
-    exit
-fi
-
-#multitarget training checking
-
-cv_labels=$(ls $dir | grep labels | grep cv)
-
-if [ -z "$train_labels" ]; then
-    echo "no training labels found in: $dir"
-    echo "training dir should have \"labels*.cv\""
-    exit
-fi
 
 
 ## Adjust parameter variables
@@ -135,14 +126,21 @@ if [ -n "$nepoch" ]; then
     nepoch="--nepoch $nepoch"
 fi
 
+if [ -n "$dropout" ]; then
+    dropout="--dropout $dropout"
+fi
+
+if [ -n "$kl_weight" ]; then
+    dropout="--kl_weight $kl_weight"
+fi
+
 if [ -n "$lr_rate" ]; then
     lr_rate="--lr_rate $lr_rate"
 fi
 
-if [ -n "$deduplicate" ]; then
-    deduplicate="--deduplicate"
-else
-    deduplicate=""
+#TODO solvME!
+if [ -n "$half_after" ]; then
+    half_after="--half_after $half_after"
 fi
 
 subsampling=`echo $train_opts | sed 's/.*--subsampling \([0-9]*\).*/\1/'`
@@ -158,8 +156,7 @@ fi
 #SPEAKER ADAPTATION
 
 if [[ "$sat_type" != "" ]]; then
-    cat $sat_path | copy-feats ark,t:- ark,scp:$tmpdir/sat_local.ark,$tmpdir/sat_local.scp
-
+    copy-feats ark:$sat_path ark,scp:$tmpdir/sat_local.ark,$tmpdir/sat_local.scp
     sat_type="--sat_type $sat_type"
 else
     sat_type=""
@@ -200,12 +197,13 @@ echo ""
 echo copying labels ...
 echo ""
 
-if [ -f $dir/labels.tr.gz ]; then
+if [ -f $dir/labels.tr.gz ] && [ -f $dir/labels.cv.gz ] ; then
     gzip -cd $dir/labels.tr.gz > $tmpdir/labels.tr || exit 1
-    gzip -cd $dir/labels.cv.gz > $tmpdir/labels.cv || exit 1
+    gzip -cd $dir/labels.cv.gz > $tmpdir/labels.cv || exit 2
 else
-    cp $dir/labels*.tr $tmpdir/ || exit 1
-    cp $dir/labels*.cv $tmpdir/ || exit 1
+    echo error, labels not found...
+    echo exiting...
+    exit 1
 fi
 
 # Compute the occurrence counts of labels in the label sequences.
@@ -234,7 +232,7 @@ for f in $tmpdir/*.cv; do
     echo ""
 
     python ./utils/clean_length.py --scp_in  $tmpdir/cv_tmp.scp --labels $f \
-	   --subsampling $subsampling --scp_out $tmpdir/cv_local.scp
+	   --subsampling $subsampling --scp_out $tmpdir/cv_local.scp 
 
 done
 
@@ -246,8 +244,8 @@ cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
 echo "TRAINING STARTS [$cur_time]"
 
 $train_tool $train_opts \
-    --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $lr_rate \
-    --train_dir $dir --data_dir $tmpdir $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt  || exit 1;
+    --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $dropout $lr_rate \
+    --train_dir $dir --data_dir $tmpdir $half_after $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt  || exit 1;
 
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
 echo "TRAINING ENDS [$cur_time]"

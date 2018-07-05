@@ -245,6 +245,10 @@ export CUDA_CACHE_PATH=$tmpdir
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
 echo "TRAINING STARTS [$cur_time]"
 
+echo $train_tool $train_opts \
+    --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $lr_rate \
+    --train_dir $dir --data_dir $tmpdir $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt
+
 $train_tool $train_opts \
     --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $lr_rate \
     --train_dir $dir --data_dir $tmpdir $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt  || exit 1;

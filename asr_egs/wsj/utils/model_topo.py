@@ -19,8 +19,8 @@ import sys
 
 def parse_arguments(arg_elements):
     args = {}
-    arg_num = len(arg_elements) / 2
-    for i in xrange(arg_num):
+    arg_num = int(len(arg_elements) / 2)
+    for i in range(arg_num):
         key = arg_elements[2*i].replace("--","").replace("-", "_");
         args[key] = arg_elements[2*i+1]
     return args
@@ -78,56 +78,56 @@ if __name__ == '__main__':
     # by default, the range of the parameters is set to 0.1; however, you can change it by specifying "--param-range"
     # this means for initialization, model parameters are drawn uniformly from the interval [-0.1, 0.1]
     param_range='0.1'
-    if arguments.has_key('param_range'):
+    if 'param_range' in arguments:
         param_range = arguments['param_range']
 
     actual_cell_dim = 2*lstm_cell_dim
     model_type = '<BiLstmParallel>'   # by default
-    if arguments.has_key('lstm_type') and arguments['lstm_type'] == 'uni':
+    if 'lstm_type' in arguments and arguments['lstm_type'] == 'uni':
         actual_cell_dim = lstm_cell_dim
         model_type = '<LstmParallel>'
 
     max_grad = 50.0
-    if arguments.has_key('max_grad'):
+    if 'max_grad' in arguments:
         max_grad=float(arguments['max_grad'])
 
     # add the option to set the initial value of the forget-gate bias
     lstm_comm = ' <ParamRange> ' + param_range + ' <LearnRateCoef> 1.0 <MaxGrad> ' + str(max_grad)
-    if arguments.has_key('fgate_bias_init'):
+    if 'fgate_bias_init' in arguments:
         lstm_comm = lstm_comm + ' <FgateBias> ' + arguments['fgate_bias_init']
 
     # add the option to specify projection layers
-    if arguments.has_key('projection_dim'):
+    if 'projection_dim' in arguments:
         proj_dim = arguments['projection_dim']
     else:
         proj_dim = 0
 
     # add the option to reduce the dimensionality of the input features
-    if arguments.has_key('input_dim'):
+    if 'input_dim' in arguments:
         input_dim = arguments['input_dim']
     else:
         input_dim = 0
 
 
     # pre-amble
-    print '<Nnet>'
+    print('<Nnet>')
 
     # optional dimensionality reduction layer
     if input_dim > 0:
-        print '<AffineTransform> <InputDim> ' + str(input_feat_dim) + ' <OutputDim> ' + str(input_dim) + ' <ParamRange>' + param_range + ' <MaxGrad> ' + str(max_grad)
+        print('<AffineTransform> <InputDim> ' + str(input_feat_dim) + ' <OutputDim> ' + str(input_dim) + ' <ParamRange>' + param_range + ' <MaxGrad> ' + str(max_grad))
         input_feat_dim = input_dim
 
     # the first layer takes input features
-    print model_type + ' <InputDim> ' + str(input_feat_dim) + ' <CellDim> ' + str(actual_cell_dim) + lstm_comm
+    print(model_type + ' <InputDim> ' + str(input_feat_dim) + ' <CellDim> ' + str(actual_cell_dim) + lstm_comm)
     # the following bidirectional LSTM layers
     for n in range(1, lstm_layer_num):
         if proj_dim > 0:
-            print '<AffineTransform> <InputDim> ' + str(actual_cell_dim) + ' <OutputDim> ' + str(proj_dim) + '<ParamRange> ' + param_range + ' <MaxGrad> ' + max_grad
-            print model_type + ' <InputDim> ' +        str(proj_dim) + ' <CellDim> ' + str(actual_cell_dim) + lstm_comm
+            print('<AffineTransform> <InputDim> ' + str(actual_cell_dim) + ' <OutputDim> ' + str(proj_dim) + '<ParamRange> ' + param_range + ' <MaxGrad> ' + max_grad)
+            print(model_type + ' <InputDim> ' +        str(proj_dim) + ' <CellDim> ' + str(actual_cell_dim) + lstm_comm)
         else:
-            print model_type + ' <InputDim> ' + str(actual_cell_dim) + ' <CellDim> ' + str(actual_cell_dim) + lstm_comm
+            print(model_type + ' <InputDim> ' + str(actual_cell_dim) + ' <CellDim> ' + str(actual_cell_dim) + lstm_comm)
 
     # the final affine-transform and softmax layer
-    print '<AffineTransform> <InputDim> ' + str(actual_cell_dim) + ' <OutputDim> ' + str(target_num) + ' <ParamRange> ' + param_range + ' <MaxGrad> ' + str(max_grad)
-    print '<Softmax> <InputDim> ' + str(target_num) + ' <OutputDim> ' + str(target_num)
-    print '</Nnet>'
+    print('<AffineTransform> <InputDim> ' + str(actual_cell_dim) + ' <OutputDim> ' + str(target_num) + ' <ParamRange> ' + param_range + ' <MaxGrad> ' + str(max_grad))
+    print('<Softmax> <InputDim> ' + str(target_num) + ' <OutputDim> ' + str(target_num))
+    print('</Nnet>')

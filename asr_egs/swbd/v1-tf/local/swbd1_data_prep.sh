@@ -76,16 +76,20 @@ n=`cat $dir/sph.flist | wc -l`
 # make everything lowercase here. This is because we will be using SRILM which
 # can optionally make everything lowercase (but not uppercase) when mapping 
 # LM vocabs.
+#
+# EDIT: MAKE sure the list is sorted by setting locale accordingly and the sorting
+#   previous version assumed that globbing sorted in order; when it did not
+#   the subsequent check failed
+export LC_ALL=C;
 awk '{ 
        name=substr($1,1,6); gsub("^sw","sw0",name); side=substr($1,7,1); 
        stime=$2; etime=$3;
        printf("%s-%s_%06.0f-%06.0f", 
               name, side, int(100*stime+0.5), int(100*etime+0.5));
        for(i=4;i<=NF;i++) printf(" %s", tolower($i)); printf "\n"
-}' $dir/swb_ms98_transcriptions/*/*/*-trans.text  > $dir/transcripts1.txt
+}' $dir/swb_ms98_transcriptions/*/*/*-trans.text | sort > $dir/transcripts1.txt
 
 # test if trans. file is sorted
-export LC_ALL=C;
 sort -c $dir/transcripts1.txt || exit 1; # check it's sorted.
 
 # Remove SILENCE, <B_ASIDE> and <E_ASIDE>.

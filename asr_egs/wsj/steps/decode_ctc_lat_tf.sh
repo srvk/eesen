@@ -43,8 +43,8 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# != 3 ]; then
    echo "Wrong #arguments ($#, expected 3)"
-   echo "Usage: steps/decode_ctc.sh [options] <graph-dir> <data-dir> <decode-dir>"
-   echo " e.g.: steps/decode_ctc.sh data/lang data/test exp/train_l4_c320/decode"
+   echo "Usage: steps/decode_ctc_lat_tf.sh [options] <graph-dir> <data-dir> <decode-dir>"
+   echo " e.g.: steps/decode_ctc_lat_tf.sh data/lang data/test exp/train_l4_c320/decode"
    echo "main options (for others, see top of script file)"
    echo "  --stage                                  # starts from which stage"
    echo "  --nj <nj>                                # number of parallel jobs"

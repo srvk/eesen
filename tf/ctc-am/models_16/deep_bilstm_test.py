@@ -4,7 +4,7 @@ from utils.fileutils import debug
 import sys
 
 
-class DeepBidirRNN:
+class DeepBidirRNNTest:
 
     def kl_divergence_with_logits(self, q_logits, num_targets):
         """Returns weighted KL divergence between distributions q and p.
@@ -81,23 +81,25 @@ class DeepBidirRNN:
                             is_training=self.is_training_ph, updates_collections=None)
 
             else:
-                cudnn_model = tf.contrib.cudnn_rnn.CudnnLSTM(nlayer,
-                                                             nhidden,
-                                                             'linear_input',
-                                                             'bidirectional',
-                                                             dropout,
-                                                             kernel_initializer=tf.contrib.layers.xavier_initializer(),
-                                                             bias_initializer=tf.contrib.layers.xavier_initializer())
+                ninput = nfeat
+                for i in range(nlayer):
+                    with tf.variable_scope("layer%d" % i):
+
+                        cudnn_model = tf.contrib.cudnn_rnn.CudnnLSTM(1,
+                                                                     nhidden,
+                                                                     'linear_input',
+                                                                     'bidirectional',
+                                                                     dropout,
+                                                                     kernel_initializer=tf.contrib.layers.xavier_initializer(),
+                                                                     bias_initializer=tf.contrib.layers.xavier_initializer())
 
 
-                # arguments are: inputs, initial_state,
-                outputs, _output_h = cudnn_model(outputs, None, True)
-                #outputs_i, _output_h_i = cudnn_model(outputs, None, False)
+                        outputs, _output_h = cudnn_model(outputs, None, True)
 
-                if batch_norm:
-                    outputs = tf.contrib.layers.batch_norm(outputs,
-                        scope = "bn", center=True, scale=True, decay=0.9,
-                        is_training=self.is_training_ph, updates_collections=None)
+                        if batch_norm:
+                            outputs = tf.contrib.layers.batch_norm(outputs,
+                                                                   scope = "bn", center=True, scale=True, decay=0.9,
+                                                                   is_training=self.is_training_ph, updates_collections=None)
 
         return outputs
 

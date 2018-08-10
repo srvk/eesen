@@ -17,7 +17,7 @@
 
 
 import sys, re, os, numpy, pipes, itertools, functools, struct
-import tensorflow as tf
+#import tensorflow as tf
 from utils.fileutils.kaldi import readScp, writeArk
 from utils.fileutils.kaldi_io import *
 
@@ -112,10 +112,10 @@ def softmax(X, theta = 1.0, axis = None):
 
     Parameters
     ----------
-    X: ND-Array. Probably should be floats. 
+    X: ND-Array. Probably should be floats.
     theta (optional): float parameter, used as a multiplier
         prior to exponentiation. Default = 1.0
-    axis (optional): axis to compute values along. Default is the 
+    axis (optional): axis to compute values along. Default is the
         first non-singleton axis.
 
     Returns an array the same size as X. The result will sum to 1
@@ -129,12 +129,12 @@ def softmax(X, theta = 1.0, axis = None):
     if axis is None:
         axis = next(j[0] for j in enumerate(y.shape) if j[1] > 1)
 
-    # multiply y against the theta parameter, 
+    # multiply y against the theta parameter,
     y = y * float(theta)
 
     # subtract the max for numerical stability
     y = y - numpy.expand_dims(numpy.max(y, axis = axis), axis)
-    
+
     # exponentiate y
     y = numpy.exp(y)
 
@@ -195,7 +195,8 @@ if __name__ == '__main__':
     #print("error with noise_scale", file=sys.stderr)
 
     prior = numpy.array(load_prior(counts,blank_scale=blank_scale,noise_scale=noise_scale), dtype=numpy.float32)
-    p = tf.convert_to_tensor(prior)
+
+    #p = tf.convert_to_tensor(prior)
     #print(prior, prior.shape)
     try:
         scale = numpy.array(load_scale(scales))
@@ -206,38 +207,42 @@ if __name__ == '__main__':
 
     #gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.07)
     #sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-    sess = tf.Session(config=tf.ConfigProto(device_count = {'GPU': 0}))
-    with sess.as_default():
+    #sess = tf.Session(config=tf.ConfigProto(device_count = {'GPU': 0}))
+    #with sess.as_default():
 
-        if True:
-            # this uses Yun's code for reading
-            features, uttids = readScp("/dev/stdin")
-            #of = []
-            #ui = []
+    if True:
+        # this uses Yun's code for reading
+        features, uttids = readScp("/dev/stdin")
+        #of = []
+        #ui = []
 
-            for (key,mat) in zip(uttids, features):
-                softmax_prob = tf.nn.softmax(mat * temp, dim=-1, name=None)
-                log_softmax_prob = tf.log(softmax_prob)
-                log_likelihood = log_softmax_prob - tf.log(p)
+        for (key,mat) in zip(uttids, features):
+            # softmax_prob = tf.nn.softmax(mat * temp, dim=-1, name=None)
+            # log_softmax_prob = tf.log(softmax_prob)
+            # log_likelihood = log_softmax_prob - tf.log(p)
 
-                #of.append(log_likelihood.eval())
-                #ui.append(key)
-                out = log_likelihood.eval()
-                #print("HI",type(out),type(key),file=sys.stderr)
-                write_mat_stdout(out,key=key)
+            scoreMatExp = np.exp(np.asarray(mat))
+            softmax_prob=(scoreMatExp.transpose() / scoreMatExp.sum(1))*temp
 
-        else:
-            # this program acts like a filter
-            for (key,mat) in kaldi_io.read_mat_scp("-"):
-                #mat = mat / scale[None,:]
-                #m = softmax(mat,theta=temp,axis=1)
-                #out = m / prior[None,:]
-                #tran_logit = mat * float(temp)
-                softmax_prob = tf.nn.softmax(mat * temp, dim=-1, name=None)
-                log_softmax_prob = tf.log(softmax_prob)
-                log_likelihood = log_softmax_prob - tf.log(p)
+            log_likelihood = np.log(softmax_prob.transpose()) - np.log(prior)
+            # #of.append(log_likelihood.eval())
+            # #ui.append(key)
+            # out = log_likelihood.eval()
+            #print("HI",type(out),type(key),file=sys.stderr)
+            write_mat_stdout(log_likelihood,key=key)
 
-                out = log_likelihood.eval()
-                kaldi_io.write_mat(sys.stdout,out,key=key)
+        # else:
+            # # this program acts like a filter
+            # for (key,mat) in kaldi_io.read_mat_scp("-"):
+                # #mat = mat / scale[None,:]
+                # #m = softmax(mat,theta=temp,axis=1)
+                # #out = m / prior[None,:]
+                # #tran_logit = mat * float(temp)
+                # softmax_prob = tf.nn.softmax(mat * temp, dim=-1, name=None)
+                # log_softmax_prob = tf.log(softmax_prob)
+                # log_likelihood = log_softmax_prob - tf.log(p)
 
-    #writeArk("/dev/stdout", of, ui, tell=False)
+                # out = log_likelihood.eval()
+                # kaldi_io.write_mat(sys.stdout,out,key=key)
+
+    # #writeArk("/dev/stdout", of, ui, tell=False)

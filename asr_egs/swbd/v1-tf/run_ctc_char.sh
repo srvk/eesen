@@ -32,6 +32,8 @@ am_nlayer=4
 am_ncell_dim=320
 am_model=deepbilstm
 am_window=3
+am_nproj=340
+am_nproj_init=80
 am_norm=false
 
 dir_am=exp/train_char_l${am_nlayer}_c${am_ncell_dim}_m${am_model}_w${am_window}_n${am_norm}
@@ -51,22 +53,23 @@ lm_optimizer="adam"
 dir_lm=exp/train_lm_char_l${lm_nlayer}_c${lm_ncell_dim}_e${lm_embed_size}_d${lm_drop_out}_o${lm_optimizer}/
 
 fisher_text_dir="./data/fisher/"
+stage=3
 
 
-#if [ $stage -le 1 ]; then
-  #echo =====================================================================
-  #echo "                       Data Preparation                            "
-  #echo =====================================================================
+if [ $stage -le 1 ]; then
+  echo =====================================================================
+  echo "                       Data Preparation                            "
+  echo =====================================================================
 
-  ## Use the same datap prepatation script from Kaldi
-  #local/swbd1_data_prep.sh $swbd  || exit 1;
+  # Use the same datap prepatation script from Kaldi
+  local/swbd1_data_prep.sh $swbd  || exit 1;
 
-  ## Represent word spellings using a dictionary-like format
-  #local/swbd1_prepare_char_dict.sh || exit 1;
+  # Represent word spellings using a dictionary-like format
+  local/swbd1_prepare_char_dict.sh || exit 1;
 
-  ## Data preparation for the eval2000 set
-  #local/eval2000_data_prep.sh $eval2000_dirs
-#fi
+  # Data preparation for the eval2000 set
+  local/eval2000_data_prep.sh $eval2000_dirs
+fi
 
 
 if [ $stage -le 2 ]; then
@@ -108,14 +111,15 @@ if [ $stage -le 3 ]; then
 
   echo generating train labels...
 
-  python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_nodup/text --output_units ./data/local/dict_char/units.txt --output_labels $dir_am/labels.tr --lower_case --ignore_noises || exit 1
+  #python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_nodup/text --output_units ./data/local/dict_char/units.txt --output_labels $dir_am/labels.tr --lower_case --ignore_noises || exit 1
 
   echo generating cv labels...
 
-  python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_dev/text --input_units ./data/local/dict_char/units.txt --output_labels $dir_am/labels.cv || exit 1
+  #python ./local/swbd1_prepare_char_dict_tf.py --text_file ./data/train_dev/text --input_units ./data/local/dict_char/units.txt --output_labels $dir_am/labels.cv || exit 1
 
   # Train the network with CTC. Refer to the script for details about the arguments
-  steps/train_ctc_tf.sh --nlayer $am_nlayer --nhidden $am_ncell_dim  --batch_size 16 --lr_rate 0.005 --half_after 6 --model $am_model --window $am_window --norm $am_norm data/train_nodup data/train_dev $dir_am || exit 1;
+  steps/train_ctc_tf.sh --train_opts "--store_model --lstm_type=cudnn --augment --batch_norm --roll --batch_size=16 --l2=0.001 --lr_rate=0.05 --window=3" --nhidden $am_ncell_dim --nproj $am_nproj --half_after 6 --model $am_model --ninitproj $am_nproj_init --nlayer $am_nlayer --train_tool "python -m train" ./data/train_nodup/ ./data/train_dev/ $dir_am
+
 
 fi
 

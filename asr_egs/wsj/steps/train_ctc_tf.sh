@@ -41,6 +41,9 @@ force_lr_epoch_ckpt=false
 #training options
 deduplicate=true
 subsampling_default=3
+roll=true
+l2=0.0
+batch_norm=true
 
 ## End configuration section
 
@@ -154,6 +157,17 @@ else
     subsampling=3
 fi
 
+if [[ "$roll" == "true" ]]; then
+    roll="--roll"
+fi
+
+if [ -n "$l2" ]; then
+    l2="--l2 $l2"
+fi
+
+if [[ "$batch_norm" == "true" ]]; then
+    batch_norm="--batch_norm"
+fi
 
 #SPEAKER ADAPTATION
 
@@ -246,11 +260,11 @@ cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
 echo "TRAINING STARTS [$cur_time]"
 
 echo $train_tool $train_opts \
-    --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $lr_rate \
+    --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $lr_rate $l2 $roll $batch_norm \
     --train_dir $dir --data_dir $tmpdir $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt
 
 $train_tool $train_opts \
-    --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $lr_rate \
+    --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $lr_rate $l2 $roll $batch_norm \
     --train_dir $dir --data_dir $tmpdir $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt  || exit 1;
 
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`

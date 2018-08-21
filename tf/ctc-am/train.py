@@ -39,6 +39,7 @@ def main_parser():
     parser.add_argument('--store_model', default=False, dest='store_model', action='store_true', help='store model')
     parser.add_argument('--data_dir', default = "", help = "data dir")
     parser.add_argument('--train_dir', default = "", help='log and model (output) dir')
+    parser.add_argument('--dump_cv_fwd', default=False, dest='dump_cv_fwd', action='store_true', help='save forward pass of cv')
     parser.add_argument('--batch_size', default = 32, type=int, help='batch size')
     parser.add_argument('--noshuffle', default=True, dest='do_shuf', action='store_false', help='do not shuffle training samples')
 
@@ -175,6 +176,7 @@ def create_global_config(args):
         constants.CONF_TAGS.STORE_MODEL: args.store_model,
         constants.CONF_TAGS.DATA_DIR: args.data_dir,
         constants.CONF_TAGS.TRAIN_DIR: args.train_dir,
+        constants.CONF_TAGS.DUMP_CV_FWD: args.dump_cv_fwd,
 
         #io arguments
         constants.CONF_TAGS.BATCH_SIZE: args.batch_size,
@@ -219,6 +221,9 @@ def update_conf_import(config, args):
 
     if(args.train_dir):
         config[constants.CONF_TAGS.TRAIN_DIR] = args.train_dir
+
+    if(args.dump_cv_fwd):
+        config[constants.CONF_TAGS.DUMP_CV_FWD] = args.dump_cv_fwd
 
     if(args.continue_ckpt):
         config[constants.CONF_TAGS.CONTINUE_CKPT] = args.continue_ckpt

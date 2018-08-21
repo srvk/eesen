@@ -13,7 +13,8 @@ import constants
 from reader.reader_queue import run_reader_queue
 from random import randint
 from collections import deque
-
+import numpy as np
+from utils.fileutils.kaldi import writeArk, writeScp
 
 class Train():
 
@@ -87,7 +88,7 @@ class Train():
                     saver.save(self.__sess, "%s/epoch%02d.ckpt" % (self.__config[constants.CONF_TAGS.MODEL_DIR], epoch))
 
                 #evaluate on validation...
-                cv_cost, cv_ters, ncv = self.__eval_epoch(cv_x, cv_y, cv_sat)
+                cv_cost, cv_ters, ncv = self.__eval_epoch(epoch, cv_x, cv_y, cv_sat)
 
                 self.__generate_logs(cv_ters, cv_cost, ncv, train_ters, train_cost, ntrain, epoch, lr_rate, tic)
 
@@ -275,7 +276,7 @@ class Train():
             if data is None:
                 break
 
-            feed, batch_size, index_correct_lan = self.__prepare_feed(data, lr_rate)
+            feed, batch_size, index_correct_lan, _ = self.__prepare_feed(data, lr_rate)
 
 
             batch_cost, batch_edit_distance, _  = self.__sess.run([self.__model.debug_costs[index_correct_lan],
@@ -307,10 +308,29 @@ class Train():
 
         return train_cost, train_ters, ntrain
 
-    def __eval_epoch(self, cv_x, cv_y, cv_sat):
+
+    def __create_result_containers(self, config):
+
+        batches_id={}
+        logits = {}
+
+        for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
+            batches_id[language_id] = []
+            logits[language_id] = {}
+            for target_id, _ in target_scheme.items():
+                logits[language_id][target_id]=[]
+
+        return logits, batches_id
+
+
+    def __eval_epoch(self, epoch, cv_x, cv_y, cv_sat):
 
         #init data_queue
         data_queue = Queue(self.__config[constants.CONF_TAGS.BATCH_SIZE])
+
+        # if we are going to be saving the forward pass, initialize here
+        if(self.__config[constants.CONF_TAGS.DUMP_CV_FWD]):
+            logits, batches_id = self.__create_result_containers(self.__config)
 
         #initializing counters and dicts
         ncv_labels, cv_ters, cv_cost, ncv = {}, {}, {}, {}
@@ -342,6 +362,8 @@ class Train():
                                                            0,
                                                            False))
 
+        print("Starting forward pass...")
+
         #starting the queue...
         p.start()
 
@@ -358,19 +380,49 @@ class Train():
                 break
             count += 1
 
+            #print('  Batch %d' % count)
+
             #getting the feed..
-            feed, batch_size, index_correct_lan = self.__prepare_feed(data)
+            feed, batch_size, index_correct_lan, batch_id = self.__prepare_feed(data)
 
+            if True:
+                request_list=[
+                    self.__model.debug_costs[index_correct_lan],
+                    self.__model.ters[index_correct_lan],
+                    self.__model.decodes[index_correct_lan]
+                    ]
+                if(self.__config[constants.CONF_TAGS.DUMP_CV_FWD]):
+                    request_list.append(self.__model.logits)
+                    request_list.append(self.__model.seq_len)
+                    batch_cost, batch_ters, batch_decodes, batch_logits, batch_seq_len, = self.__sess.run(request_list, feed)
+                    self.__update_probs_containers(self.__config, batch_id, batches_id, batch_seq_len, batch_logits, logits)
+                else:
+                    #batch_cost, batch_ters, batch_decodes, _ = self.__sess.run(request_list, feed)
+                    batch_cost, batch_ters, _ = self.__sess.run(request_list, feed)
 
+            else:
             #processing a batch...
-            batch_cost, batch_ters, = self.__sess.run([self.__model.debug_costs[index_correct_lan], self.__model.ters[index_correct_lan]], feed)
+                #batch_cost, batch_ters, batch_decodes, = self.__sess.run([self.__model.debug_costs[index_correct_lan], self.__model.ters[index_correct_lan]], feed)
+                batch_cost, batch_ters, _ = self.__sess.run([self.__model.debug_costs[index_correct_lan], self.__model.ters[index_correct_lan]], feed)
+        
+            #print(feed)
+
+            for cur_id, cur_decode in zip(batch_id, batch_decodes[0]):
+                # add one to convert from tf (blank==last) back to our labeling scheme (blank==0)
+                decode_list=[str(i+1) for i in cur_decode if i>=0]
+                decode_string=' '.join(decode_list)
+                print('DECODE epoch %d:%s %s' % (epoch, cur_id, decode_string))
+
 
             #updating values...
             self.__update_counters(cv_ters, cv_cost, ncv, ncv_labels, batch_ters, batch_cost, batch_size, data[1])
 
+            #print ('  ... done',flush=True)
+
         #terminating the queue
         p.join()
         p.terminate()
+        print("Completed forward pass...",flush=True)
 
         #averaging counters
         for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
@@ -382,8 +434,29 @@ class Train():
             for target_id, cv_ter in target_scheme.items():
                 if(ncv_labels[language_id][target_id] != 0):
                     cv_ters[language_id][target_id] = cv_ter/float(ncv_labels[language_id][target_id])
+        
+        if (self.__config[constants.CONF_TAGS.DUMP_CV_FWD]):
+            if(self.__config[constants.CONF_TAGS.ONLINE_AUGMENT_CONF][constants.AUGMENTATION.SUBSAMPLING] > 0):
+                batches_id = self.__average_over_augmented_data(self.__config, batches_id, logits)
+
+            self.__store_results(self.__config, batches_id, logits, epoch)
 
         return cv_cost, cv_ters, ncv
+
+    def __update_probs_containers(self, config,
+                                  batch_id, m_batches_id,
+                                  batch_seq_len,
+                                  batch_logits, m_logits):
+
+        language_idx=0
+        for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
+            m_batches_id[language_id] += batch_id
+            target_idx=0
+            for target_id, num_targets in target_scheme.items():
+                m_logits[language_id][target_id] += self.__mat2list(batch_logits[language_idx][target_idx], batch_seq_len)
+                target_idx += 1
+            language_idx += 1
+
 
     def __update_counters(self, m_acum_ters, m_acum_cost, m_acum_samples, m_acum_labels,
                           batch_ters, batch_cost, batch_size, ybatch):
@@ -403,6 +476,85 @@ class Train():
 
         m_acum_samples[ybatch[1]] += batch_size
 
+    def __average_over_augmented_data(self, config, m_batches_id, m_logits):
+        #new batch structure
+        new_batch_id = {}
+
+        for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
+            new_batch_id[language_id] = {}
+
+            for target_id, num_targets in target_scheme.items():
+                S={}; P={}; O={}
+                    #iterate over all utterances of a concrete language
+                for utt_id, s in zip(m_batches_id[language_id], m_logits[language_id][target_id]):
+                        #utt did not exist. Lets create it
+                        if not utt_id in S:
+                            S[utt_id] = [s]
+
+                        #utt exists. Lets concatenate
+                        #elif(config[constants.CONFIG_TAGS_TEST.SUBSAMPLED_UTT] == 0):
+                        else:
+                            #S[utt_id] += [s]
+                            pass
+
+                S, _ = self.__shrink_and_average(S)
+
+                m_logits[language_id][target_id] = []
+                new_batch_id[language_id][target_id] = []
+
+                #iterate over all uttid again
+                for idx, (utt_id, _) in enumerate(S.items()):
+                    m_logits[language_id][target_id] += [S[utt_id]]
+                    new_batch_id[language_id][target_id].append(utt_id)
+
+        return new_batch_id
+
+    def __shrink_and_average(self, S, L=None):
+
+        avg_S={}; avg_P={}; avg_L={}; avg_O={}
+
+        for utt_id, _ in S.items():
+
+            #computing minimum L
+            min_length = sys.maxsize
+            #sys.maxint
+            for utt_prob in S[utt_id]:
+                if(utt_prob.shape[0] < min_length):
+                    min_length = utt_prob.shape[0]
+
+            for idx, (utt_prob) in enumerate(S[utt_id]):
+                if(utt_id not in avg_S):
+
+                    avg_S[utt_id] = S[utt_id][idx][0:min_length][:]/float(len(S[utt_id]))
+
+                    if(L):
+                        avg_L[utt_id] = L[utt_id][0:min_length][:]/float(len(L[utt_id]))
+                else:
+                    avg_S[utt_id] += S[utt_id][idx][0:min_length][:]/float(len(S[utt_id]))
+
+                    if(L):
+                        avg_L[utt_id] += L[utt_id][0:min_length][:]/float(len(L[utt_id]))
+        return avg_S, avg_L
+
+    def __store_results(self, config, uttids, logits, epoch):
+
+        for language_id, target_scheme in config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():
+            if(len(config[constants.CONF_TAGS.LANGUAGE_SCHEME]) > 1):
+                results_dir = os.path.join(config[constants.CONF_TAGS.MODEL_DIR], language_id)
+            else:
+                results_dir = config[constants.CONF_TAGS.MODEL_DIR]
+            if not os.path.exists(results_dir):
+                os.makedirs(results_dir)
+
+            for target_id, _ in target_scheme.items():
+                    writeScp(os.path.join(results_dir, "epoch%02d_cv_logit_%s.scp" % (epoch, target_id)), 
+                             uttids[language_id][target_id],
+                             writeArk(os.path.join(results_dir, "epoch%02d_cv_logit_%s.ark" % (epoch,target_id)), 
+                                      logits[language_id][target_id], 
+                                      uttids[language_id][target_id]))
+
+
+    
     def __restore_weights(self):
 
         alpha = 1
@@ -552,6 +704,7 @@ class Train():
             print("")
 
         #it contains the actuall value of x
+        batch_id= x_batch[1]
         x_batch = x_batch[0]
 
         batch_size = len(x_batch)
@@ -576,6 +729,8 @@ class Train():
 
         #TODO remove this prelimenary approaches
         feed[self.__model.feats] = x_batch
+        #TODO fix this and allow passing parameter?
+        feed[self.__model.temperature] = 1.0 # float(config[constants.CONF_TAGS_TEST.TEMPERATURE])
 
         #it is training
         if(lr_rate):
@@ -588,7 +743,7 @@ class Train():
                 != constants.SAT_TYPE.UNADAPTED:
             feed[self.__model.sat] = sat_batch
 
-        return feed, batch_size, index_correct_lan
+        return feed, batch_size, index_correct_lan, batch_id
 
     def __info(self, s):
         s = "[" + time.strftime("%Y-%m-%d %H:%M:%S") + "] " + s
@@ -597,3 +752,7 @@ class Train():
     def __get_label_len(self, label):
         idx, _, _ = label
         return len(idx)
+
+    def __mat2list(self, a, seq_len):
+        # roll to match the output of essen code, blank label first
+        return [np.roll(a[i, :seq_len[i], :], 1, axis = 1) for i in range(len(a))]

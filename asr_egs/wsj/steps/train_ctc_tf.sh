@@ -79,7 +79,7 @@ dir=$3
 #creating tmp directory (concrete tmp path is defined in path.sh)
 tmpdir=`mktemp -d`
 
-trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir &" ERR EXIT
+#trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir &" ERR EXIT
 
 #checking folders
 for f in $data_tr/feats.scp $data_cv/feats.scp; do
@@ -214,6 +214,9 @@ echo ""
 if [ -f $dir/labels.tr.gz ] && [ -f $dir/labels.cv.gz ] ; then
     gzip -cd $dir/labels.tr.gz > $tmpdir/labels.tr || exit 1
     gzip -cd $dir/labels.cv.gz > $tmpdir/labels.cv || exit 2
+elif [ -f $dir/labels.tr ] && [ -f $dir/labels.cv ] ; then
+    cp $dir/labels.tr $tmpdir
+    cp $dir/labels.cv $tmpdir
 else
     echo error, labels not found...
     echo exiting...
@@ -259,11 +262,11 @@ echo "TRAINING STARTS [$cur_time]"
 
 echo $train_tool $train_opts \
     --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $dropout $lr_rate $l2 $roll $batch_norm \
-    --train_dir $dir --data_dir $tmpdir $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt
+    --train_dir $dir --data_dir $tmpdir $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt --dump_cv_fwd
 
 $train_tool $train_opts \
     --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $dropout $lr_rate $l2 $roll $batch_norm \
-    --train_dir $dir --data_dir $tmpdir $half_after $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt  || exit 1;
+    --train_dir $dir --data_dir $tmpdir $half_after $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt --dump_cv_fwd  || exit 1;
 
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
 echo "TRAINING ENDS [$cur_time]"

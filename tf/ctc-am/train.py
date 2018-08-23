@@ -160,7 +160,11 @@ def create_online_arg_config(args):
 
     online_augment_config[constants.AUGMENTATION.WINDOW] = args.window
     online_augment_config[constants.AUGMENTATION.SUBSAMPLING] = args.subsampling
-    online_augment_config[constants.AUGMENTATION.ROLL] = args.roll
+    #online_augment_config[constants.AUGMENTATION.ROLL] = args.roll
+    online_augment_config[constants.AUGMENTATION.ROLL] = False
+    if (args.roll):
+        print("WARNING: --roll has been deprecated, option ignored")
+
     return online_augment_config
 
 def create_global_config(args):

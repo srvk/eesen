@@ -146,7 +146,7 @@ if [ $stage -le 4 ]; then
 
   # Train the network with CTC. Refer to the script for details about the arguments
   ( 
-  steps/train_ctc_tf.sh --l2 0.001 --roll true --batch_norm true --nlayer $am_nlayer --nhidden $am_ncell_dim --lr_rate $lr_rate --model $am_model  --ninitproj $am_ninitproj --nproj $am_nproj --nfinalproj $am_nfinalproj data/train_nodup data/train_dev $dir 2>&1 || exit 1 
+  steps/train_ctc_tf.sh --l2 0.001 --batch_norm true --nlayer $am_nlayer --nhidden $am_ncell_dim --lr_rate $lr_rate --model $am_model  --ninitproj $am_ninitproj --nproj $am_nproj --nfinalproj $am_nfinalproj data/train_nodup data/train_dev $dir 2>&1 || exit 1 
   ) | tee $dir/train.log 
 
 fi

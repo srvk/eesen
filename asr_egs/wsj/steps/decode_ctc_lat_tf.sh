@@ -112,7 +112,6 @@ if [ ! -f $tmpdir/labels.cv ]; then
     copy-feats "${feats}" ark,scp:$tmpdir/f.ark,$tmpdir/test_local.scp
 
     # let's call tensorflow, output will be in tmpdir
-    set -x
     python -m test \
 	--data_dir $tmpdir \
 	--results_dir $tmpdir \
@@ -120,7 +119,6 @@ if [ ! -f $tmpdir/labels.cv ]; then
 	--train_config `dirname $model`/config.pkl \
 	--temperature 1 \
 	$subsampled_utt_option $online_storage_option
-    set +x
 else
     echo Assuming data is already in $tmpdir
 fi

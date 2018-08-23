@@ -33,13 +33,13 @@ feattype=fbank_pitch
 #acoustic model parameters
 am_nlayer=5
 
-#am_nproj=60
-am_nproj=80
+am_nproj=60
+#am_nproj=80  # use this setting for the bigger net in RESULTS
 am_ninitproj=80
 am_nfinalproj=100
 
-#am_ncell_dim=320
-am_ncell_dim=400
+am_ncell_dim=320
+#am_ncell_dim=400  # use this setting for the bigger net in RESULTS
 
 am_model=deepbilstm
 am_window=3
@@ -151,7 +151,10 @@ if [ $stage -le 4 ]; then
 
 fi
 
-# globals used by stages 5, 6
+# globals used by stages 5
+
+# NOTE: should check this against CV TERs and select optimal
+# TODO: write code to select optimal epoch
 epoch=epoch22.ckpt
 filename=$(basename "$epoch")
 name_exp="${filename%.*}"
@@ -169,7 +172,7 @@ if [ $stage -le 5 ]; then
   echo =====================================================================
 
   for lm_suffix in sw1_tg sw1_fsh_tgpr; do
-      for bs in 4.0 5.0 6.0; do
+      for bs in 4.0 5.0 6.0 7.0; do
 	  ./steps/decode_ctc_lat_tf.sh \
 	      --model $weights \
 	      --nj 8 \

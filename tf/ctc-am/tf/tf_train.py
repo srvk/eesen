@@ -362,7 +362,7 @@ class Train():
                                                            0,
                                                            False))
 
-        print("Starting forward pass...")
+        #print("Starting forward pass...")
 
         #starting the queue...
         p.start()
@@ -407,11 +407,12 @@ class Train():
         
             #print(feed)
 
-            for cur_id, cur_decode in zip(batch_id, batch_decodes[0]):
-                # add one to convert from tf (blank==last) back to our labeling scheme (blank==0)
-                decode_list=[str(i+1) for i in cur_decode if i>=0]
-                decode_string=' '.join(decode_list)
-                print('DECODE epoch %d:%s %s' % (epoch, cur_id, decode_string))
+            if (self.__config[constants.CONF_TAGS.DEBUG]):
+                for cur_id, cur_decode in zip(batch_id, batch_decodes[0]):
+                    # add one to convert from tf (blank==last) back to our labeling scheme (blank==0)
+                    decode_list=[str(i+1) for i in cur_decode if i>=0]
+                    decode_string=' '.join(decode_list)
+                    print('DECODE epoch %d:%s %s' % (epoch, cur_id, decode_string))
 
 
             #updating values...
@@ -422,7 +423,7 @@ class Train():
         #terminating the queue
         p.join()
         p.terminate()
-        print("Completed forward pass...",flush=True)
+        #print("Completed forward pass...",flush=True)
 
         #averaging counters
         for language_id, target_scheme in self.__config[constants.CONF_TAGS.LANGUAGE_SCHEME].items():

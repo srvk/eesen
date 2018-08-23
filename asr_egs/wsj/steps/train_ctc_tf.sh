@@ -190,6 +190,12 @@ fi
 
 sat_nlayer="--sat_nlayer $sat_nlayer"
 
+if [[ "$dump_cv_fwd" == "true" ]]; then
+    $dump_cv_fwd="--dump_cv_fwd"
+else
+    $dump_cv_fwd=""
+fi
+
 echo ""
 echo copying cv features ...
 echo ""
@@ -262,11 +268,11 @@ echo "TRAINING STARTS [$cur_time]"
 
 echo $train_tool $train_opts \
     --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $dropout $lr_rate $l2 $roll $batch_norm \
-    --train_dir $dir --data_dir $tmpdir $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt --dump_cv_fwd
+    --train_dir $dir --data_dir $tmpdir $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt $dump_cv_fwd
 
 $train_tool $train_opts \
     --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $dropout $lr_rate $l2 $roll $batch_norm \
-    --train_dir $dir --data_dir $tmpdir $half_after $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt --dump_cv_fwd  || exit 1;
+    --train_dir $dir --data_dir $tmpdir $half_after $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt $dump_cv_fwd  || exit 1;
 
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
 echo "TRAINING ENDS [$cur_time]"

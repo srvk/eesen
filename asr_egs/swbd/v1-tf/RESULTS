@@ -5,10 +5,15 @@ exit 0
 
 # TensorFlow CTC Phonemes on the Complete Set (with 5 BiLSTM layers)
 
-# CTC Phonemes on the Complete set (with 5 BiLSTM layers) 
+# CTC Phonemes on the Complete set (with 5 BiLSTM layers) with WFST decode
 %WER 12.5 | 1831 21395 | 88.9 7.7 3.4 1.5 12.5 49.6 | exp/train_phn_fbank_pitch_l5_c320_mdeepbilstm_w3_ntrue_p60_ip80_fp80/results_epoch22_bs5.0_sw1_fsh_tgpr/score_8/eval2000.ctm.swbd.filt.sys
 %WER 18.3 | 4459 42989 | 83.9 11.7 4.4 2.2 18.3 57.3 | exp/train_phn_fbank_pitch_l5_c320_mdeepbilstm_w3_ntrue_p60_ip80_fp80/results_epoch22_bs4.0_sw1_fsh_tgpr/score_8/eval2000.ctm.filt.sys
 %WER 23.9 | 2628 21594 | 79.0 15.5 5.6 2.8 23.9 62.5 | exp/train_phn_fbank_pitch_l5_c320_mdeepbilstm_w3_ntrue_p60_ip80_fp80/results_epoch22_bs4.0_sw1_fsh_tgpr/score_8/eval2000.ctm.callhm.filt.sys
+
+# Slightly larger model (400 units, 80 internal projections) with WFST decode
+%WER 12.2 | 1831 21395 | 89.2 7.7 3.1 1.4 12.2 49.7 | exp/train_phn_fbank_pitch_l5_c400_mdeepbilstm_w3_ntrue_p80_ip80_fp80/results_epoch23_bs7.0_sw1_fsh_tgpr/score_10/eval2000.ctm.swbd.filt.sys
+%WER 17.8 | 4459 42989 | 84.1 11.1 4.8 1.9 17.8 57.1 | exp/train_phn_fbank_pitch_l5_c400_mdeepbilstm_w3_ntrue_p80_ip80_fp80/results_epoch23_bs7.0_sw1_fsh_tgpr/score_9/eval2000.ctm.filt.sys
+%WER 23.4 | 2628 21594 | 79.3 14.8 5.9 2.7 23.4 62.1 | exp/train_phn_fbank_pitch_l5_c400_mdeepbilstm_w3_ntrue_p80_ip80_fp80/results_epoch23_bs7.0_sw1_fsh_tgpr/score_10/eval2000.ctm.callhm.filt.sys
 
 
 ##############

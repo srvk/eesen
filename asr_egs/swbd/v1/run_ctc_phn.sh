@@ -25,21 +25,11 @@
 stage=1
 
 # Set paths to various datasets
-swbd=/path/to/LDC97S62
-fisher_dirs="/path/to/LDC2004T19/fe_03_p1_tran/ /path/to/LDC2005T19/fe_03_p2_tran/" # Set to "" if you don't have the fisher corpus
-eval2000_dirs="/path/to/LDC2002S09/hub5e_00 /path/to/LDC2002T43"
+fisher_dirs="/data/corpora/swb/fe_03_p1_tran/ /data/corpora/swb/fe_03_p2_tran/" # Set to "" if you don't have the fisher corpus
+eval2000_dirs="/data/corpora/swb/hub5e_00 /data/corpora/swb/2000_hub5_eng_eval_tr"
+swbd=/data/corpora/swb/swb1
 
-# Set paths to various datasets
-swbd="/oasis/projects/nsf/cmu131/fmetze/LDC97S62"
-fisher_dirs="/oasis/projects/nsf/cmu139/yajie/LDC/LDC2004T19/fe_03_p1_tran/ /oasis/projects/nsf/cmu131/fmetze/LDC2005T19/FE_03_P2_TRAN/" # Set to "" if you don't have the fisher corpus
-eval2000_dirs="/oasis/projects/nsf/cmu131/fmetze/LDC2002S09/hub5e_00 /oasis/projects/nsf/cmu139/yajie/LDC/LDC2002T43"
-
-# CMU Rocks
-swbd=/data/ASR4/babel/ymiao/CTS/LDC97S62
-fisher_dirs="/data/ASR5/babel/ymiao/Install/LDC/LDC2004T19/fe_03_p1_tran/ /data/ASR5/babel/ymiao/Install/LDC/LDC2005T19/fe_03_p2_tran/"
-eval2000_dirs="/data/ASR4/babel/ymiao/CTS/LDC2002S09/hub5e_00 /data/ASR4/babel/ymiao/CTS/LDC2002T43"
-
-. parse_options.sh
+. ./utils/parse_options.sh
 
 if [ $stage -le 1 ]; then
   echo =====================================================================

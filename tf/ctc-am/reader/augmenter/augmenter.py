@@ -66,8 +66,10 @@ class Augmenter(object):
             sys.exit()
 
         #applying roll to augmented feats
-        if self.online_augment_config["roll"]:
-            augmented_feats = np.roll(augmented_feats, random.randrange(-2,2,1), axis = 0)
+        
+        #roll is deprecated
+        #if self.online_augment_config["roll"]:
+        #    augmented_feats = np.roll(augmented_feats, random.randrange(-2,2,1), axis = 0)
 
         return augmented_feats
 

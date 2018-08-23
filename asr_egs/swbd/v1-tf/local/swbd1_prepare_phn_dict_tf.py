@@ -67,6 +67,8 @@ with open(config["text_file"],"r") as input_text, open(config["output_labels"],"
         for word in text_line.split()[1:]:
             if(word in lexicon_phn):
                 new_line = new_line  + lexicon_phn[word]
+            elif (word.lower() in lexicon_phn):
+                new_line = new_line + lexicon_phn[word.lower()]
 
         output_labels.write(new_line+"\n")
 

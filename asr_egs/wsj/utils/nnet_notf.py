@@ -37,9 +37,13 @@ def parse_arguments(arg_elements):
 if sys.version_info[0] > 2:
     def str_or_bytes(bytes_string):
         return bytes_string.decode('utf-8') if isinstance(bytes_string, bytes) else bytes_string.encode('utf-8')
+    def writeout(bytes_string):
+        return sys.stdout.buffer.write(bytes_string)
 else:
     def str_or_bytes(bytes_string):
         return bytes_string
+    def writeout(bytes_string):
+        return sys.stdout.write(bytes_string)
 
 IS_BIN = str_or_bytes('\x0b')
 IS_EOL = str_or_bytes('\x04')
@@ -61,19 +65,19 @@ def write_mat_stdout(m, key=IS_EMPTY):
         #
         #m=numpy.roll(m,-1,axis=0)
         #
-        if str_or_bytes(key) != IS_EMPTY: sys.stdout.write(str_or_bytes(key)+IS_SPACE)
-        sys.stdout.write(str_or_bytes('\x00'+'B'))  # we write binary!
+        if str_or_bytes(key) != IS_EMPTY: writeout(str_or_bytes(key)+IS_SPACE)
+        writeout(str_or_bytes('\x00'+'B'))  # we write binary!
         # Data-type,
-        if   m.dtype == 'float32': sys.stdout.write(FLOAT_MAT)
-        elif m.dtype == 'float64': sys.stdout.write(DOUBLE_MAT)
+        if   m.dtype == 'float32': writeout(FLOAT_MAT)
+        elif m.dtype == 'float64': writeout(DOUBLE_MAT)
         else: raise MatrixDataTypeError
         # Dims,
-        sys.stdout.write(IS_EOL)
-        sys.stdout.write(struct.pack('I',m.shape[0]))  # rows
-        sys.stdout.write(IS_EOL)
-        sys.stdout.write(struct.pack('I',m.shape[1]))  # cols
+        writeout(IS_EOL)
+        writeout(struct.pack('I',m.shape[0]))  # rows
+        writeout(IS_EOL)
+        writeout(struct.pack('I',m.shape[1]))  # cols
         # Data,
-        sys.stdout.write(m.tobytes())
+        writeout(m.tobytes())
     finally:
         pass
 

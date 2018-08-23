@@ -232,6 +232,7 @@ class DeepBidirRNN:
         self.log_likelihoods = []
         self.seq_len = []
         self.logits = []
+        self.decodes = []
 
         #creating enough placeholders for out graph
         for language_id, target_scheme in language_scheme.items():
@@ -294,7 +295,7 @@ class DeepBidirRNN:
         for language_id, language_target_dict in language_scheme.items():
 
 
-            tmp_cost, tmp_debug_cost, tmp_ter, tmp_logits, tmp_softmax_probs, tmp_log_softmax_probs, tmp_log_likelihoods = [], [], [], [], [], [], []
+            tmp_cost, tmp_debug_cost, tmp_ter, tmp_logits, tmp_softmax_probs, tmp_log_softmax_probs, tmp_log_likelihoods, tmp_decodes = [], [], [], [], [], [], [], []
 
             with tf.variable_scope(constants.SCOPES.OUTPUT):
                 for target_id, num_targets in language_target_dict.items():
@@ -320,7 +321,9 @@ class DeepBidirRNN:
                     tmp_debug_cost.append(tf.reduce_mean(loss))
 
                     decoded, log_prob = tf.nn.ctc_greedy_decoder(logit, self.seq_len)
-
+                    dense_decoded=tf.sparse_tensor_to_dense(decoded[0],default_value=-1)
+                    tmp_decodes.append(dense_decoded)
+                    
                     ter = tf.reduce_sum(tf.edit_distance(tf.cast(decoded[0], tf.int32), self.labels[count], normalize = False))
                     tmp_ter.append(ter)
 
@@ -378,6 +381,7 @@ class DeepBidirRNN:
             self.softmax_probs.append(tmp_softmax_probs)
             self.log_softmax_probs.append(tmp_log_softmax_probs)
             self.log_likelihoods.append(tmp_log_likelihoods)
+            self.decodes.append(tmp_decodes)
 
             gvs = optimizer.compute_gradients(tmp_cost, var_list=var_list)
 

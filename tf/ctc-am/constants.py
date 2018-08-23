@@ -35,6 +35,7 @@ class CONF_TAGS:
     DATA_DIR = "data_dir"
     TRAIN_DIR = "train_dir"
     MODEL_DIR = "model_dir"
+    DUMP_CV_FWD = "dump_cv_fwd"
 
     #io arguments
     CONTINUE_CKPT="continue_ckpt"

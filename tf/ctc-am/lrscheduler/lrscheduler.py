@@ -15,6 +15,12 @@ class LRScheduler():
     def update_lr_rate(self, cv_ters):
         pass
 
+    def set_epoch(self, epoch):
+        pass
+
+    def resume_from_log(self):
+        pass
+
     def __compute_avg_ters(self, ters):
         nters=0
         avg_ters = 0.0

@@ -10,6 +10,7 @@
 #  - until minimum learning rate is reached:
 import constants
 from lrscheduler.lrscheduler import LRScheduler
+import re
 
 class Halvsies(LRScheduler):
     def __init__(self, config):
@@ -56,7 +57,14 @@ class Halvsies(LRScheduler):
 
     # TO DO: handle restarts
     def initialize_training(self):
+        self.__status = "LRScheduler.Halvsies: initialized"
         return self.__epoch, self.__lr_rate
+
+    def __set_status(self,string):
+        self.__status=string
+
+    def get_status(self):
+        return self.__status
 
     def update_lr_rate(self, cv_ters):
         # when there are multiple ters, compute average
@@ -66,27 +74,28 @@ class Halvsies(LRScheduler):
         restore = None
 
         # original learning rate scheduler runs for a fixed number of iterations
-        if (self.__epoch+1 >= self.__nepoch):
-            print("LRScheduler.Halvsies: reached last epoch, ending training")
+        if (self.__epoch >= self.__nepoch):
+            self.__set_status("LRScheduler.Halvsies: reached last epoch, ending training")
             should_stop=True
 
         if (self.__epoch < self.__half_after):
             if (not should_stop):
-                print("LRScheduler.Halvsies: not updating learning rate for first %s epochs" % str(self.__half_after))
+                self.__set_status("LRScheduler.Halvsies: not updating learning rate for first %s epochs" % str(self.__half_after))
             if (self.__epoch + 1 <= self.__half_after):
                 self.__best_avg_ters = avg_ters
                 self.__best_epoch = self.__epoch
             self.__epoch = self.__epoch+1
+            #print(self.get_status())
             return self.__epoch, self.__lr_rate, should_stop, restore
 
 
         elif (self.__lr_rate <= self.__min_lr_rate):
             if (not should_stop):
-                print("LRScheduler.Halvsies: not updating learning rate, currently at minimum ", self.__min_lr_rate)
+                self.__set_status("LRScheduler.Halvsies: not updating learning rate, currently at minimum ", self.__min_lr_rate)
 
         elif (self.__best_avg_ters > avg_ters):
             if (not should_stop):
-                print("LRScheduler.Halvsies: not updating learning rate, TER improved %.1f%% from epoch %d" % (100.0*(self.__best_avg_ters-avg_ters), self.__best_epoch))
+                self.__set_status("LRScheduler.Halvsies: not updating learning rate, TER improved %.1f%% from epoch %d" % (100.0*(self.__best_avg_ters-avg_ters), self.__best_epoch))
 
         else:
             self.__lr_rate = self.__lr_rate * self.__half_rate
@@ -94,9 +103,9 @@ class Halvsies(LRScheduler):
                 self.__lr_rate = self.__min_lr_rate
 
             if (should_stop):
-                print("LRScheduler.Halvsies: TER worse by %.1f%% from %.1f%% in epoch %d, will restore" % (100.0*(avg_ters-self.__best_avg_ters), 100.0*self.__best_avg_ters, self.__best_epoch))
+                self.__set_status("LRScheduler.Halvsies: TER worse by %.1f%% from %.1f%% in epoch %d, will restore" % (100.0*(avg_ters-self.__best_avg_ters), 100.0*self.__best_avg_ters, self.__best_epoch))
             else:
-                print("LRScheduler.Halvsies: TER worse by %.1f%% from %.1f%% in epoch %d, updating learning rate to %.4g" % (100.0*(avg_ters-self.__best_avg_ters), 100.0*self.__best_avg_ters, self.__best_epoch, self.__lr_rate))
+                self.__set_status("LRScheduler.Halvsies: TER worse by %.1f%% from %.1f%% in epoch %d, updating learning rate to %.4g" % (100.0*(avg_ters-self.__best_avg_ters), 100.0*self.__best_avg_ters, self.__best_epoch, self.__lr_rate))
             restore = self.__best_epoch
 
         if(self.__best_avg_ters > avg_ters):
@@ -105,6 +114,7 @@ class Halvsies(LRScheduler):
 
         self.__epoch=self.__epoch+1
 
+        #print(self.get_status())
         return self.__epoch, self.__lr_rate, should_stop, restore
 
 
@@ -119,3 +129,26 @@ class Halvsies(LRScheduler):
         avg_ters /= float(nters)
 
         return avg_ters
+
+    def set_epoch(self, epoch):
+        self.__epoch = epoch
+
+    def resume_from_log(self):
+        alpha = int(re.match(".*epoch([-+]?\d+).ckpt", self.__config[constants.CONF_TAGS.CONTINUE_CKPT]).groups()[0])
+        
+        self.__epoch = alpha + 1
+        self.__best_epoch = alpha  # technically this is not correct, should search logs
+
+        num_val = 0
+        acum_val = 0
+        
+        with open(self.__config[constants.CONF_TAGS.CONTINUE_CKPT].replace(".ckpt",".log")) as input_file:
+            for line in input_file:
+                if (constants.LOG_TAGS.VALIDATE in line):
+                    acum_val += float(line.split()[4].replace("%,",""))
+                    num_val += 1
+                        
+        self.__best_avg_ters=(acum_val / num_val)/100.0
+
+
+

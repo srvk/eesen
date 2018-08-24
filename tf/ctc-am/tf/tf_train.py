@@ -58,7 +58,7 @@ class Train():
 
             self.__lrscheduler=create_lrscheduler(self.__config)
 
-            # restore a training
+            # restore a training - note this will now update lrscheduler as well
             saver, alpha, best_avg_ters = self.__restore_weights()
 
             #initialize counters
@@ -67,15 +67,16 @@ class Train():
             #lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
             epoch, lr_rate = self.__lrscheduler.initialize_training()
 
-            if(alpha > 1):
-                if(self.__config[constants.CONF_TAGS.FORCE_LR_EPOCH_CKPT]):
-                    lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
-                    alpha=1
-                    self.__ter_buffer = [float('inf'), float('inf')]
-                    best_epoch=1
-                else:
-                    lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
-                    #lr_rate = self.__compute_new_lr_rate(alpha)
+            # This is now handled by the lrscheduler
+            #if(alpha > 1):
+            #    if(self.__config[constants.CONF_TAGS.FORCE_LR_EPOCH_CKPT]):
+            #        lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
+            #        alpha=1
+            #        self.__ter_buffer = [float('inf'), float('inf')]
+            #        best_epoch=1
+            #    else:
+            #        lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
+            #        #lr_rate = self.__compute_new_lr_rate(alpha)
 
             #for epoch in range(alpha, self.__config[constants.CONF_TAGS.NEPOCH]):
             while True:
@@ -95,12 +96,15 @@ class Train():
                 #evaluate on validation...
                 cv_cost, cv_ters, ncv = self.__eval_epoch(epoch, cv_x, cv_y, cv_sat)
 
-                self.__generate_logs(cv_ters, cv_cost, ncv, train_ters, train_cost, ntrain, epoch, lr_rate, tic)
-
                 #update lr_rate if needed
-                #lr_rate, best_avg_ters, best_epoch = self.__update_lr_rate(epoch, cv_ters, best_avg_ters, best_epoch, saver, lr_rate)
-                epoch, lr_rate, should_stop, restore = self.__lrscheduler.update_lr_rate(cv_ters)
+                new_epoch, new_lr_rate, should_stop, restore = self.__lrscheduler.update_lr_rate(cv_ters)
 
+                #generate logs after lrscheduler update so that the log can put out lrscheduler info
+                self.__generate_logs(cv_ters, cv_cost, ncv, train_ters, train_cost, ntrain, epoch, lr_rate, tic)
+                
+                epoch = new_epoch
+                lr_rate = new_lr_rate
+ 
                 # check restoring before stopping in case last model was suboptimal
                 if (restore is not None):
                     self.__restore_epoch(saver,restore)
@@ -620,6 +624,7 @@ class Train():
 
                 alpha += 1
 
+                self.__lrscheduler.set_epoch(alpha)
             else:
 
                 vars_to_load=[]
@@ -641,36 +646,39 @@ class Train():
                 saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH], var_list=vars_to_load)
                 saver.restore(self.__sess, self.__config[constants.CONF_TAGS.CONTINUE_CKPT])
 
-                alpha = int(re.match(".*epoch([-+]?\d+).ckpt", self.__config[constants.CONF_TAGS.CONTINUE_CKPT]).groups()[0])
+                if True:
+                    self.__lrscheduler.resume_from_log()
+                else:
+                    alpha = int(re.match(".*epoch([-+]?\d+).ckpt", self.__config[constants.CONF_TAGS.CONTINUE_CKPT]).groups()[0])
 
-                num_val = 0
-                acum_val = 0
+                    num_val = 0
+                    acum_val = 0
 
-                with open(self.__config[constants.CONF_TAGS.CONTINUE_CKPT].replace(".ckpt",".log")) as input_file:
-                    for line in input_file:
-                        if (constants.LOG_TAGS.VALIDATE in line):
-                            acum_val += float(line.split()[4].replace("%,",""))
-                            num_val += 1
-
-                    self.__ter_buffer[len(self.__ter_buffer) - 1]= acum_val / num_val
-
-                    best_avg_ters=acum_val / num_val
-
-                if(alpha > 1):
-
-                    new_log=self.__config[constants.CONF_TAGS.CONTINUE_CKPT][:-7]+"%02d" % (alpha-1,)+".log"
-
-                    with open(new_log) as input_file:
+                    with open(self.__config[constants.CONF_TAGS.CONTINUE_CKPT].replace(".ckpt",".log")) as input_file:
                         for line in input_file:
                             if (constants.LOG_TAGS.VALIDATE in line):
                                 acum_val += float(line.split()[4].replace("%,",""))
                                 num_val += 1
 
-                    self.__ter_buffer[0]= acum_val / num_val
+                        self.__ter_buffer[len(self.__ter_buffer) - 1]= acum_val / num_val
+
+                        best_avg_ters=acum_val / num_val
+
+                        if(alpha > 1):
+
+                            new_log=self.__config[constants.CONF_TAGS.CONTINUE_CKPT][:-7]+"%02d" % (alpha-1,)+".log"
+
+                            with open(new_log) as input_file:
+                                for line in input_file:
+                                    if (constants.LOG_TAGS.VALIDATE in line):
+                                        acum_val += float(line.split()[4].replace("%,",""))
+                                        num_val += 1
+
+                            self.__ter_buffer[0]= acum_val / num_val
 
                 alpha += 1
 
-            print(80 * "-")
+        print(80 * "-")
 
         #we want to store everything
         saver = tf.train.Saver(max_to_keep=self.__config[constants.CONF_TAGS.NEPOCH])
@@ -698,6 +706,10 @@ class Train():
                     print("\t\t"+constants.LOG_TAGS.VALIDATE+" cost: %.1f, ter: %.1f%%, #example: %d" % (cv_cost[language_id][target_id], 100.0*cv_ter, ncv[language_id]))
                     fp.write("\t\tTrain    cost: %.1f, ter: %.1f%%, #example: %d\n" % (train_cost[language_id][target_id], 100.0*train_ters[language_id][target_id], ntrain[language_id]))
                     fp.write("\t\t"+constants.LOG_TAGS.VALIDATE+" cost: %.1f, ter: %.1f%%, #example: %d\n" % (cv_cost[language_id][target_id], 100.0*cv_ter, ncv[language_id]))
+                    fp.write(self.__lrscheduler.get_status())
+        # get status from LRScheduler
+        self.__info(self.__lrscheduler.get_status())
+
 
     def __print_counts_debug(self, epoch, batch_counter, total_number_batches, batch_cost, batch_size, batch_ters, data_queue):
 

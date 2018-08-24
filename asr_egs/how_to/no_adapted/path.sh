@@ -1,0 +1,1 @@
+./../adapted/path.sh

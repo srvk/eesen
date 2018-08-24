@@ -1,0 +1,61 @@
+#!/bin/bash
+
+for x in exp_110h/*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null
+exit 0
+
+# TensorFlow CTC Phonemes on the Complete Set (with 5 BiLSTM layers)
+
+# CTC Phonemes on the Complete set (with 5 BiLSTM layers) with WFST decode
+%WER 12.5 | 1831 21395 | 88.9 7.7 3.4 1.5 12.5 49.6 | exp/train_phn_fbank_pitch_l5_c320_mdeepbilstm_w3_ntrue_p60_ip80_fp80/results_epoch22_bs5.0_sw1_fsh_tgpr/score_8/eval2000.ctm.swbd.filt.sys
+%WER 18.3 | 4459 42989 | 83.9 11.7 4.4 2.2 18.3 57.3 | exp/train_phn_fbank_pitch_l5_c320_mdeepbilstm_w3_ntrue_p60_ip80_fp80/results_epoch22_bs4.0_sw1_fsh_tgpr/score_8/eval2000.ctm.filt.sys
+%WER 23.9 | 2628 21594 | 79.0 15.5 5.6 2.8 23.9 62.5 | exp/train_phn_fbank_pitch_l5_c320_mdeepbilstm_w3_ntrue_p60_ip80_fp80/results_epoch22_bs4.0_sw1_fsh_tgpr/score_8/eval2000.ctm.callhm.filt.sys
+
+# Slightly larger model (400 units, 80 internal projections) with WFST decode
+%WER 12.2 | 1831 21395 | 89.2 7.7 3.1 1.4 12.2 49.7 | exp/train_phn_fbank_pitch_l5_c400_mdeepbilstm_w3_ntrue_p80_ip80_fp80/results_epoch23_bs7.0_sw1_fsh_tgpr/score_10/eval2000.ctm.swbd.filt.sys
+%WER 17.8 | 4459 42989 | 84.1 11.1 4.8 1.9 17.8 57.1 | exp/train_phn_fbank_pitch_l5_c400_mdeepbilstm_w3_ntrue_p80_ip80_fp80/results_epoch23_bs7.0_sw1_fsh_tgpr/score_9/eval2000.ctm.filt.sys
+%WER 23.4 | 2628 21594 | 79.3 14.8 5.9 2.7 23.4 62.1 | exp/train_phn_fbank_pitch_l5_c400_mdeepbilstm_w3_ntrue_p80_ip80_fp80/results_epoch23_bs7.0_sw1_fsh_tgpr/score_10/eval2000.ctm.callhm.filt.sys
+
+
+##############
+# Comparison to older (v1) non-tensorflow systems
+##############
+
+# CTC Phonemes on the 110-Hour set (with 4 BiLSTM layers)
+%WER 19.9 | 1831 21395 | 83.1 13.1 3.7 3.0 19.9 58.8 | exp_110h/train_phn_l4_c320/decode_eval2000_sw1_fsh_tgpr/score_6/eval2000.ctm.swbd.filt.sys
+%WER 26.5 | 4459 42989 | 77.5 17.4 5.1 3.9 26.5 64.6 | exp_110h/train_phn_l4_c320/decode_eval2000_sw1_fsh_tgpr/score_6/eval2000.ctm.filt.sys
+%WER 33.0 | 2628 21594 | 71.9 21.6 6.5 4.8 33.0 68.6 | exp_110h/train_phn_l4_c320/decode_eval2000_sw1_fsh_tgpr/score_6/eval2000.ctm.callhm.filt.sys
+
+# CTC Phonemes on the Complete set (with 5 BiLSTM layers) 
+%WER 15.0 | 1831 21395 | 87.7 9.9 2.4 2.7 15.0 54.0 | exp/train_phn_l5_c320/decode_eval2000_sw1_fsh_tgpr/score_7/eval2000.ctm.swbd.filt.sys
+%WER 21.0 | 4459 42989 | 82.8 13.8 3.4 3.7 21.0 59.9 | exp/train_phn_l5_c320/decode_eval2000_sw1_fsh_tgpr/score_7/eval2000.ctm.filt.sys
+%WER 26.9 | 2628 21594 | 77.6 17.4 5.0 4.5 26.9 64.6 | exp/train_phn_l5_c320/decode_eval2000_sw1_fsh_tgpr/score_6/eval2000.ctm.callhm.filt.sys
+# Decoding with word insertion panelty and confidence
+%WER 14.8 | 1831 21395 | 87.6 9.8 2.6 2.4 14.8 53.8 | -0.310 | exp/train_phn_l5_c320/decode_eval2000_sw1_fsh_tgpr/score_p0.5_8/eval2000.ctm.swbd.filt.sys
+%WER 20.4 | 4459 42989 | 81.9 12.9 5.2 2.3 20.4 59.7 | -0.205 | exp/train_phn_l5_c320/decode_eval2000_sw1_fsh_tgpr/score_p1.5_7/eval2000.ctm.filt.sys
+%WER 26.0 | 2628 21594 | 76.9 16.3 6.8 2.9 26.0 64.1 | -0.220 | exp/train_phn_l5_c320/decode_eval2000_sw1_fsh_tgpr/score_p1.5_7/eval2000.ctm.callhm.filt.sys
+
+###################################################################
+# A comparison to HMM/DNN hybrid systems
+###################################################################
+# For fair comparisons, the hybrid models are trained with *filterbank* features, rather than fMLLRs. In each case, we
+# adopt the DNN and LSTM as the acoustic models. Refer to the following paper for details regarding the hybrid systems:
+#
+# Yajie Miao, Florian Metze. On Speaker Adaptation of Long Short-Term Memory Recurrent Neural Networks. Interspeech 2015.
+#
+# Hybrid DNN on the 110-Hour Set
+%WER 20.2 | 1831 21395 | 81.8 12.1 6.1 2.0 20.2 57.7 | exp_110h/dnn_fbank/decode_eval2000_sw1_fsh_tgpr/score_11/eval2000.ctm.swbd.filt.sys
+%WER 26.8 | 4459 42989 | 75.9 16.4 7.8 2.7 26.8 64.4 | exp_110h/dnn_fbank/decode_eval2000_sw1_fsh_tgpr/score_10/eval2000.ctm.filt.sys
+%WER 33.2 | 2628 21594 | 69.8 20.3 9.8 3.1 33.2 68.6 | exp_110h/dnn_fbank/decode_eval2000_sw1_fsh_tgpr/score_10/eval2000.ctm.callhm.filt.sys
+# Hybrid LSTM on the 110-Hour Set
+%WER 19.2 | 1831 21395 | 82.8 11.9 5.3 2.0 19.2 57.4 | exp_110h/lstm_V4/decode_eval2000_sw1_fsh_tgpr/score_10/eval2000.ctm.swbd.filt.sys
+%WER 26.1 | 4459 42989 | 76.5 15.8 7.7 2.5 26.1 64.6 | exp_110h/lstm_V4/decode_eval2000_sw1_fsh_tgpr/score_10/eval2000.ctm.filt.sys
+%WER 32.9 | 2628 21594 | 70.2 19.7 10.1 3.1 32.9 69.6 | exp_110h/lstm_V4/decode_eval2000_sw1_fsh_tgpr/score_10/eval2000.ctm.callhm.filt.sys
+
+# Hybrid DNN on the Complete Set
+%WER 16.9 | 1831 21395 | 85.2 10.0 4.8 2.0 16.9 55.3 | exp/dnn_fbank/decode_eval2000_sw1_fsh_tgpr/score_10/eval2000.ctm.swbd.filt.sys
+%WER 23.2 | 4459 42989 | 79.4 14.0 6.6 2.5 23.2 61.2 | exp/dnn_fbank/decode_eval2000_sw1_fsh_tgpr/score_10/eval2000.ctm.filt.sys
+%WER 29.4 | 2628 21594 | 73.6 18.0 8.4 3.0 29.4 65.2 | exp/dnn_fbank/decode_eval2000_sw1_fsh_tgpr/score_10/eval2000.ctm.callhm.filt.sys
+# Hybrid LSTM on the Complete Set
+%WER 15.8 | 1831 21395 | 86.1 9.4 4.6 1.8 15.8 52.6 | exp/lstm_V4/decode_eval2000_sw1_fsh_tgpr/score_11/eval2000.ctm.swbd.filt.sys
+%WER 22.1 | 4459 42989 | 80.2 13.1 6.8 2.3 22.1 60.5 | exp/lstm_V4/decode_eval2000_sw1_fsh_tgpr/score_11/eval2000.ctm.filt.sys
+%WER 28.4 | 2628 21594 | 74.5 17.0 8.5 2.9 28.4 65.8 | exp/lstm_V4/decode_eval2000_sw1_fsh_tgpr/score_10/eval2000.ctm.callhm.filt.sys

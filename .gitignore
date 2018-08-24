@@ -14,6 +14,10 @@
 *.dylib
 *.dSYM
 
+#kaldi
+*ark
+*scp
+
 # Make dependencies
 .depend.mk
 
@@ -27,3 +31,31 @@ project.xcworkspace
 
 # swp files
 *.swp
+
+# python
+*.pyc
+
+# else
+tmp*
+log
+*/tmp*
+
+
+#expriments
+exp/
+exp_110h/
+fbank/
+v1/data/
+data/
+data_ml/
+log/
+random_exp/
+random_scripts/
+videos_local/
+tmp/
+data_ml_11/
+data_video_ml/
+data_videos_ml/
+results/
+exp_110h/
+tf-mm/

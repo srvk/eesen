@@ -73,6 +73,8 @@ def main_parser():
 
     #training runtime arguments
     parser.add_argument('--nepoch', default = 30, type=int, help='#epoch')
+    parser.add_argument('--lrscheduler', default="halvsies", help = "lrscheduler: halvsies, newbob, constantlr") 
+    parser.add_argument('--lr_spec', default = "", help='option specifier string to lrscheduler, overrides other command line options')
     parser.add_argument('--lr_rate', default = 0.03, type=float, help='learning rate')
     parser.add_argument('--min_lr_rate', default = 0.0005, type=float, help='minimal learning rate')
     parser.add_argument('--half_period', default = 4, type=int, help='half period in epoch of learning rate')
@@ -188,6 +190,8 @@ def create_global_config(args):
 
         #training runtime arguments
         constants.CONF_TAGS.NEPOCH: args.nepoch,
+        constants.CONF_TAGS.LRSCHEDULER: args.lrscheduler,
+        constants.CONF_TAGS.LR_SPEC: args.lr_spec,
         constants.CONF_TAGS.LR_RATE: args.lr_rate,
         constants.CONF_TAGS.MIN_LR_RATE: args.min_lr_rate,
         constants.CONF_TAGS.HALF_PERIOD: args.half_period,
@@ -237,6 +241,9 @@ def update_conf_import(config, args):
 
     if(config[constants.CONF_TAGS.LR_RATE] != args.lr_rate):
         config[constants.CONF_TAGS.LR_RATE] = args.lr_rate
+
+    if(args.lrscheduler):
+        config[constants.CONF_TAGS.LRSCHEDULER] = args.lrscheduler
 
     if(config[constants.CONF_TAGS.MIN_LR_RATE] != args.min_lr_rate):
         config[constants.CONF_TAGS.MIN_LR_RATE] = args.min_lr_rate

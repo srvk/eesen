@@ -65,6 +65,8 @@ class CONF_TAGS:
     #training runtime arguments
     NEPOCH="nepoch"
     LR_RATE="lr_rate"
+    LR_SPEC="lr_spec"
+    LRSCHEDULER="lrscheduler"
     MIN_LR_RATE="min_lr_rate"
     HALF_PERIOD="half_period"
     HALF_RATE="half_rate"
@@ -132,3 +134,20 @@ class LOG_TAGS:
     VALIDATE = "Validate"
 
 
+class LRSCHEDULER_NAME:
+    HALVSIES = "halvsies"
+    NEWBOB = "newbob"
+    CONSTANTLR = "constantlr"
+
+class LOG_TAGS_NEWBOB:
+    PHASE_STOP_EPOCH = "LRScheduler.Newbob: reached last epoch, ending training"
+    PHASE_0 = "LRScheduler.Newbob: not updating learning rate for first"
+    PHASE_MIN_LR = "LRScheduler.Newbob: not updating learning rate, currently at minimum"
+    PHASE_1 = "LRScheduler.Newbob: learning rate remaining constant"
+    PHASE_1_END = "LRScheduler.Newbob: beginning ramping to learn rate"
+    PHASE_2 = "LRScheduler.Newbob: learning rate ramping to"
+    PHASE_2_END = "LRScheduler.Newbob: stopping training"
+
+
+
+    

@@ -15,6 +15,7 @@ from random import randint
 from collections import deque
 import numpy as np
 from utils.fileutils.kaldi import writeArk, writeScp
+from lrscheduler.lrscheduler_factory import create_lrscheduler
 
 class Train():
 
@@ -55,13 +56,16 @@ class Train():
             #initialize variables of our model
             self.__sess.run(tf.global_variables_initializer())
 
+            self.__lrscheduler=create_lrscheduler(self.__config)
+
             # restore a training
             saver, alpha, best_avg_ters = self.__restore_weights()
 
             #initialize counters
             best_epoch = alpha
 
-            lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
+            #lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
+            epoch, lr_rate = self.__lrscheduler.initialize_training()
 
             if(alpha > 1):
                 if(self.__config[constants.CONF_TAGS.FORCE_LR_EPOCH_CKPT]):
@@ -73,7 +77,8 @@ class Train():
                     lr_rate = self.__config[constants.CONF_TAGS.LR_RATE]
                     #lr_rate = self.__compute_new_lr_rate(alpha)
 
-            for epoch in range(alpha, self.__config[constants.CONF_TAGS.NEPOCH]):
+            #for epoch in range(alpha, self.__config[constants.CONF_TAGS.NEPOCH]):
+            while True:
 
                 #log start
                 self.__info("Epoch %d starting, learning rate: %.4g" % (epoch, lr_rate))
@@ -93,11 +98,23 @@ class Train():
                 self.__generate_logs(cv_ters, cv_cost, ncv, train_ters, train_cost, ntrain, epoch, lr_rate, tic)
 
                 #update lr_rate if needed
-                lr_rate, best_avg_ters, best_epoch = self.__update_lr_rate(epoch, cv_ters, best_avg_ters, best_epoch, saver, lr_rate)
+                #lr_rate, best_avg_ters, best_epoch = self.__update_lr_rate(epoch, cv_ters, best_avg_ters, best_epoch, saver, lr_rate)
+                epoch, lr_rate, should_stop, restore = self.__lrscheduler.update_lr_rate(cv_ters)
+
+                # check restoring before stopping in case last model was suboptimal
+                if (restore is not None):
+                    self.__restore_epoch(saver,restore)
+
+                if should_stop:
+                    break
 
                 #change set if needed (mix augmentation)
                 self.__update_sets(tr_x, tr_y, tr_sat)
 
+            # save final model after all iterations
+            if self.__config[constants.CONF_TAGS.STORE_MODEL]:
+                    saver.save(self.__sess, "%s/final.ckpt" % (self.__config[constants.CONF_TAGS.MODEL_DIR]))
+            
 
     def __compute_avg_ters(self, ters):
 
@@ -180,6 +197,17 @@ class Train():
         self.__ter_buffer[1]=avg_ters
 
         return lr_rate, best_avg_ters, best_epoch
+
+    def __restore_epoch(self, saver, best_epoch):
+        epoch_name = "/epoch%02d.ckpt" % (best_epoch)
+        best_epoch_path = self.__config[constants.CONF_TAGS.MODEL_DIR] + epoch_name
+
+        if(os.path.isfile(best_epoch_path+".index")):
+            print("restoring model from epoch "+str(best_epoch))
+            saver.restore(self.__sess, "%s/epoch%02d.ckpt" % (self.__config["model_dir"], best_epoch))
+        else:
+            print("epoch "+str(best_epoch)+" NOT found. restoring can not be done. ("+best_epoch_path+")")
+
 
     def __update_sets(self, m_tr_x, m_tr_y, m_tr_sat):
 

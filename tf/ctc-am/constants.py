@@ -65,6 +65,8 @@ class CONF_TAGS:
     #training runtime arguments
     NEPOCH="nepoch"
     LR_RATE="lr_rate"
+    LR_SPEC="lr_spec"
+    LRSCHEDULER="lrscheduler"
     MIN_LR_RATE="min_lr_rate"
     HALF_PERIOD="half_period"
     HALF_RATE="half_rate"
@@ -132,3 +134,7 @@ class LOG_TAGS:
     VALIDATE = "Validate"
 
 
+class LRSCHEDULER_NAME:
+    HALVSIES = "halvsies"
+    NEWBOB = "newbob"
+    CONSTANTLR = "constantlr"

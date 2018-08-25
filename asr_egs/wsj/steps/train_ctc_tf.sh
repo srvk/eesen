@@ -32,7 +32,8 @@ continue_ckpt_sat=false
 #training configuration
 nepoch=""
 lr_rate=""
-lrscheduler="halvsies"
+lrscheduler=""
+lr_spec=""
 dropout=""
 kl_weight=""
 debug=false
@@ -144,6 +145,10 @@ fi
 
 if [[ "$lrscheduler" != "" ]]; then
     lrscheduler="--lrscheduler $lrscheduler"
+fi
+
+if [[ "$lr_spec" != "" ]]; then
+    lrscheduler="--lr_spec $lr_spec"
 fi
 
 #TODO solvME!

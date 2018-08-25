@@ -32,6 +32,7 @@ continue_ckpt_sat=false
 #training configuration
 nepoch=""
 lr_rate=""
+lrscheduler="halvsies"
 dropout=""
 kl_weight=""
 debug=false
@@ -141,6 +142,10 @@ if [ -n "$lr_rate" ]; then
     lr_rate="--lr_rate $lr_rate"
 fi
 
+if [[ "$lrscheduler" != "" ]]; then
+    lrscheduler="--lrscheduler $lrscheduler"
+fi
+
 #TODO solvME!
 if [ -n "$half_after" ]; then
     half_after="--half_after $half_after"
@@ -195,9 +200,9 @@ fi
 sat_nlayer="--sat_nlayer $sat_nlayer"
 
 if [[ "$dump_cv_fwd" == "true" ]]; then
-    $dump_cv_fwd="--dump_cv_fwd"
+    dump_cv_fwd="--dump_cv_fwd"
 else
-    $dump_cv_fwd=""
+    dump_cv_fwd=""
 fi
 
 echo ""
@@ -271,11 +276,11 @@ cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
 echo "TRAINING STARTS [$cur_time]"
 
 echo $train_tool $train_opts \
-    --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $dropout $lr_rate $l2 $batch_norm \
+    --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $dropout $lr_rate $lrscheduler $l2 $batch_norm \
     --train_dir $dir --data_dir $tmpdir $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt $dump_cv_fwd
 
 $train_tool $train_opts \
-    --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $dropout $lr_rate $l2 $batch_norm \
+    --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $dropout $lr_rate $l2 $lrscheduler $batch_norm \
     --train_dir $dir --data_dir $tmpdir $half_after $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt $dump_cv_fwd  || exit 1;
 
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`

@@ -97,8 +97,8 @@ class Newbob(LRScheduler):
             #print(self.get_status())
             return self.__epoch, self.__lr_rate, should_stop, restore
 
-
-        elif (self.__lr_rate <= self.__min_lr_rate):
+        #this shouldn't happen but put here anyway
+        elif (self.__phase<2 and self.__lr_rate <= self.__min_lr_rate):
             if (not should_stop):
                 self.__set_status("%s %.4g" % (constants.LOG_TAGS_NEWBOB.PHASE_MIN_LR,self.__min_lr_rate))
 
@@ -121,7 +121,9 @@ class Newbob(LRScheduler):
                 self.__lr_rate = self.__lr_rate * self.__half_rate
                 if (self.__lr_rate < self.__min_lr_rate):
                     self.__lr_rate = self.__min_lr_rate
-                if (not should_stop):
+                    if (not should_stop):
+                        self.__set_status("%s %.4g" % (constants.LOG_TAGS_NEWBOB.PHASE_MIN_LR,self.__min_lr_rate))
+                elif (not should_stop):
                     self.__set_status("%s %.4g, TER improved %.1f%% from epoch %d" % (constants.LOG_TAGS_NEWBOB.PHASE_2, self.__lr_rate, 100.0*(self.__best_avg_ters-avg_ters), self.__best_epoch))
             else:
                 self.__set_status("%s, TER difference %.1f%% under threshold %.1f%% from epoch %d" % (constants.LOG_TAGS_NEWBOB.PHASE_2_END, 100.0*(self.__best_avg_ters-avg_ters), self.__ramp_threshold, self.__best_epoch))

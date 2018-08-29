@@ -33,19 +33,23 @@ feattype=fbank_pitch
 #acoustic model parameters
 am_nlayer=5
 
-am_nproj=60
+#am_nproj=60
 #am_nproj=80  # use this setting for the bigger net in RESULTS
+am_nproj=100  # use this setting for the bigger net in RESULTS
 am_ninitproj=80
 am_nfinalproj=100
 
-am_ncell_dim=320
+#am_ncell_dim=320
 #am_ncell_dim=400  # use this setting for the bigger net in RESULTS
+am_ncell_dim=480  # use this setting for the bigger net in RESULTS
 
 am_model=deepbilstm
 am_window=3
 am_norm=true
 
-lr_rate=0.05
+#lr_rate=0.05
+lrscheduler="newbob"
+lr_spec="lr_rate=0.05,half_after=3"
 
 
 #language model parameters
@@ -146,16 +150,14 @@ if [ $stage -le 4 ]; then
 
   # Train the network with CTC. Refer to the script for details about the arguments
   ( 
-  steps/train_ctc_tf.sh --l2 0.001 --batch_norm true --nlayer $am_nlayer --nhidden $am_ncell_dim --lr_rate $lr_rate --model $am_model  --ninitproj $am_ninitproj --nproj $am_nproj --nfinalproj $am_nfinalproj data/train_nodup data/train_dev $dir 2>&1 || exit 1 
+  steps/train_ctc_tf.sh --l2 0.001 --batch_norm true --nlayer $am_nlayer --nhidden $am_ncell_dim --lrscheduler newbob --lr_spec $lr_spec --model $am_model  --ninitproj $am_ninitproj --nproj $am_nproj --nfinalproj  $am_nfinalproj data/train_nodup data/train_dev $dir 2>&1 || exit 1 
   ) | tee $dir/train.log 
 
 fi
 
 # globals used by stages 5
 
-# NOTE: should check this against CV TERs and select optimal
-# TODO: write code to select optimal epoch
-epoch=epoch22.ckpt
+epoch=final.ckpt
 filename=$(basename "$epoch")
 name_exp="${filename%.*}"
 

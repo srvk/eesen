@@ -148,7 +148,7 @@ if [[ "$lrscheduler" != "" ]]; then
 fi
 
 if [[ "$lr_spec" != "" ]]; then
-    lrscheduler="--lr_spec $lr_spec"
+    lr_spec="--lr_spec $lr_spec"
 fi
 
 #TODO solvME!
@@ -281,11 +281,11 @@ cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`
 echo "TRAINING STARTS [$cur_time]"
 
 echo $train_tool $train_opts \
-    --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $dropout $lr_rate $lrscheduler $l2 $batch_norm \
+    --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $dropout $lr_rate $lrscheduler $lr_spec $l2 $batch_norm \
     --train_dir $dir --data_dir $tmpdir $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt $dump_cv_fwd
 
 $train_tool $train_opts \
-    --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $dropout $lr_rate $l2 $lrscheduler $batch_norm \
+    --model $model --nlayer $nlayer --nhidden $nhidden $ninitproj $nproj $nfinalproj $nepoch $dropout $lr_rate $lrscheduler $lr_spec $l2  $batch_norm \
     --train_dir $dir --data_dir $tmpdir $half_after $sat_stage $sat_type $sat_nlayer $debug $continue_ckpt $continue_ckpt_sat $diff_num_target_ckpt $force_lr_epoch_ckpt $dump_cv_fwd  || exit 1;
 
 cur_time=`date | awk '{print $6 "-" $2 "-" $3 " " $4}'`

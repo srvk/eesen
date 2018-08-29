@@ -33,15 +33,13 @@ feattype=fbank_pitch
 #acoustic model parameters
 am_nlayer=5
 
-#am_nproj=60
+am_nproj=60
 #am_nproj=80  # use this setting for the bigger net in RESULTS
-am_nproj=100  # use this setting for the bigger net in RESULTS
 am_ninitproj=80
 am_nfinalproj=100
 
-#am_ncell_dim=320
+am_ncell_dim=320
 #am_ncell_dim=400  # use this setting for the bigger net in RESULTS
-am_ncell_dim=480  # use this setting for the bigger net in RESULTS
 
 am_model=deepbilstm
 am_window=3
